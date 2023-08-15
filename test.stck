@@ -1,0 +1,7 @@
+proc print_sum
+  + print
+end
+
+proc main
+  34 35 print_sum
+end
