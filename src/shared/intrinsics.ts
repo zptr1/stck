@@ -17,7 +17,7 @@ function addIntrinsic(name: string, ins: DataType[], outs: DataType[]) {
 addIntrinsic("add",    [DataType.Int, DataType.Int],  [DataType.Int]);
 addIntrinsic("sub",    [DataType.Int, DataType.Int],  [DataType.Int]);
 addIntrinsic("mul",    [DataType.Int, DataType.Int],  [DataType.Int]);
-addIntrinsic("divmod", [DataType.Int, DataType.Int],  [DataType.Int]);
+addIntrinsic("divmod", [DataType.Int, DataType.Int],  [DataType.Int, DataType.Int]);
 addIntrinsic("lt",     [DataType.Int, DataType.Int],  [DataType.Boolean]);
 addIntrinsic("eq",     [DataType.Int, DataType.Int],  [DataType.Boolean]);
 addIntrinsic("gt",     [DataType.Int, DataType.Int],  [DataType.Boolean]);
