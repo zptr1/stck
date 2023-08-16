@@ -1,24 +1,14 @@
 import { IRExpr, IRProc, IRProgram, IRWordKind, IRType } from "./shared/ir";
 import { AstType, Expr, IProc, IProgram, IWord } from "./shared/ast";
 import { DataType, compareDataTypeArrays } from "./shared/types";
-import { INTRINSICS } from "./shared/intrinsics";
+import { INTRINSICS, Intrinsic } from "./shared/intrinsics";
 import { Location, formatLoc } from "./shared/location";
 import { reportError } from "./errors";
 import chalk from "chalk";
 
 // TODO: Split this into multiple files in the future
 
-/** Used for compile-time evaluation */
-export interface StackItem {
-  type: DataType;
-  location: Location;
-  value?: any;
-}
-
-/** Used for typechecking */
 export interface Context {
-  // Using two separate values instead of StackItem
-  // to improve the performance when doing typechecks.
   stack: DataType[];
   stackLocations: Location[];
 
@@ -51,6 +41,80 @@ export class IR {
     reportError(message, loc, notes);
   }
 
+  private evaluateCompileTimeExpr(exprs: Expr[], ctx: Context, loc: Location): IRExpr {
+    const stackValues: any[] = [];
+
+    for (const expr of exprs) {
+      if (expr.type == AstType.Word) {
+        if (INTRINSICS.has(expr.value)) {
+          this.handleIntrinsic(INTRINSICS.get(expr.value)!, ctx, expr.loc);
+
+          if (expr.value == "add") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop();
+            stackValues.push(lhs + rhs);
+          } else if (expr.value == "sub") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop();
+            stackValues.push(lhs - rhs);
+          } else if (expr.value == "mul") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop();
+            stackValues.push(lhs * rhs);
+          } else if (expr.value == "divmod") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop();
+            stackValues.push(Math.floor(lhs / rhs));
+            stackValues.push(lhs % rhs);
+          } else if (expr.value == "lt") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop();
+            stackValues.push(lhs < rhs);
+          } else if (expr.value == "eq") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop();
+            stackValues.push(lhs == rhs);
+          } else if (expr.value == "gt") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop()!;
+            stackValues.push(lhs > rhs);
+          } else if (expr.value == "dup") {
+            const a = stackValues.pop();
+            stackValues.push(a, a);
+          } else if (expr.value == "drop") {
+            stackValues.pop();
+          } else if (expr.value == "swap") {
+            stackValues.push(stackValues.pop(), stackValues.pop());
+          } else {
+            reportError("Cannot use this intrinsic in compile-time expression", expr.loc);
+          }
+        } else if (this.program.constants.has(expr.value)) {
+          throw new Error("Constants are not implemented yet");
+        } else if (this.program.procs.has(expr.value)) {
+          reportError("Cannot use procedures in compile-time expressions", expr.loc);
+        } else {
+          reportError("Unknown word", expr.loc);
+        }
+      } else if (expr.type == AstType.Push) {
+        stackValues.push(expr.value);
+        ctx.stack.push(expr.datatype);
+        ctx.stackLocations.push(expr.loc);
+      }
+    }
+
+    if (stackValues.length < 0) {
+      this.reportErrorWithStackData(
+        "Compile time expression resulted in nothing",
+        loc, ctx, [DataType.Any]
+      );
+    } else if (stackValues.length > 1) {
+      this.reportErrorWithStackData(
+        "Compile time expression resulted in multiple values on the stack",
+        loc, ctx, [DataType.Any]
+      );
+    }
+
+    return {
+      type: AstType.Push,
+      datatype: ctx.stack.pop()!,
+      value: stackValues.pop()!,
+      loc: ctx.stackLocations.pop()!
+    }
+  }
+
   private expandMacro(expr: IWord, ctx: Context): IRExpr[] {
     const macro = this.program.macros.get(expr.value)!;
 
@@ -69,6 +133,28 @@ export class IR {
     ctx.macroExpansionStack.pop();
 
     return body;
+  }
+
+  private handleIntrinsic(intrinsic: Intrinsic, ctx: Context, loc: Location) {
+    this.validateContextStack(loc, ctx, intrinsic.ins, false, "for the intrinsic call");
+
+    // TODO: find a better way to handle this
+    if (intrinsic.name == "dup") {
+      const x = ctx.stack.pop()!;
+      ctx.stack.push(x, x);
+      ctx.stackLocations.push(loc, loc);
+    } else if (intrinsic.name == "swap") {
+      ctx.stack.push(ctx.stack.pop()!, ctx.stack.pop()!);
+    } else {
+      for (let i = 0; i < intrinsic.ins.length; i++) {
+        ctx.stack.pop();
+      }
+
+      for (let i = 0; i < intrinsic.outs.length; i++) {
+        ctx.stack.push(intrinsic.outs[i]);
+        ctx.stackLocations.push(loc);
+      }
+    }
   }
 
   private validateContextStack(
@@ -132,25 +218,7 @@ export class IR {
           // TODO: constants are not implemented yet
         } else if (INTRINSICS.has(expr.value)) {
           const intrinsic = INTRINSICS.get(expr.value)!;
-          this.validateContextStack(expr.loc, ctx, intrinsic.ins, false, "for the intrinsic call");
-
-          // TODO: find a better way to handle this
-          if (intrinsic.name == "dup") {
-            const x = ctx.stack.pop()!;
-            ctx.stack.push(x, x);
-            ctx.stackLocations.push(expr.loc, expr.loc);
-          } else if (intrinsic.name == "swap") {
-            ctx.stack.push(ctx.stack.pop()!, ctx.stack.pop()!);
-          } else {
-            for (let i = 0; i < intrinsic.ins.length; i++) {
-              ctx.stack.pop();
-            }
-
-            for (let i = 0; i < intrinsic.outs.length; i++) {
-              ctx.stack.push(intrinsic.outs[i]);
-              ctx.stackLocations.push(expr.loc);
-            }
-          }
+          this.handleIntrinsic(intrinsic, ctx, expr.loc);
 
           out.push({
             type: IRType.Word,
