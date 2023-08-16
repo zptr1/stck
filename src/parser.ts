@@ -152,7 +152,10 @@ export class Parser {
     while (true) {
       const token = this.next();
       if (token.kind == Tokens.End) break;
-      else condition.else.push(this.readExpr(token, start));
+      else if (token.kind == Tokens.ChainedIf) {
+        condition.else.push(this.readIfBlock(token));
+        break;
+      } else condition.else.push(this.readExpr(token, start));
     }
 
     return condition;

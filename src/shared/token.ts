@@ -7,7 +7,7 @@ export const WORD_CHARS =
   + "0123456789";                 // Numbers
 
 export const KEYWORDS = new Set([
-  "proc", "const", "include", "end", "if", "else", "while", "do"
+  "proc", "const", "include", "end", "if", "if*", "else", "while", "do"
 ]);
 
 export enum Tokens {
@@ -26,6 +26,7 @@ export enum Tokens {
   Include = "include",
   End = "end",
   If = "if",
+  ChainedIf = "if*",
   Else = "else",
   While = "while",
   Do = "do",
