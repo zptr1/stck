@@ -2,7 +2,7 @@ import { AstType, Expr, ICondition, IProc, IProgram, IWhile, WordType } from "./
 import { tokenToDataType } from "./shared/types";
 import { Token, Tokens } from "./shared/token";
 import { Location } from "./shared/location";
-import { reportError } from "./errors";
+import { reportError, reportWarning } from "./errors";
 import { ROOT_DIR } from "./const";
 import { existsSync } from "fs";
 import { Lexer } from "./lexer";
@@ -22,6 +22,8 @@ const includeCache = new Set<string>();
 
 export class Parser {
   public readonly tokens: Token[] = [];
+  private lastToken: Token | undefined = undefined;
+
   public readonly program: IProgram = {
     procs: new Map(),
     constants: new Map(),
@@ -33,7 +35,8 @@ export class Parser {
   }
 
   private next(): Token {
-    return this.tokens.pop()!;
+    this.lastToken = this.tokens.pop()!;
+    return this.lastToken;
   }
 
   private isEnd(): boolean {
@@ -42,10 +45,9 @@ export class Parser {
 
   private nextOf(kind: Tokens): Token {
     if (this.isEnd()) {
-      const last = this.tokens.at(-1)!;
       reportError(
         `Expected ${tokenFmt(kind)} but got ${tokenFmt("EOF")}`,
-        last.loc
+        this.lastToken!.loc
       );
     }
 
@@ -124,8 +126,8 @@ export class Parser {
       };
     } else if (start) {
       reportError(
-        `Unexpected ${tokenFmt(token.kind)}`, token.loc, [
-          `${chalk.bold(start.kind)} block starts at ${chalk.bold(start.loc.file.formatLoc(start.loc.span))}`
+        `Unexpected ${tokenFmt(token.kind)} in the ${chalk.bold.whiteBright(start.kind)}`, token.loc, [
+          `block starts at ${chalk.bold(start.loc.file.formatLoc(start.loc.span))}`
         ]
       );
     }
@@ -175,6 +177,15 @@ export class Parser {
       else loop.condition.push(this.readExpr(token, start));
     }
 
+    if (loop.condition.length == 0) {
+      reportWarning(
+        "Empty while condition",
+        start.loc, [
+          "Loops with empty conditions do nothing"
+        ]
+      )
+    }
+
     loop.body = this.readBlock(start);
     return loop;
   }
@@ -205,6 +216,13 @@ export class Parser {
 
     this.program.procs.set(name.value, proc);
     proc.body = this.readBlock(start);
+
+    if (proc.body.length == 0) {
+      reportWarning(
+        "Empty procedure",
+        proc.loc
+      );
+    }
   }
 
   public parse(): IProgram {

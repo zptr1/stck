@@ -1,9 +1,1 @@
-proc main
-  69 dup 69 = if
-    "nice" print
-  else dup 6942 = if*
-    "very nice" print
-  else
-    "not nice" print
-  end
-end
+proc main end

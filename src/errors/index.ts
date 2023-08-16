@@ -1,6 +1,6 @@
 import { Location, Span } from "../shared/location";
 import lineColumn from "line-column";
-import chalk from "chalk";
+import chalk, { ChalkInstance } from "chalk";
 import plib from "path";
 
 function printLine(line: string, lineno?: number, padding: number = 2) {
@@ -16,7 +16,7 @@ function printLines(lines: string[], lineno: number) {
   }
 }
 
-function printLoc(source: string, span: Span) {
+function printLoc(source: string, span: Span, highlight=chalk.red) {
   const lines = source.split("\n");
 
   const col = lineColumn(source);
@@ -29,7 +29,7 @@ function printLoc(source: string, span: Span) {
 
       printLine(
         line.slice(0, start.col - 1)
-        + chalk.red.underline(line.slice(start.col - 1, end.col - 1))
+        + highlight.underline(line.slice(start.col - 1, end.col - 1))
         + line.slice(end.col - 1),
         start.line
       );
@@ -40,9 +40,9 @@ function printLoc(source: string, span: Span) {
       printLines(
         [
           startLine.slice(0, start.col - 1)
-          + chalk.red.underline(startLine.slice(start.col - 1)),
+          + highlight.underline(startLine.slice(start.col - 1)),
 
-          chalk.red.underline(endLine.slice(0, end.col - 1))
+          highlight.underline(endLine.slice(0, end.col - 1))
           + endLine.slice(end.col - 1)
         ],
         start.line
@@ -51,14 +51,23 @@ function printLoc(source: string, span: Span) {
   }
 }
 
-export function reportError(message: string, loc: Location, notes: string[] = []): never {
+function report(
+  color: ChalkInstance,
+  type: string,
+  message: string,
+  loc: Location,
+  notes: string[] = []
+) {
   const source = loc.file.source + chalk.inverse("%");
 
-  console.log();
-  printLoc(source, loc.span);
-  console.log();
+  console.error();
+  printLoc(source, loc.span, color);
+  console.error();
 
-  console.error(chalk.bold.redBright("error:"), chalk.whiteBright(message));
+  console.error(color.bold(`${type}:`), chalk.whiteBright(message));
+  for (const note of notes) {
+    console.error(chalk.bold.blue("note:"), chalk.whiteBright(note));
+  }
 
   const pos = lineColumn(source).fromIndex(loc.span[0]);
   console.error(
@@ -74,11 +83,15 @@ export function reportError(message: string, loc: Location, notes: string[] = []
     )
   }
 
-  console.log();
-  for (const note of notes) {
-    console.error(chalk.bold.blue("note:"), chalk.whiteBright(note));
-  }
+  console.error();
+}
 
-  console.log();
+export function reportError(message: string, loc: Location, notes: string[] = []): never {
+  report(chalk.red, "error", message, loc, notes);
+  process.exit(1);
+}
+
+export function reportWarning(message: string, loc: Location, notes: string[] = []) {
+  report(chalk.yellow, "warn", message, loc, notes);
   process.exit(1);
 }
