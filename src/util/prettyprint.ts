@@ -1,5 +1,5 @@
-import { Ast, AstType, Expr, IProgram, WordType } from "../shared/ast";
-import { DataType } from "../shared/types";
+import { Ast, AstType, Expr, IProgram } from "../shared/ast";
+import { DataType, WordType } from "../shared/types";
 import chalk from "chalk";
 
 // A shitty utility for debugging

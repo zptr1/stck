@@ -7,6 +7,12 @@ export enum DataType {
   Boolean
 }
 
+export enum WordType {
+  Proc,
+  Intrinsic,
+  Constant
+}
+
 export function tokenToDataType(token: Tokens): DataType {
   if (token == Tokens.Int) {
     return DataType.Int;

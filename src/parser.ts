@@ -1,8 +1,8 @@
-import { AstType, Expr, ICondition, IProc, IProgram, IWhile, WordType } from "./shared/ast";
-import { tokenToDataType } from "./shared/types";
+import { AstType, Expr, ICondition, IProc, IProgram, IWhile } from "./shared/ast";
+import { tokenToDataType, WordType } from "./shared/types";
+import { reportError, reportWarning } from "./errors";
 import { Token, Tokens } from "./shared/token";
 import { Location } from "./shared/location";
-import { reportError, reportWarning } from "./errors";
 import { ROOT_DIR } from "./const";
 import { existsSync } from "fs";
 import { Lexer } from "./lexer";

@@ -1,5 +1,5 @@
+import { DataType, WordType } from "./types";
 import { Location } from "./location";
-import { DataType } from "./types";
 
 export enum AstType {
   Program,
@@ -9,12 +9,6 @@ export enum AstType {
   While,
   Push,
   Word,
-}
-
-export enum WordType {
-  Proc,
-  Intrinsic,
-  Constant
 }
 
 export interface Ast<T extends AstType> {
