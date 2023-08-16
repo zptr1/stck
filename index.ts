@@ -1,8 +1,9 @@
-import { printProgramAst } from "./src/util/prettyprint";
+import { printProgramAst, printProgramIR } from "./src/util/prettyprint";
 import { File } from "./src/shared/location";
 import { Parser } from "./src/parser";
 import { Lexer } from "./src/lexer";
 import { existsSync } from "fs";
+import { IR } from "./src/ir";
 import chalk from "chalk";
 import plib from "path";
 
@@ -14,12 +15,16 @@ async function run(file: File) {
   const tokens = lexer.collect();
 
   console.log("[INFO] Parsing");
-  const parser = new Parser(tokens);
-  const ast = parser.parse();
+  const ast = new Parser(tokens).parse();
+  const ir = new IR(ast).parse();
 
   // todo: compilation and execution
 
+  console.debug("[DEBUG] AST");
   printProgramAst(ast);
+
+  console.debug("[DEBUG] IR");
+  printProgramIR(ir);
 }
 
 if (process.argv.length < 3) {

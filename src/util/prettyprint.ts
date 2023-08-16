@@ -1,4 +1,5 @@
-import { Ast, AstType, Expr, IProgram } from "../shared/ast";
+import { IRExpr, IIR, IRProgram, IRWordKind, IRType } from "../shared/ir";
+import { IAst, AstType, Expr, IProgram } from "../shared/ast";
 import { DataType } from "../shared/types";
 import chalk from "chalk";
 
@@ -21,7 +22,7 @@ function formatObj(type: DataType, obj: any): string {
   }
 }
 
-function formatAst(ast: Ast<any>): string {
+function formatAst(ast: IAst<any>): string {
   return (
     AstType[ast.type]
     + (
@@ -31,6 +32,21 @@ function formatAst(ast: Ast<any>): string {
     ) + chalk.gray.bold(
       ` @ ${
         ast.loc.file.formatLoc(ast.loc.span)
+      }`
+    )
+  );
+}
+
+function formatIR(hir: IIR<any>): string {
+  return (
+    IRType[hir.type]
+    + (
+      "name" in hir
+        ? ` ${formatStr(hir.name as string)}`
+        : ""
+    ) + chalk.gray.bold(
+      ` @ ${
+        hir.loc.file.formatLoc(hir.loc.span)
       }`
     )
   );
@@ -61,9 +77,41 @@ function printExpr(expr: Expr, padding = 1) {
   }
 }
 
+function printIRExpr(expr: IRExpr, padding = 1) {
+  const prefix = " ".repeat(padding) + "-";
+
+  if (expr.type == IRType.Word) {
+    console.log(prefix, `Word ${chalk.bold(IRWordKind[expr.kind])}(${formatStr(expr.name)})`);
+  } else if (expr.type == AstType.Push) {
+    console.log(prefix, `Push ${chalk.bold.whiteBright(DataType[expr.datatype])}(${formatObj(expr.datatype, expr.value)})`);
+  } else if (expr.type == IRType.If) {
+    console.log(prefix, chalk.bold("If"));
+    expr.body.forEach((x) => printIRExpr(x, padding + 2));
+
+    if (expr.else.length > 0) {
+      console.log(prefix, chalk.bold("Else"));
+      expr.else.forEach((x) => printIRExpr(x, padding + 2));
+    }
+  } else if (expr.type == IRType.While) {
+    console.log(prefix, chalk.bold("While"));
+    expr.condition.forEach((x) => printIRExpr(x, padding + 2));
+    console.log(prefix, chalk.bold("Do"));
+    expr.body.forEach((x) => printIRExpr(x, padding + 2));
+  } else {
+    console.log(prefix, IRType[(expr as IRExpr).type]);
+  }
+}
+
 export function printProgramAst(program: IProgram) {
   for (const proc of program.procs.values()) {
     console.log(formatAst(proc));
     proc.body.forEach((x) => printExpr(x));
+  }
+}
+
+export function printProgramIR(program: IRProgram) {
+  for (const proc of program.procs.values()) {
+    console.log(formatIR(proc));
+    proc.body.forEach((x) => printIRExpr(x));
   }
 }

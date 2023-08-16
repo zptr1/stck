@@ -2,7 +2,6 @@ import { DataType } from "./types";
 import { Location } from "./location";
 
 export enum AstType {
-  Program,
   Proc,
   Const,
   If,
@@ -11,38 +10,39 @@ export enum AstType {
   Word,
 }
 
-export interface Ast<T extends AstType> {
+export interface IAst<T extends AstType> {
   type: T;
   loc: Location;
 }
 
-export type Expr = ICondition | IWhile | IWord | IPush;
+export type Expr = IWord | IPush | ICondition | IWhile;
+export type Ast = Expr | IProc | IConstant;
 
-export interface IWord extends Ast<AstType.Word> {
+export interface IWord extends IAst<AstType.Word> {
   value: string;
 }
 
-export interface IPush extends Ast<AstType.Push> {
+export interface IPush extends IAst<AstType.Push> {
   datatype: DataType;
   value: any;
 }
 
-export interface ICondition extends Ast<AstType.If> {
+export interface ICondition extends IAst<AstType.If> {
   body: Expr[];
   else: Expr[];
 }
 
-export interface IWhile extends Ast<AstType.While> {
+export interface IWhile extends IAst<AstType.While> {
   condition: Expr[];
   body: Expr[];
 }
 
-export interface IProc extends Ast<AstType.Proc> {
+export interface IProc extends IAst<AstType.Proc> {
   name: string;
   body: Expr[];
 }
 
-export interface IConstant extends Ast<AstType.Const> {
+export interface IConstant extends IAst<AstType.Const> {
   name: string;
   body: Expr[];
 }

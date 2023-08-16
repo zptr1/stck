@@ -1,2 +1,3 @@
-proc main a end
-proc a end
+proc main
+  2 2 + print
+end

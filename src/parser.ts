@@ -8,6 +8,7 @@ import { existsSync } from "fs";
 import { Lexer } from "./lexer";
 import chalk from "chalk";
 import plib from "path";
+import { INTRINSICS, Intrinsic } from "./shared/intrinsics";
 
 const tokenFmt = chalk.yellowBright.bold;
 
@@ -27,8 +28,9 @@ export class Parser {
   }
 
   private next(): Token {
-    this.lastToken = this.tokens.pop()!;
-    return this.lastToken;
+    return (
+      this.lastToken = this.tokens.pop()!
+    );
   }
 
   private isEnd(): boolean {
@@ -75,6 +77,11 @@ export class Parser {
             chalk.bold(constant.loc.file.formatLoc(constant.loc.span))
           }`
         ]
+      );
+    } else if (INTRINSICS.has(name)) {
+      reportError(
+        "An intrinsic with the same name already exists",
+        loc
       );
     }
   }

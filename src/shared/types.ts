@@ -4,7 +4,8 @@ export enum DataType {
   Int,
   Str,
   Char,
-  Boolean
+  Boolean,
+  Any
 }
 
 export function tokenToDataType(token: Tokens): DataType {
