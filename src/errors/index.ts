@@ -95,5 +95,4 @@ export function reportError(message: string, loc: Location, notes: string[] = []
 
 export function reportWarning(message: string, loc: Location, notes: string[] = []) {
   report(chalk.yellow, "warn", message, loc, notes);
-  process.exit(1);
 }
