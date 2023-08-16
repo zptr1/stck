@@ -1,4 +1,4 @@
-import { AstType, Expr, ICondition, IMacro, IProc, IProgram, IWhile } from "./shared/ast";
+import { AstType, Expr, ICondition, IConstant, IMacro, IProc, IProgram, IWhile } from "./shared/ast";
 import { reportError, reportWarning } from "./errors";
 import { tokenToDataType } from "./shared/types";
 import { Token, Tokens } from "./shared/token";
@@ -173,6 +173,9 @@ export class Parser {
     return body;
   }
 
+  // TODO: readProc, readMacro and readConst can be combined into
+  //       a single function `readTopLevelBlock<T>` to reduce repetition
+
   private readProc(start: Token) {
     const name = this.nextOf(Tokens.Word);
     this.checkUniqueDefinition(name.value, name.loc);
@@ -181,11 +184,10 @@ export class Parser {
       type: AstType.Proc,
       name: name.value,
       loc: name.loc,
-      body: [],
+      body: this.readBlock(start),
     }
 
     this.program.procs.set(name.value, proc);
-    proc.body = this.readBlock(start);
   }
 
   private readMacro(start: Token) {
@@ -196,11 +198,24 @@ export class Parser {
       type: AstType.Macro,
       name: name.value,
       loc: name.loc,
-      body: [],
+      body: this.readBlock(start),
     }
 
     this.program.macros.set(name.value, macro);
-    macro.body = this.readBlock(start);
+  }
+
+  private readConst(start: Token) {
+    const name = this.nextOf(Tokens.Word);
+    this.checkUniqueDefinition(name.value, name.loc);
+
+    const constant: IConstant = {
+      type: AstType.Const,
+      name: name.value,
+      loc: name.loc,
+      body: this.readBlock(start)
+    }
+
+    this.program.constants.set(name.value, constant);
   }
 
   public parse(): IProgram {
@@ -240,7 +255,7 @@ export class Parser {
       } else if (token.kind == Tokens.Macro) {
         this.readMacro(token);
       } else if (token.kind == Tokens.Const) {
-        throw "TODO: Constants are not implemented yet";
+        this.readConst(token);
       } else if (token.kind == Tokens.EOF) {
         break;
       } else {

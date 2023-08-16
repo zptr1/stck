@@ -11,7 +11,8 @@ export enum IRType {
   Proc,
   Word,
   While,
-  If
+  If,
+  Const
 }
 
 export enum IRWordKind {
@@ -35,6 +36,11 @@ export interface IRWhile extends IIR<IRType.While> {
 export interface IRCondition extends IIR<IRType.If> {
   body: IRExpr[];
   else: IRExpr[];
+}
+
+export interface IRConst extends IIR<IRType.Const> {
+  name: string;
+  body: IPush;
 }
 
 export interface IRProc extends IIR<IRType.Proc> {

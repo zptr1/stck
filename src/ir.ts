@@ -1,5 +1,5 @@
-import { IRExpr, IRProc, IRProgram, IRWordKind, IRType } from "./shared/ir";
-import { AstType, Expr, IProc, IProgram, IWord } from "./shared/ast";
+import { AstType, Expr, IConstant, IProc, IProgram, IPush, IWord } from "./shared/ast";
+import { IRExpr, IRProc, IRProgram, IRWordKind, IRType, IRConst } from "./shared/ir";
 import { DataType, compareDataTypeArrays } from "./shared/types";
 import { INTRINSICS, Intrinsic } from "./shared/intrinsics";
 import { Location, formatLoc } from "./shared/location";
@@ -19,6 +19,7 @@ export interface Context {
 
 export class IR {
   public procs = new Map<string, IRProc>();
+  public consts = new Map<string, IRConst>();
 
   constructor (
     public readonly program: IProgram
@@ -41,7 +42,7 @@ export class IR {
     reportError(message, loc, notes);
   }
 
-  private evaluateCompileTimeExpr(exprs: Expr[], ctx: Context, loc: Location): IRExpr {
+  private evaluateCompileTimeExpr(exprs: Expr[], ctx: Context, loc: Location): IPush {
     const stackValues: any[] = [];
 
     for (const expr of exprs) {
@@ -81,8 +82,13 @@ export class IR {
           } else {
             reportError("Cannot use this intrinsic in compile-time expression", expr.loc);
           }
+        } else if (this.consts.has(expr.value)) {
+          const constant = this.consts.get(expr.value)!;
+          ctx.stack.push(constant.body.datatype);
+          ctx.stackLocations.push(expr.loc);
+          stackValues.push(constant.body.value);
         } else if (this.program.constants.has(expr.value)) {
-          throw new Error("Constants are not implemented yet");
+          reportError("That constant is not defined yet", expr.loc);
         } else if (this.program.procs.has(expr.value)) {
           reportError("Cannot use procedures in compile-time expressions", expr.loc);
         } else {
@@ -214,8 +220,18 @@ export class IR {
             name: expr.value,
             loc: expr.loc
           });
-        } else if (this.program.constants.has(expr.value)) {
-          // TODO: constants are not implemented yet
+        } else if (this.consts.has(expr.value)) {
+          const constant = this.consts.get(expr.value)!;
+
+          ctx.stack.push(constant.body.datatype);
+          ctx.stackLocations.push(expr.loc);
+
+          out.push({
+            type: AstType.Push,
+            datatype: constant.body.datatype,
+            value: constant.body.value,
+            loc: expr.loc
+          });
         } else if (INTRINSICS.has(expr.value)) {
           const intrinsic = INTRINSICS.get(expr.value)!;
           this.handleIntrinsic(intrinsic, ctx, expr.loc);
@@ -266,6 +282,26 @@ export class IR {
     return out;
   }
 
+  private parseConst(constant: IConstant): IRConst {
+    if (this.consts.has(constant.name)) {
+      return this.consts.get(constant.name)!;
+    }
+
+    const ctx: Context = {
+      stack: [],
+      stackLocations: [],
+      macroExpansionStack: [],
+      branches: []
+    }
+
+    return {
+      type: IRType.Const,
+      name: constant.name,
+      loc: constant.loc,
+      body: this.evaluateCompileTimeExpr(constant.body, ctx, constant.loc)
+    }
+  }
+
   private parseProc(proc: IProc): IRProc {
     if (this.procs.has(proc.name)) {
       return this.procs.get(proc.name)!;
@@ -278,18 +314,20 @@ export class IR {
       branches: []
     }
 
-    const hproc: IRProc = {
+    return {
       type: IRType.Proc,
       ins: [], outs: [], // TODO
       name: proc.name,
       loc: proc.loc,
       body: this.parseBody(proc.body, ctx)
-    }
-
-    return hproc;
+    };
   }
 
   public parse(): IRProgram {
+    this.program.constants.forEach((constant) => {
+      this.consts.set(constant.name, this.parseConst(constant));
+    })
+
     this.program.procs.forEach((proc) => {
       this.procs.set(proc.name, this.parseProc(proc));
     });
