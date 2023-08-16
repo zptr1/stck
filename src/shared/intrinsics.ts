@@ -24,3 +24,6 @@ addIntrinsic("gt",     [DataType.Int, DataType.Int],  [DataType.Boolean]);
 addIntrinsic("dup",    [DataType.Any],                [DataType.Any, DataType.Any]);
 addIntrinsic("swap",   [DataType.Any, DataType.Any],  [DataType.Any, DataType.Any]);
 addIntrinsic("print",  [DataType.Int],                []);
+
+// TODO: temporary; move to std in the future
+addIntrinsic("puts",   [DataType.Str],                []);
