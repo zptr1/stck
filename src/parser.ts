@@ -1,6 +1,6 @@
 import { AstType, Expr, ICondition, IProc, IProgram, IWhile } from "./shared/ast";
-import { tokenToDataType, WordType } from "./shared/types";
 import { reportError, reportWarning } from "./errors";
+import { tokenToDataType } from "./shared/types";
 import { Token, Tokens } from "./shared/token";
 import { Location } from "./shared/location";
 import { ROOT_DIR } from "./const";
@@ -9,19 +9,11 @@ import { Lexer } from "./lexer";
 import chalk from "chalk";
 import plib from "path";
 
-// todo: separate file for intrinsics
-const INTRINSICS = new Set([
-  "+", "-", "*", "/%",
-  "<", "=", ">",
-  "dup", "swap", "drop",
-  "print"
-]);
-
 const tokenFmt = chalk.yellowBright.bold;
-const includeCache = new Set<string>();
 
 export class Parser {
   public readonly tokens: Token[] = [];
+  private readonly includeCache = new Set<string>();
   private lastToken: Token | undefined = undefined;
 
   public readonly program: IProgram = {
@@ -31,7 +23,7 @@ export class Parser {
 
   constructor(tokens: Token[]) {
     this.tokens = tokens.reverse();
-    includeCache.add(this.tokens[0].loc.file.path);
+    this.includeCache.add(this.tokens[0].loc.file.path);
   }
 
   private next(): Token {
@@ -94,26 +86,8 @@ export class Parser {
     } else if (token.kind == Tokens.While) {
       return this.readWhileBlock(token);
     } else if (token.kind == Tokens.Word) {
-      const wordType = (
-        this.program.procs.has(token.value)
-          ? WordType.Proc
-        : this.program.constants.has(token.value)
-          ? WordType.Constant
-        : INTRINSICS.has(token.value)
-          ? WordType.Intrinsic
-        : null
-      );
-
-      if (wordType == null) {
-        reportError(
-          `Unknown word ${chalk.bold(token.value)}`,
-          token.loc
-        );
-      }
-
       return {
         type: AstType.Word,
-        wordtype: wordType,
         value: token.value,
         loc: token.loc
       };
@@ -245,9 +219,9 @@ export class Parser {
         }
 
         const path = plib.resolve(found);
-        if (!includeCache.has(path)) {
+        if (!this.includeCache.has(path)) {
           console.debug(chalk.gray(`[DEBUG] Including ${chalk.bold(path)}`));
-          includeCache.add(path);
+          this.includeCache.add(path);
 
           const file = token.loc.file.child(path);
           const tokens = new Lexer(file).collect().reverse();

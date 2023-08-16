@@ -1,4 +1,4 @@
-import { DataType, WordType } from "./types";
+import { DataType } from "./types";
 import { Location } from "./location";
 
 export enum AstType {
@@ -19,7 +19,6 @@ export interface Ast<T extends AstType> {
 export type Expr = ICondition | IWhile | IWord | IPush;
 
 export interface IWord extends Ast<AstType.Word> {
-  wordtype: WordType;
   value: string;
 }
 

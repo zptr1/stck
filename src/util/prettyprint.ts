@@ -1,5 +1,5 @@
 import { Ast, AstType, Expr, IProgram } from "../shared/ast";
-import { DataType, WordType } from "../shared/types";
+import { DataType } from "../shared/types";
 import chalk from "chalk";
 
 // A shitty utility for debugging
@@ -40,7 +40,7 @@ function printExpr(expr: Expr, padding = 1) {
   const prefix = " ".repeat(padding) + "-";
 
   if (expr.type == AstType.Word) {
-    console.log(prefix, `Word ${chalk.bold.whiteBright(WordType[expr.wordtype])}(${formatStr(expr.value)})`);
+    console.log(prefix, `Word ${formatStr(expr.value)}`);
   } else if (expr.type == AstType.Push) {
     console.log(prefix, `Push ${chalk.bold.whiteBright(DataType[expr.datatype])}(${formatObj(expr.datatype, expr.value)})`);
   } else if (expr.type == AstType.If) {

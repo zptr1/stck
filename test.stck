@@ -1,1 +1,2 @@
-proc main end
+proc main a end
+proc a end
