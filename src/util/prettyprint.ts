@@ -1,8 +1,8 @@
 import { IRExpr, IIR, IRProgram, IRWordKind, IRType } from "../shared/ir";
 import { IAst, AstType, Expr, IProgram } from "../shared/ast";
+import { formatLoc } from "../shared/location";
 import { DataType } from "../shared/types";
 import chalk from "chalk";
-import { formatLoc } from "../shared/location";
 
 // A shitty utility for debugging
 // Will probably be removed

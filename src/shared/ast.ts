@@ -1,5 +1,5 @@
-import { DataType } from "./types";
 import { Location } from "./location";
+import { DataType } from "./types";
 
 export enum AstType {
   Proc,

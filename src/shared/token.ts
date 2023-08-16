@@ -13,10 +13,6 @@ export const KEYWORDS = new Set([
 export enum Tokens {
   Int = "<int>",
   Str = "<str>",
-  // TODO: the regular string will probably be stored as <size><ptr>
-  //       i think an C-style string (null-terminated) would also be useful in some cases
-  //       (at least when doing syscalls)
-  // CStr = "<cstr>",
   Char = "<char>",
   Boolean = "<boolean>",
   Word = "<word>",

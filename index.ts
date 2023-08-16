@@ -1,4 +1,4 @@
-import { printProgramAst, printProgramIR } from "./src/util/prettyprint";
+import { printProgramIR } from "./src/util/prettyprint";
 import { File } from "./src/shared/location";
 import { Parser } from "./src/parser";
 import { Lexer } from "./src/lexer";
@@ -16,15 +16,14 @@ async function run(file: File) {
 
   console.log("[INFO] Parsing");
   const ast = new Parser(tokens).parse();
+
+  console.log("[INFO] Typechecking");
   const ir = new IR(ast).parse();
 
-  // todo: compilation and execution
-
-  console.debug("[DEBUG] AST");
-  printProgramAst(ast);
-
-  console.debug("[DEBUG] IR");
+  console.debug("[DEBUG] Generated IR:");
   printProgramIR(ir);
+
+  // todo: compilation and execution
 }
 
 if (process.argv.length < 3) {
