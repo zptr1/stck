@@ -1,4 +1,4 @@
-import { AstType, Expr, IProc, IProgram, WordType } from "./shared/ast";
+import { AstType, Expr, ICondition, IProc, IProgram, WordType } from "./shared/ast";
 import { tokenToDataType } from "./shared/types";
 import { Token, Tokens } from "./shared/token";
 import { Location } from "./shared/location";
@@ -11,7 +11,7 @@ import plib from "path";
 
 // todo: separate file for intrinsics
 const INTRINSICS = new Set([
-  "+", "-", "*", "print"
+  "+", "-", "*", "/%", "=", "print"
 ]);
 
 const tokenFmt = chalk.yellowBright.bold;
@@ -82,6 +82,77 @@ export class Parser {
     }
   }
 
+  private readExpr(token: Token, start: Token): Expr;
+  private readExpr(token: Token, start?: Token): Expr | undefined {
+    if (token.kind == Tokens.If) {
+      return this.readIfBlock(token);
+    } else if (token.kind == Tokens.Word) {
+      const wordType = (
+        this.program.procs.has(token.value)
+          ? WordType.Proc
+        : this.program.constants.has(token.value)
+          ? WordType.Constant
+        : INTRINSICS.has(token.value)
+          ? WordType.Intrinsic
+        : null
+      );
+
+      if (wordType == null) {
+        reportError(
+          `Unknown word ${chalk.bold(token.value)}`,
+          token.loc
+        );
+      }
+
+      return {
+        type: AstType.Word,
+        wordtype: wordType,
+        value: token.value,
+        loc: token.loc
+      };
+    } else if (token.kind == Tokens.Int || token.kind == Tokens.Str || token.kind == Tokens.Boolean || token.kind == Tokens.Char) {
+      return {
+        type: AstType.Push,
+        datatype: tokenToDataType(token.kind),
+        value: token.value,
+        loc: token.loc
+      };
+    } else if (start) {
+      reportError(
+        `Unexpected ${tokenFmt(token.kind)}`, token.loc, [
+          `${chalk.bold(start.kind)} block starts at ${chalk.bold(start.loc.file.formatLoc(start.loc.span))}`
+        ]
+      );
+    }
+  }
+
+  private readIfBlock(start: Token): ICondition {
+    // TODO: `if*` for chained if/else
+
+    const condition: ICondition = {
+      type: AstType.If,
+      body: [],
+      else: [],
+      loc: start.loc
+    }
+
+    while (true) {
+      const token = this.next();
+
+      if (token.kind == Tokens.End) return condition;
+      else if (token.kind == Tokens.Else) break;
+      else condition.body.push(this.readExpr(token, start));
+    }
+
+    while (true) {
+      const token = this.next();
+      if (token.kind == Tokens.End) break;
+      else condition.else.push(this.readExpr(token, start));
+    }
+
+    return condition;
+  }
+
   private readBlock(start: Token): Expr[] {
     const body: Expr[] = [];
 
@@ -90,51 +161,15 @@ export class Parser {
 
       if (token.kind == Tokens.End) {
         break;
-      } else if (token.kind == Tokens.Word) {
-        const wordType = (
-          this.program.procs.has(token.value)
-            ? WordType.Proc
-          : this.program.constants.has(token.value)
-            ? WordType.Constant
-          : INTRINSICS.has(token.value)
-            ? WordType.Intrinsic
-          : null
-        );
-
-        if (wordType == null) {
-          reportError(
-            `Unknown word ${chalk.bold(token.value)}`,
-            token.loc
-          );
-        }
-
-        body.push({
-          type: AstType.Word,
-          wordtype: wordType,
-          value: token.value,
-          loc: token.loc
-        });
-      } else if (token.kind == Tokens.Int || token.kind == Tokens.Str || token.kind == Tokens.Boolean || token.kind == Tokens.Char) {
-        body.push({
-          type: AstType.Push,
-          datatype: tokenToDataType(token.kind),
-          value: token.value,
-          loc: token.loc
-        });
       } else {
-        reportError(
-          `Unexpected ${tokenFmt(token.kind)}`,
-          token.loc, [
-            `unclosed block defined at ${chalk.bold(start.loc.file.formatLoc(start.loc.span))}`
-          ]
-        );
+        body.push(this.readExpr(token, start));
       }
     }
 
     return body;
   }
 
-  private readProc() {
+  private readProc(start: Token) {
     const name = this.nextOf(Tokens.Word);
     this.checkUniqueDefinition(name.value, name.loc);
 
@@ -146,7 +181,7 @@ export class Parser {
     }
 
     this.program.procs.set(name.value, proc);
-    proc.body = this.readBlock(name);
+    proc.body = this.readBlock(start);
   }
 
   public parse(): IProgram {
@@ -182,7 +217,7 @@ export class Parser {
           }
         }
       } else if (token.kind == Tokens.Proc) {
-        this.readProc();
+        this.readProc(token);
       } else if (token.kind == Tokens.Const) {
         throw "TODO: Constants are not implemented yet";
       } else if (token.kind == Tokens.EOF) {

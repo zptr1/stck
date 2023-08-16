@@ -1,7 +1,7 @@
-proc print_sum
-  + print
-end
-
 proc main
-  34 35 print_sum
+  34 35 + 69 = if
+    "nice" print
+  else
+    "not nice" print
+  end
 end

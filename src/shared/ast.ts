@@ -22,7 +22,7 @@ export interface Ast<T extends AstType> {
   loc: Location;
 }
 
-export type Expr = IIf | IWord | IPush;
+export type Expr = ICondition | IWord | IPush;
 
 export interface IWord extends Ast<AstType.Word> {
   wordtype: WordType;
@@ -34,7 +34,7 @@ export interface IPush extends Ast<AstType.Push> {
   value: any;
 }
 
-export interface IIf extends Ast<AstType.If> {
+export interface ICondition extends Ast<AstType.If> {
   body: Expr[];
   else: Expr[];
 }

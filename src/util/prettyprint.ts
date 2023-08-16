@@ -41,8 +41,16 @@ function formatExpr(expr: Expr): string {
     return `Word ${chalk.bold.whiteBright(WordType[expr.wordtype])}(${formatStr(expr.value)})`;
   } else if (expr.type == AstType.Push) {
     return `Push ${chalk.bold.whiteBright(DataType[expr.datatype])}(${formatObj(expr.datatype, expr.value)})`
+  } else if (expr.type == AstType.If) {
+    return [
+      chalk.bold("If"),
+      ...(expr.body.map((x) => `   * ${formatExpr(x)}`)),
+      chalk.bold("   Else"),
+      ...(expr.else.map((x) => `   * ${formatExpr(x)}`))
+    ].join("\n");
   } else {
-    return AstType[expr.type];
+    return AstType[(expr as Expr).type];
+    //                   ^^^^^^^ stoopid typescript
   }
 }
 
@@ -51,11 +59,7 @@ export function printProgramAst(program: IProgram) {
     console.log(formatAst(proc));
 
     for (const expr of proc.body) {
-      console.log(
-        " -",
-        formatExpr(expr),
-        chalk.gray(`@ ${expr.loc.span.join("..")}`)
-      );
+      console.log(` - ${formatExpr(expr)}`);
     }
   }
 }
