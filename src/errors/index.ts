@@ -8,11 +8,11 @@ function printLine(line: string, lineno?: number, padding: number = 2) {
   console.log(lno, chalk.gray("|"), line);
 }
 
-function printLines(lines: string[], lineno: number) {
-  const padding = (lineno + lines.length).toString().length + 1;
+function printLines(lines: [number, string][]) {
+  const padding = lines.at(-1)![0].toString().length + 1;
 
-  for (let i = 0; i < lines.length; i++) {
-    printLine(lines[i], lineno + i, padding - (lineno + i).toString().length);
+  for (const [lineno, line] of lines) {
+    printLine(line, lineno, padding - lineno.toString().length);
   }
 }
 
@@ -37,16 +37,18 @@ function printLoc(source: string, span: Span, highlight=chalk.red) {
       const startLine = lines[start.line - 1] || lines.at(-1)!;
       const endLine = lines[end.line - 1] || lines.at(-1)!;
 
-      printLines(
+      printLines([
         [
+          start.line,
           startLine.slice(0, start.col - 1)
           + highlight.underline(startLine.slice(start.col - 1)),
-
+        ],
+        [
+          end.line,
           highlight.underline(endLine.slice(0, end.col - 1))
           + endLine.slice(end.col - 1)
-        ],
-        start.line
-      );
+        ]
+      ]);
     }
   }
 }
