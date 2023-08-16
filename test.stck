@@ -1,3 +1,7 @@
 proc main
-  "whar" while dup 10 lt do 1 add end
+  0 while true do
+    // todo: this currently errors and shows that the current data on the stack is []
+    //       maybe store the location of the last `drop` call and output it if the stack is empty?
+    drop
+  end
 end

@@ -2,12 +2,26 @@ import { IRExpr, IRProc, IRProgram, IRWordKind, IRType } from "./shared/ir";
 import { AstType, Expr, IProc, IProgram, IWord } from "./shared/ast";
 import { DataType, compareDataTypeArrays } from "./shared/types";
 import { INTRINSICS } from "./shared/intrinsics";
-import { Location } from "./shared/location";
+import { Location, formatLoc } from "./shared/location";
 import { reportError } from "./errors";
 import chalk from "chalk";
 
+// TODO: Split this into multiple files in the future
+
+/** Used for compile-time evaluation */
+export interface StackItem {
+  type: DataType;
+  location: Location;
+  value?: any;
+}
+
+/** Used for typechecking */
 export interface Context {
+  // Using two separate values instead of StackItem
+  // to improve the performance when doing typechecks.
   stack: DataType[];
+  stackLocations: Location[];
+
   macroExpansionStack: IWord[];
   branches: Context[];
   // ...
@@ -20,12 +34,21 @@ export class IR {
     public readonly program: IProgram
   ) {}
 
-  private reportErrorWithStackData(message: string, loc: Location, currentStack: DataType[], expectedStack: DataType[]): never {
-    // TODO: report where the data was introduced
-    reportError(message, loc, [
-      `current data on the stack: [${chalk.bold(currentStack.map((x) => DataType[x]).join(", "))}]`,
-      `expected data: [${chalk.bold(expectedStack.map((x) => DataType[x]).join(", ") || "")}]`
-    ]);
+  private reportErrorWithStackData(message: string, loc: Location, ctx: Context, expectedStack: DataType[]): never {
+    const notes = [];
+
+    notes.push(`expected data: [${chalk.bold(expectedStack.map((x) => DataType[x]).join(", "))}]`);
+
+    if (ctx.stack.length) {
+      notes.push("current data on the stack:");
+      for (let i = 0; i < ctx.stack.length; i++) {
+        notes.push(` - ${chalk.bold(DataType[ctx.stack[i]])} @ ${chalk.bold(formatLoc(ctx.stackLocations[i]))}`);
+      }
+    } else {
+      notes.push("current data on the stack: []");
+    }
+
+    reportError(message, loc, notes);
   }
 
   private expandMacro(expr: IWord, ctx: Context): IRExpr[] {
@@ -33,12 +56,10 @@ export class IR {
 
     if (ctx.macroExpansionStack.find((x) => x.value == macro.name)) {
       const stack = ctx.macroExpansionStack.map(
-        (x) => `macro ${chalk.bold(x.value)} expanded at ${chalk.gray(x.loc.file.formatLoc(x.loc.span))}`
+        (x) => `macro ${chalk.bold(x.value)} expanded at ${chalk.gray(formatLoc(x.loc))}`
       );
 
-      stack.push(`macro ${chalk.bold(expr.value)} expanded again at ${
-        chalk.gray.bold(expr.loc.file.formatLoc(expr.loc.span))
-      }`);
+      stack.push(`macro ${chalk.bold(expr.value)} expanded again at ${chalk.gray.bold(formatLoc(expr.loc))}`);
 
       reportError("recursive macro expansion", expr.loc, stack.reverse());
     }
@@ -58,14 +79,14 @@ export class IR {
     suffix: string = ""
   ) {
     if (ctx.stack.length < stack.length) {
-      this.reportErrorWithStackData(`Insufficient data on the stack ${suffix}`, loc, ctx.stack, stack);
+      this.reportErrorWithStackData(`Insufficient data on the stack ${suffix}`, loc, ctx, stack);
     }
 
     if (strictLength) {
       if (ctx.stack.length > stack.length) {
-        this.reportErrorWithStackData(`Unhandled data on the stack ${suffix}`, loc, ctx.stack, stack);
+        this.reportErrorWithStackData(`Unhandled data on the stack ${suffix}`, loc, ctx, stack);
       } else if (!compareDataTypeArrays(stack, ctx.stack)) {
-        this.reportErrorWithStackData(`Unexpected data on the stack ${suffix}`, loc, ctx.stack, stack);
+        this.reportErrorWithStackData(`Unexpected data on the stack ${suffix}`, loc, ctx, stack);
       }
     } else {
       const currentStack = ctx.stack.slice().reverse().slice(0, stack.length);
@@ -73,7 +94,7 @@ export class IR {
       if (!compareDataTypeArrays(stack.slice().reverse(), currentStack)) {
         this.reportErrorWithStackData(
           `Unexpected data on the stack ${suffix}`,
-          loc, ctx.stack, stack
+          loc, ctx, stack
         );
       }
     }
@@ -117,6 +138,7 @@ export class IR {
           if (intrinsic.name == "dup") {
             const x = ctx.stack.pop()!;
             ctx.stack.push(x, x);
+            ctx.stackLocations.push(expr.loc, expr.loc);
           } else if (intrinsic.name == "swap") {
             ctx.stack.push(ctx.stack.pop()!, ctx.stack.pop()!);
           } else {
@@ -124,7 +146,10 @@ export class IR {
               ctx.stack.pop();
             }
 
-            ctx.stack.push(...intrinsic.outs);
+            for (let i = 0; i < intrinsic.outs.length; i++) {
+              ctx.stack.push(intrinsic.outs[i]);
+              ctx.stackLocations.push(expr.loc);
+            }
           }
 
           out.push({
@@ -141,6 +166,7 @@ export class IR {
 
         const condition = this.parseBody(expr.condition, ctx);
         this.validateContextStack(expr.loc, ctx, [DataType.Boolean], false, "in the condition of the loop");
+        ctx.stackLocations.pop();
         ctx.stack.pop();
 
         const body = this.parseBody(expr.body, ctx);
@@ -162,6 +188,7 @@ export class IR {
         });
       } else if (expr.type == AstType.Push) {
         ctx.stack.push(expr.datatype);
+        ctx.stackLocations.push(expr.loc);
         out.push(expr);
       } else {
         throw `${AstType[(expr as Expr).type]} -> IR: not implemented`;
@@ -172,8 +199,13 @@ export class IR {
   }
 
   private parseProc(proc: IProc): IRProc {
+    if (this.procs.has(proc.name)) {
+      return this.procs.get(proc.name)!;
+    }
+
     const ctx: Context = {
       stack: [],
+      stackLocations: [],
       macroExpansionStack: [],
       branches: []
     }
@@ -190,14 +222,12 @@ export class IR {
   }
 
   public parse(): IRProgram {
-    const program: IRProgram = {
-      procs: new Map<string, IRProc>()
-    };
-
     this.program.procs.forEach((proc) => {
-      program.procs.set(proc.name, this.parseProc(proc));
+      this.procs.set(proc.name, this.parseProc(proc));
     });
 
-    return program;
+    return {
+      procs: this.procs
+    };
   }
 }
