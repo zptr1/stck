@@ -22,6 +22,7 @@ addIntrinsic("lt",     [DataType.Int, DataType.Int],  [DataType.Boolean]);
 addIntrinsic("eq",     [DataType.Int, DataType.Int],  [DataType.Boolean]);
 addIntrinsic("gt",     [DataType.Int, DataType.Int],  [DataType.Boolean]);
 addIntrinsic("dup",    [DataType.Any],                [DataType.Any, DataType.Any]);
+addIntrinsic("drop",   [DataType.Any],                []);
 addIntrinsic("swap",   [DataType.Any, DataType.Any],  [DataType.Any, DataType.Any]);
 addIntrinsic("print",  [DataType.Int],                []);
 
