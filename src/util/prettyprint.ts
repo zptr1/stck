@@ -36,37 +36,34 @@ function formatAst(ast: Ast<any>): string {
   );
 }
 
-function formatExpr(expr: Expr): string {
+function printExpr(expr: Expr, padding = 1) {
+  const prefix = " ".repeat(padding) + "-";
+
   if (expr.type == AstType.Word) {
-    return `Word ${chalk.bold.whiteBright(WordType[expr.wordtype])}(${formatStr(expr.value)})`;
+    console.log(prefix, `Word ${chalk.bold.whiteBright(WordType[expr.wordtype])}(${formatStr(expr.value)})`);
   } else if (expr.type == AstType.Push) {
-    return `Push ${chalk.bold.whiteBright(DataType[expr.datatype])}(${formatObj(expr.datatype, expr.value)})`
+    console.log(prefix, `Push ${chalk.bold.whiteBright(DataType[expr.datatype])}(${formatObj(expr.datatype, expr.value)})`);
   } else if (expr.type == AstType.If) {
-    return [
-      chalk.bold("If"),
-      ...(expr.body.map((x) => `   * ${formatExpr(x)}`)),
-      chalk.bold("   Else"),
-      ...(expr.else.map((x) => `   * ${formatExpr(x)}`))
-    ].join("\n");
+    console.log(prefix, chalk.bold("If"));
+    expr.body.forEach((x) => printExpr(x, padding + 2));
+
+    if (expr.else.length > 0) {
+      console.log(prefix, chalk.bold("Else"));
+      expr.else.forEach((x) => printExpr(x, padding + 2));
+    }
   } else if (expr.type == AstType.While) {
-    return [
-      chalk.bold("While"),
-      ...(expr.condition.map((x) => `   * ${formatExpr(x)}`)),
-      chalk.bold("   Do"),
-      ...(expr.body.map((x) => `   * ${formatExpr(x)}`))
-    ].join("\n");
+    console.log(prefix, chalk.bold("While"));
+    expr.condition.forEach((x) => printExpr(x, padding + 2));
+    console.log(prefix, chalk.bold("Do"));
+    expr.body.forEach((x) => printExpr(x, padding + 2));
   } else {
-    return AstType[(expr as Expr).type];
-    //                   ^^^^^^^ stoopid typescript
+    console.log(prefix, AstType[(expr as Expr).type]);
   }
 }
 
 export function printProgramAst(program: IProgram) {
   for (const proc of program.procs.values()) {
     console.log(formatAst(proc));
-
-    for (const expr of proc.body) {
-      console.log(` - ${formatExpr(expr)}`);
-    }
+    proc.body.forEach((x) => printExpr(x));
   }
 }
