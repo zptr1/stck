@@ -117,7 +117,9 @@ export class Lexer {
       value += this.reader.next()!;
     }
 
-    if (KEYWORDS.has(value)) {
+    if (value == "true" || value == "false") {
+      return this.token(Tokens.Boolean, value == "true");
+    } else if (KEYWORDS.has(value)) {
       return this.token(value as Tokens);
     } else {
       return this.token(Tokens.Word, value);

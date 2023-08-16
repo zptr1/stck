@@ -8,6 +8,12 @@ export enum DataType {
   Any
 }
 
+export function compareDataTypeArrays(a: DataType[], b: DataType[]) {
+  return a.length == b.length && !a.some(
+    (x, i) => x != b[i] && b[i] != DataType.Any && x != DataType.Any
+  );
+}
+
 export function tokenToDataType(token: Tokens): DataType {
   if (token == Tokens.Int) {
     return DataType.Int;
