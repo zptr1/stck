@@ -2,7 +2,7 @@ import { AstType, Expr, ICondition, IMacro, IProc, IProgram, IWhile } from "./sh
 import { reportError, reportWarning } from "./errors";
 import { tokenToDataType } from "./shared/types";
 import { Token, Tokens } from "./shared/token";
-import { Location } from "./shared/location";
+import { Location, formatLoc } from "./shared/location";
 import { ROOT_DIR } from "./const";
 import { existsSync } from "fs";
 import { Lexer } from "./lexer";
@@ -63,19 +63,19 @@ export class Parser {
       const proc = this.program.procs.get(name)!;
       reportError(
         "A procedure with the same name is already defined", loc,
-        [`originally defined here ${chalk.bold(proc.loc.file.formatLoc(proc.loc.span))}`]
+        [`originally defined here ${chalk.bold(formatLoc(proc.loc))}`]
       );
     } else if (this.program.constants.has(name)) {
       const constant = this.program.constants.get(name)!;
       reportError(
         "A constant with the same name is already defined", loc,
-        [`originally defined here ${chalk.bold(constant.loc.file.formatLoc(constant.loc.span))}`]
+        [`originally defined here ${chalk.bold(formatLoc(constant.loc))}`]
       );
     } else if (this.program.macros.has(name)) {
       const macro = this.program.macros.get(name)!;
       reportError(
         "A macro with the same name is already defined", loc,
-        [`originally defined here ${chalk.bold(macro.loc.file.formatLoc(macro.loc.span))}`]
+        [`originally defined here ${chalk.bold(formatLoc(macro.loc))}`]
       );
     } else if (INTRINSICS.has(name)) {
       reportError(
@@ -106,9 +106,8 @@ export class Parser {
       };
     } else if (start) {
       reportError(
-        `Unexpected ${tokenFmt(token.kind)} in the ${chalk.bold.whiteBright(start.kind)}`, token.loc, [
-          `block starts at ${chalk.bold(start.loc.file.formatLoc(start.loc.span))}`
-        ]
+        `Unexpected ${tokenFmt(token.kind)} in the ${chalk.bold.whiteBright(start.kind)}`, token.loc,
+        [`block starts at ${chalk.bold(formatLoc(start.loc))}`]
       );
     }
   }

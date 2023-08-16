@@ -2,6 +2,7 @@ import { IRExpr, IIR, IRProgram, IRWordKind, IRType } from "../shared/ir";
 import { IAst, AstType, Expr, IProgram } from "../shared/ast";
 import { DataType } from "../shared/types";
 import chalk from "chalk";
+import { formatLoc } from "../shared/location";
 
 // A shitty utility for debugging
 // Will probably be removed
@@ -29,11 +30,7 @@ function formatAst(ast: IAst<any>): string {
       "name" in ast
         ? ` ${formatStr(ast.name as string)}`
         : ""
-    ) + chalk.gray.bold(
-      ` @ ${
-        ast.loc.file.formatLoc(ast.loc.span)
-      }`
-    )
+    ) + chalk.gray.bold(` @ ${formatLoc(ast.loc)}`)
   );
 }
 
@@ -44,11 +41,7 @@ function formatIR(hir: IIR<any>): string {
       "name" in hir
         ? ` ${formatStr(hir.name as string)}`
         : ""
-    ) + chalk.gray.bold(
-      ` @ ${
-        hir.loc.file.formatLoc(hir.loc.span)
-      }`
-    )
+    ) + chalk.gray.bold(` @ ${formatLoc(hir.loc)}`)
   );
 }
 

@@ -9,6 +9,11 @@ export interface Location {
   span: Span;
 }
 
+export function formatLoc(location: Location): string {
+  const loc = location.file.lineColumn(location.span[0]);
+  return `${location.file.path}:${loc?.line}:${loc?.col}`;
+}
+
 export class File {
   static read(path: string, parent?: File) {
     return new File(
@@ -17,6 +22,8 @@ export class File {
       parent
     );
   }
+
+  private lc: ReturnType<typeof lineColumn> | undefined;
 
   constructor(
     public readonly path: string,
@@ -33,11 +40,6 @@ export class File {
       file: this,
       span
     }
-  }
-
-  formatLoc(span: Span): string {
-    const loc = lineColumn(this.source).fromIndex(span[0]);
-    return `${this.path}:${loc?.line}:${loc?.col}`;
   }
 
   child(path: string, source?: string) {
@@ -58,5 +60,13 @@ export class File {
     }
 
     return stack;
+  }
+
+  lineColumn(index: number) {
+    if (!this.lc) {
+      this.lc = lineColumn(this.source);
+    }
+
+    return this.lc.fromIndex(index);
   }
 }
