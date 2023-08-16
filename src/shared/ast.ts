@@ -22,7 +22,7 @@ export interface Ast<T extends AstType> {
   loc: Location;
 }
 
-export type Expr = ICondition | IWord | IPush;
+export type Expr = ICondition | IWhile | IWord | IPush;
 
 export interface IWord extends Ast<AstType.Word> {
   wordtype: WordType;

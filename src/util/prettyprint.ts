@@ -48,6 +48,13 @@ function formatExpr(expr: Expr): string {
       chalk.bold("   Else"),
       ...(expr.else.map((x) => `   * ${formatExpr(x)}`))
     ].join("\n");
+  } else if (expr.type == AstType.While) {
+    return [
+      chalk.bold("While"),
+      ...(expr.condition.map((x) => `   * ${formatExpr(x)}`)),
+      chalk.bold("   Do"),
+      ...(expr.body.map((x) => `   * ${formatExpr(x)}`))
+    ].join("\n");
   } else {
     return AstType[(expr as Expr).type];
     //                   ^^^^^^^ stoopid typescript

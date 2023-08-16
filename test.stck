@@ -1,7 +1,5 @@
 proc main
-  34 35 + 69 = if
-    "nice" print
-  else
-    "not nice" print
+  0 while dup 10 < do
+    1 + dup print
   end
 end

@@ -1,4 +1,4 @@
-import { AstType, Expr, ICondition, IProc, IProgram, WordType } from "./shared/ast";
+import { AstType, Expr, ICondition, IProc, IProgram, IWhile, WordType } from "./shared/ast";
 import { tokenToDataType } from "./shared/types";
 import { Token, Tokens } from "./shared/token";
 import { Location } from "./shared/location";
@@ -11,7 +11,10 @@ import plib from "path";
 
 // todo: separate file for intrinsics
 const INTRINSICS = new Set([
-  "+", "-", "*", "/%", "=", "print"
+  "+", "-", "*", "/%",
+  "<", "=", ">",
+  "dup", "swap", "drop",
+  "print"
 ]);
 
 const tokenFmt = chalk.yellowBright.bold;
@@ -86,6 +89,8 @@ export class Parser {
   private readExpr(token: Token, start?: Token): Expr | undefined {
     if (token.kind == Tokens.If) {
       return this.readIfBlock(token);
+    } else if (token.kind == Tokens.While) {
+      return this.readWhileBlock(token);
     } else if (token.kind == Tokens.Word) {
       const wordType = (
         this.program.procs.has(token.value)
@@ -153,17 +158,32 @@ export class Parser {
     return condition;
   }
 
+  private readWhileBlock(start: Token): IWhile {
+    const loop: IWhile = {
+      type: AstType.While,
+      condition: [],
+      body: [],
+      loc: start.loc
+    }
+
+    while (true) {
+      const token = this.next();
+      if (token.kind == Tokens.Do) break;
+      else loop.condition.push(this.readExpr(token, start));
+    }
+
+    loop.body = this.readBlock(start);
+    return loop;
+  }
+
   private readBlock(start: Token): Expr[] {
     const body: Expr[] = [];
 
     while (true) {
       const token = this.next();
 
-      if (token.kind == Tokens.End) {
-        break;
-      } else {
-        body.push(this.readExpr(token, start));
-      }
+      if (token.kind == Tokens.End) break;
+      else body.push(this.readExpr(token, start));
     }
 
     return body;
