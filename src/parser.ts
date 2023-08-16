@@ -1,4 +1,4 @@
-import { AstType, Expr, ICondition, IProc, IProgram, IWhile } from "./shared/ast";
+import { AstType, Expr, ICondition, IMacro, IProc, IProgram, IWhile } from "./shared/ast";
 import { reportError, reportWarning } from "./errors";
 import { tokenToDataType } from "./shared/types";
 import { Token, Tokens } from "./shared/token";
@@ -19,6 +19,7 @@ export class Parser {
 
   public readonly program: IProgram = {
     procs: new Map(),
+    macros: new Map(),
     constants: new Map(),
   };
 
@@ -61,22 +62,20 @@ export class Parser {
     if (this.program.procs.has(name)) {
       const proc = this.program.procs.get(name)!;
       reportError(
-        "A procedure with the same name is already defined",
-        loc, [
-          `originally defined here ${
-            chalk.bold(proc.loc.file.formatLoc(proc.loc.span))
-          }`
-        ]
+        "A procedure with the same name is already defined", loc,
+        [`originally defined here ${chalk.bold(proc.loc.file.formatLoc(proc.loc.span))}`]
       );
     } else if (this.program.constants.has(name)) {
       const constant = this.program.constants.get(name)!;
       reportError(
-        "A constant with the same name is already defined",
-        loc, [
-          `originally defined here ${
-            chalk.bold(constant.loc.file.formatLoc(constant.loc.span))
-          }`
-        ]
+        "A constant with the same name is already defined", loc,
+        [`originally defined here ${chalk.bold(constant.loc.file.formatLoc(constant.loc.span))}`]
+      );
+    } else if (this.program.macros.has(name)) {
+      const macro = this.program.macros.get(name)!;
+      reportError(
+        "A macro with the same name is already defined", loc,
+        [`originally defined here ${chalk.bold(macro.loc.file.formatLoc(macro.loc.span))}`]
       );
     } else if (INTRINSICS.has(name)) {
       reportError(
@@ -158,15 +157,6 @@ export class Parser {
       else loop.condition.push(this.readExpr(token, start));
     }
 
-    if (loop.condition.length == 0) {
-      reportWarning(
-        "Empty while condition",
-        start.loc, [
-          "Loops with empty conditions do nothing"
-        ]
-      )
-    }
-
     loop.body = this.readBlock(start);
     return loop;
   }
@@ -197,13 +187,21 @@ export class Parser {
 
     this.program.procs.set(name.value, proc);
     proc.body = this.readBlock(start);
+  }
 
-    if (proc.body.length == 0) {
-      reportWarning(
-        "Empty procedure",
-        proc.loc
-      );
+  private readMacro(start: Token) {
+    const name = this.nextOf(Tokens.Word);
+    this.checkUniqueDefinition(name.value, name.loc);
+
+    const macro: IMacro = {
+      type: AstType.Macro,
+      name: name.value,
+      loc: name.loc,
+      body: [],
     }
+
+    this.program.macros.set(name.value, macro);
+    macro.body = this.readBlock(start);
   }
 
   public parse(): IProgram {
@@ -240,6 +238,8 @@ export class Parser {
         }
       } else if (token.kind == Tokens.Proc) {
         this.readProc(token);
+      } else if (token.kind == Tokens.Macro) {
+        this.readMacro(token);
       } else if (token.kind == Tokens.Const) {
         throw "TODO: Constants are not implemented yet";
       } else if (token.kind == Tokens.EOF) {

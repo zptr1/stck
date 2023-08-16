@@ -2,6 +2,7 @@ import { Location, Span } from "../shared/location";
 import lineColumn from "line-column";
 import chalk, { ChalkInstance } from "chalk";
 import plib from "path";
+import { IMacro } from "../shared/ast";
 
 function printLine(line: string, lineno?: number, padding: number = 2) {
   const lno = (lineno || "").toString().padStart(padding, " ");

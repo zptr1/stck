@@ -3,6 +3,7 @@ import { Location } from "./location";
 
 export enum AstType {
   Proc,
+  Macro,
   Const,
   If,
   While,
@@ -42,6 +43,11 @@ export interface IProc extends IAst<AstType.Proc> {
   body: Expr[];
 }
 
+export interface IMacro extends IAst<AstType.Macro> {
+  name: string;
+  body: Expr[];
+}
+
 export interface IConstant extends IAst<AstType.Const> {
   name: string;
   body: Expr[];
@@ -49,5 +55,6 @@ export interface IConstant extends IAst<AstType.Const> {
 
 export interface IProgram {
   procs: Map<string, IProc>;
+  macros: Map<string, IMacro>;
   constants: Map<string, IConstant>;
 }

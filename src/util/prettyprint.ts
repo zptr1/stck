@@ -103,6 +103,11 @@ function printIRExpr(expr: IRExpr, padding = 1) {
 }
 
 export function printProgramAst(program: IProgram) {
+  for (const proc of program.macros.values()) {
+    console.log(formatAst(proc));
+    proc.body.forEach((x) => printExpr(x));
+  }
+
   for (const proc of program.procs.values()) {
     console.log(formatAst(proc));
     proc.body.forEach((x) => printExpr(x));

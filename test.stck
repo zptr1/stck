@@ -1,3 +1,18 @@
+macro nice_number
+  "oh no, recursion!" print_if_nice
+end
+
+macro is_nice
+  nice_number =
+end
+
+macro print_if_nice
+  is_nice if
+    "nice" print
+  end
+end
+
 proc main
-  2 2 + print
+  69 print_if_nice
+  42 print_if_nice
 end
