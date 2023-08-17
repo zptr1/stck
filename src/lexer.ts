@@ -1,6 +1,6 @@
 import { KEYWORDS, Token, Tokens, WORD_CHARS } from "./shared/token";
 import { Reader } from "./shared/reader";
-import { File } from "./shared/location";
+import { File, formatLoc } from "./shared/location";
 import { reportError } from "./errors";
 
 export class Lexer {
@@ -115,6 +115,11 @@ export class Lexer {
 
     if (value == "true" || value == "false") {
       return this.token(Tokens.Boolean, value == "true");
+    } else if (value == "<here>") {
+      return this.token(Tokens.Str, formatLoc({
+        file: this.file,
+        span: [this.reader.spanStart, this.reader.cursor]
+      }));
     } else if (KEYWORDS.has(value)) {
       return this.token(value as Tokens);
     } else {

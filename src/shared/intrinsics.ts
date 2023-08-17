@@ -25,6 +25,8 @@ addIntrinsic("dup",    [DataType.Any],                [DataType.Any, DataType.An
 addIntrinsic("drop",   [DataType.Any],                []);
 addIntrinsic("swap",   [DataType.Any, DataType.Any],  [DataType.Any, DataType.Any]);
 addIntrinsic("print",  [DataType.Int],                []);
+addIntrinsic("puts",   [DataType.Str],                []); // TODO: temporary; move to std in the future
 
-// TODO: temporary; move to std in the future
-addIntrinsic("puts",   [DataType.Str],                []);
+// Compile-time intrinsics
+addIntrinsic("<dump-stack>", [], []);
+

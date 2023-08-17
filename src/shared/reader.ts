@@ -7,7 +7,7 @@ type ArrayLike<T> = {
 };
 
 export class Reader<T> {
-  private spanStart: number = 0;
+  public spanStart: number = 0;
 
   constructor(
     public readonly source: ArrayLike<T>,
