@@ -1,11 +1,7 @@
 proc test
-  if
-    42
-  else
-    69
-  end
+  1 true if drop end
 end
 
 proc main
-  true test <dump-stack> drop
+
 end

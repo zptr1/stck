@@ -32,15 +32,18 @@ export class IR {
   ) {}
 
   private reportErrorWithStackData(message: string, loc: Location, ctx: Context, expectedStack: DataType[], notes: string[] = []): never {
-    notes.push(`expected data: [${chalk.bold(expectedStack.map((x) => DataType[x]).join(", "))}]`);
+    if (expectedStack.length) {
+      notes.push(chalk.greenBright.bold("Expected data:"));
+      for (const e of expectedStack)
+        notes.push(` - ${chalk.bold(DataType[e])}`);
+
+    }
 
     if (ctx.stack.length) {
-      notes.push("current data on the stack:");
+      notes.push(chalk.redBright.bold("Current data on the stack:"));
       for (let i = 0; i < ctx.stack.length; i++) {
-        notes.push(` - ${chalk.bold(DataType[ctx.stack[i]])} @ ${chalk.bold(formatLoc(ctx.stackLocations[i]))}`);
+        notes.push(` - ${chalk.bold(DataType[ctx.stack[i]])} @ ${formatLoc(ctx.stackLocations[i])}`);
       }
-    } else {
-      notes.push("current data on the stack: []");
     }
 
     reportErrorWithStack(message, loc, ctx.macroExpansionStack, notes);
@@ -274,13 +277,15 @@ export class IR {
         }
 
         if (branches.length > 1) {
-          this.validateContextStack(expr.loc, branches[1], branches[0].stack, false, "after the condition", [
+          this.validateContextStack(expr.loc, branches[1], branches[0].stack, true, "after the condition", [
             "Both branches must result in the same data on the stack"
           ]);
         }
 
         if (branches.length > 0) {
-          this.validateContextStack(expr.loc, branches[0], ctx.stack, false, "after the condition");
+          this.validateContextStack(expr.loc, branches[0], ctx.stack, true, "after the condition", [
+            "Conditions must not change the types and the amount of elements on the stack"
+          ]);
           ctx.stack = branches[0].stack;
           ctx.stackLocations = branches[0].stackLocations;
         }
@@ -325,7 +330,7 @@ export class IR {
           if (!proc.signature) {
             if (callstack.find((x) => x.name == expr.name)) {
               reportErrorWithStack(
-                "Recursive calls of functions without signatures are not supported",
+                "Recursive calls of procedures without signatures are not supported",
                 expr.loc, callstack
               );
             } else {
@@ -343,6 +348,10 @@ export class IR {
           }
         } else if (INTRINSICS.has(expr.name)) {
           const intrinsic = INTRINSICS.get(expr.name)!;
+
+          // TODO: Try to determine DataType.Any by how it is used later
+          //       e. g. `<any> <any> add` would replace these types with `<int> <int> add`
+
           if (intrinsic.name == "dup") {
             if (stack.length) {
               const o = stack.pop()!;
