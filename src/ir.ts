@@ -1,4 +1,4 @@
-import { AstType, Expr, IConstant, IProc, IProgram, IPush, IWord } from "./shared/ast";
+import { AstType, Expr, IConst, IProc, IProgram, IPush, IWord } from "./shared/ast";
 import { IRExpr, IRProc, IRProgram, IRWordKind, IRType, IRConst } from "./shared/ir";
 import { DataType, compareDataTypeArrays } from "./shared/types";
 import { INTRINSICS, Intrinsic } from "./shared/intrinsics";
@@ -87,7 +87,7 @@ export class IR {
           ctx.stack.push(constant.body.datatype);
           ctx.stackLocations.push(expr.loc);
           stackValues.push(constant.body.value);
-        } else if (this.program.constants.has(expr.value)) {
+        } else if (this.program.consts.has(expr.value)) {
           reportError("That constant is not defined yet", expr.loc);
         } else if (this.program.procs.has(expr.value)) {
           reportError("Cannot use procedures in compile-time expressions", expr.loc);
@@ -284,7 +284,7 @@ export class IR {
     return out;
   }
 
-  private parseConst(constant: IConstant): IRConst {
+  private parseConst(constant: IConst): IRConst {
     if (this.consts.has(constant.name)) {
       return this.consts.get(constant.name)!;
     }
@@ -326,9 +326,9 @@ export class IR {
   }
 
   public parse(): IRProgram {
-    this.program.constants.forEach((constant) => {
+    this.program.consts.forEach((constant) => {
       this.consts.set(constant.name, this.parseConst(constant));
-    })
+    });
 
     this.program.procs.forEach((proc) => {
       this.procs.set(proc.name, this.parseProc(proc));

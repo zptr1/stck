@@ -1,14 +1,14 @@
-import { AstType, Expr, ICondition, IConstant, IMacro, IProc, IProgram, IWhile } from "./shared/ast";
-import { reportError, reportWarning } from "./errors";
-import { tokenToDataType } from "./shared/types";
-import { Token, Tokens } from "./shared/token";
+import { AstType, Expr, ICondition, IConst, IMacro, IProc, IProgram, IWhile, TopLevelAst } from "./shared/ast";
 import { Location, formatLoc } from "./shared/location";
+import { tokenToDataType } from "./shared/types";
+import { INTRINSICS } from "./shared/intrinsics";
+import { Token, Tokens } from "./shared/token";
+import { reportError } from "./errors";
 import { ROOT_DIR } from "./const";
 import { existsSync } from "fs";
 import { Lexer } from "./lexer";
 import chalk from "chalk";
 import plib from "path";
-import { INTRINSICS, Intrinsic } from "./shared/intrinsics";
 
 const tokenFmt = chalk.yellowBright.bold;
 
@@ -20,7 +20,7 @@ export class Parser {
   public readonly program: IProgram = {
     procs: new Map(),
     macros: new Map(),
-    constants: new Map(),
+    consts: new Map(),
   };
 
   constructor(tokens: Token[]) {
@@ -65,8 +65,8 @@ export class Parser {
         "A procedure with the same name is already defined", loc,
         [`originally defined here ${chalk.bold(formatLoc(proc.loc))}`]
       );
-    } else if (this.program.constants.has(name)) {
-      const constant = this.program.constants.get(name)!;
+    } else if (this.program.consts.has(name)) {
+      const constant = this.program.consts.get(name)!;
       reportError(
         "A constant with the same name is already defined", loc,
         [`originally defined here ${chalk.bold(formatLoc(constant.loc))}`]
@@ -173,49 +173,16 @@ export class Parser {
     return body;
   }
 
-  // TODO: readProc, readMacro and readConst can be combined into
-  //       a single function `readTopLevelBlock<T>` to reduce repetition
-
-  private readProc(start: Token) {
+  private readTopLevelBlock<T extends TopLevelAst>(type: AstType, start: Token): T {
     const name = this.nextOf(Tokens.Word);
     this.checkUniqueDefinition(name.value, name.loc);
 
-    const proc: IProc = {
-      type: AstType.Proc,
-      name: name.value,
-      loc: name.loc,
-      body: this.readBlock(start),
-    }
-
-    this.program.procs.set(name.value, proc);
-  }
-
-  private readMacro(start: Token) {
-    const name = this.nextOf(Tokens.Word);
-    this.checkUniqueDefinition(name.value, name.loc);
-
-    const macro: IMacro = {
-      type: AstType.Macro,
-      name: name.value,
-      loc: name.loc,
-      body: this.readBlock(start),
-    }
-
-    this.program.macros.set(name.value, macro);
-  }
-
-  private readConst(start: Token) {
-    const name = this.nextOf(Tokens.Word);
-    this.checkUniqueDefinition(name.value, name.loc);
-
-    const constant: IConstant = {
-      type: AstType.Const,
+    return {
+      type,
       name: name.value,
       loc: name.loc,
       body: this.readBlock(start)
-    }
-
-    this.program.constants.set(name.value, constant);
+    } as T;
   }
 
   public parse(): IProgram {
@@ -251,11 +218,14 @@ export class Parser {
           }
         }
       } else if (token.kind == Tokens.Proc) {
-        this.readProc(token);
+        const proc = this.readTopLevelBlock<IProc>(AstType.Proc, token);
+        this.program.procs.set(proc.name, proc);
       } else if (token.kind == Tokens.Macro) {
-        this.readMacro(token);
+        const macro = this.readTopLevelBlock<IMacro>(AstType.Macro, token);
+        this.program.macros.set(macro.name, macro);
       } else if (token.kind == Tokens.Const) {
-        this.readConst(token);
+        const constant = this.readTopLevelBlock<IConst>(AstType.Const, token);
+        this.program.consts.set(constant.name, constant);
       } else if (token.kind == Tokens.EOF) {
         break;
       } else {

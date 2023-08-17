@@ -17,7 +17,8 @@ export interface IAst<T extends AstType> {
 }
 
 export type Expr = IWord | IPush | ICondition | IWhile;
-export type Ast = Expr | IProc | IConstant;
+export type TopLevelAst = IProc | IMacro | IConst;
+export type Ast = Expr | IProc | IMacro | IConst;
 
 export interface IWord extends IAst<AstType.Word> {
   value: string;
@@ -48,7 +49,7 @@ export interface IMacro extends IAst<AstType.Macro> {
   body: Expr[];
 }
 
-export interface IConstant extends IAst<AstType.Const> {
+export interface IConst extends IAst<AstType.Const> {
   name: string;
   body: Expr[];
 }
@@ -56,5 +57,5 @@ export interface IConstant extends IAst<AstType.Const> {
 export interface IProgram {
   procs: Map<string, IProc>;
   macros: Map<string, IMacro>;
-  constants: Map<string, IConstant>;
+  consts: Map<string, IConst>;
 }
