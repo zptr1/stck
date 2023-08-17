@@ -1,7 +1,7 @@
-import { Location, Span } from "../shared/location";
+import { Location, Span, formatLoc } from "../shared/location";
 import chalk, { ChalkInstance } from "chalk";
+import { IWord } from "../shared/ast";
 import lineColumn from "line-column";
-import plib from "path";
 
 function printLine(line: string, lineno?: number, padding: number = 2) {
   const lno = (lineno || "").toString().padStart(padding, " ");
@@ -71,21 +71,43 @@ function report(
     console.error(chalk.bold.blue("note:"), chalk.whiteBright(note));
   }
 
-  const pos = lineColumn(source).fromIndex(loc.span[0]);
-  console.error(
-    chalk.gray("  ~ in"),
-    chalk.gray.bold(plib.resolve(loc.file.path))
-    + chalk.gray(`:${pos?.line}:${pos?.col}`)
-  );
-
+  console.error("", chalk.gray("~ in"), chalk.gray.bold(formatLoc(loc)));
   for (const path of loc.file.parentStack()) {
-    console.error(
-      chalk.gray("  ~ in"),
-      chalk.gray(plib.resolve(path))
-    )
+    console.error("", chalk.gray("~ in"), chalk.gray(path));
   }
 
   console.error();
+}
+
+export function reportErrorWithMacroExpansionStack(
+  message: string, loc: Location, macroStack: IWord[], notes: string[] = []
+): never {
+  const source = loc.file.source + chalk.inverse("%");
+
+  console.error();
+  printLoc(source, loc.span, chalk.red);
+  console.error();
+
+  console.error(chalk.red.bold(`error:`), chalk.whiteBright(message));
+  for (const note of notes) {
+    console.error(chalk.bold.blue("note:"), chalk.whiteBright(note));
+  }
+
+  console.error("", chalk.gray("~ in"), chalk.gray.bold(formatLoc(loc)));
+  for (const macro of macroStack) {
+    console.error(
+      "", chalk.gray("~ in"),
+      chalk.gray.bold(formatLoc(macro.loc)),
+      `(expand ${chalk.bold(macro.value)})`
+    );
+  }
+
+  for (const path of loc.file.parentStack()) {
+    console.error("", chalk.gray("~ in"), chalk.gray(path));
+  }
+
+  console.error();
+  process.exit(1);
 }
 
 export function reportError(message: string, loc: Location, notes: string[] = []): never {

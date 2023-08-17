@@ -3,7 +3,7 @@ import { IRExpr, IRProc, IRProgram, IRWordKind, IRType, IRConst } from "./shared
 import { DataType, compareDataTypeArrays } from "./shared/types";
 import { INTRINSICS, Intrinsic } from "./shared/intrinsics";
 import { Location, formatLoc } from "./shared/location";
-import { reportError, reportWarning } from "./errors";
+import { reportError, reportErrorWithMacroExpansionStack, reportWarning } from "./errors";
 import chalk from "chalk";
 
 // TODO: Split this into multiple files in the future
@@ -39,7 +39,7 @@ export class IR {
       notes.push("current data on the stack: []");
     }
 
-    reportError(message, loc, notes);
+    reportErrorWithMacroExpansionStack(message, loc, ctx.macroExpansionStack, notes);
   }
 
   private evaluateCompileTimeExpr(exprs: Expr[], ctx: Context, loc: Location): IPush {
@@ -245,7 +245,9 @@ export class IR {
             loc: expr.loc
           });
         } else {
-          reportError("Unknown word", expr.loc);
+          reportErrorWithMacroExpansionStack(
+            "Unknown word", expr.loc, ctx.macroExpansionStack
+          );
         }
       } else if (expr.type == AstType.While) {
         const types = structuredClone(ctx.stack);

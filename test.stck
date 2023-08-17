@@ -4,7 +4,17 @@ const VERY_FUNNY_NUMBER    FUNNY_NUMBER 100 mul ANOTHER_FUNNY_NUMBER add end
 
 const test 69 42 divmod swap drop end
 
+macro print-if-funny
+  dup FUNNY_NUMBER eq if
+    "nice" puts drop
+  else dup ANOTHER_FUNNY_NUMBER eq if*
+    "nice" puts drop
+  else dup VERY_FUNNY_NUMBER eq if*
+    "very nice" puts drop
+  else drop end
+end
+
 proc main
-  VERY_FUNNY_NUMBER print
-  test print
+  69 print-if-funny
+   print-if-funny
 end
