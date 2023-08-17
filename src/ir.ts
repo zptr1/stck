@@ -3,7 +3,7 @@ import { IRExpr, IRProc, IRProgram, IRWordKind, IRType, IRConst } from "./shared
 import { DataType, compareDataTypeArrays } from "./shared/types";
 import { INTRINSICS, Intrinsic } from "./shared/intrinsics";
 import { Location, formatLoc } from "./shared/location";
-import { reportError } from "./errors";
+import { reportError, reportWarning } from "./errors";
 import chalk from "chalk";
 
 // TODO: Split this into multiple files in the future
@@ -91,6 +91,8 @@ export class IR {
           reportError("That constant is not defined yet", expr.loc);
         } else if (this.program.procs.has(expr.value)) {
           reportError("Cannot use procedures in compile-time expressions", expr.loc);
+        } else if (this.program.macros.has(expr.value)) {
+          reportError("Cannot use macros in compile-time expressions", expr.loc);
         } else {
           reportError("Unknown word", expr.loc);
         }
