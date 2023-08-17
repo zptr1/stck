@@ -31,9 +31,7 @@ export class IR {
     public readonly program: IProgram
   ) {}
 
-  private reportErrorWithStackData(message: string, loc: Location, ctx: Context, expectedStack: DataType[]): never {
-    const notes = [];
-
+  private reportErrorWithStackData(message: string, loc: Location, ctx: Context, expectedStack: DataType[], notes: string[] = []): never {
     notes.push(`expected data: [${chalk.bold(expectedStack.map((x) => DataType[x]).join(", "))}]`);
 
     if (ctx.stack.length) {
@@ -177,17 +175,18 @@ export class IR {
     ctx: Context,
     stack: DataType[],
     strictLength: boolean = true,
-    suffix: string = ""
+    suffix: string = "",
+    notes: string[] = []
   ) {
     if (ctx.stack.length < stack.length) {
-      this.reportErrorWithStackData(`Insufficient data on the stack ${suffix}`, loc, ctx, stack);
+      this.reportErrorWithStackData(`Insufficient data on the stack ${suffix}`, loc, ctx, stack, notes);
     }
 
     if (strictLength) {
       if (ctx.stack.length > stack.length) {
-        this.reportErrorWithStackData(`Unhandled data on the stack ${suffix}`, loc, ctx, stack);
+        this.reportErrorWithStackData(`Unhandled data on the stack ${suffix}`, loc, ctx, stack, notes);
       } else if (!compareDataTypeArrays(stack, ctx.stack)) {
-        this.reportErrorWithStackData(`Unexpected data on the stack ${suffix}`, loc, ctx, stack);
+        this.reportErrorWithStackData(`Unexpected data on the stack ${suffix}`, loc, ctx, stack, notes);
       }
     } else {
       const currentStack = ctx.stack.slice().reverse().slice(0, stack.length);
@@ -195,16 +194,26 @@ export class IR {
       if (!compareDataTypeArrays(stack.slice().reverse(), currentStack)) {
         this.reportErrorWithStackData(
           `Unexpected data on the stack ${suffix}`,
-          loc, ctx, stack
+          loc, ctx, stack, notes
         );
       }
     }
   }
 
-  private typecheckBody(exprs: IRExpr[], ctx: Context, callstack: IRProc[] = []) {
+  private typecheckBody(exprs: IRExpr[], ctx: Context) {
     for (const expr of exprs) {
       if (expr.type == IRType.Word) {
-        if (this.procs.has(expr.name)) {
+        if (expr.name == "<dump-stack>") {
+          console.debug(chalk.blueBright.bold("debug:"), "Current data on the stack at", chalk.gray(formatLoc(expr.loc)));
+
+          for (let i = 0; i < ctx.stack.length; i++) {
+            console.debug(
+              chalk.blueBright.bold("debug:"),
+              "-", chalk.bold(DataType[ctx.stack[i]]),
+              "@", chalk.bold(formatLoc(ctx.stackLocations[i]))
+            );
+          }
+        } else if (this.procs.has(expr.name)) {
           const proc = this.procs.get(expr.name)!;
 
           if (!proc.signature) {
@@ -214,6 +223,7 @@ export class IR {
               "@", chalk.bold(formatLoc(expr.loc))
             );
 
+            console.warn(chalk.yellow("WARN:"), "(likely a compiler bug)");
             continue;
           }
 
@@ -237,32 +247,42 @@ export class IR {
       } else if (expr.type == IRType.While) {
         const initialStack = structuredClone(ctx.stack);
 
-        this.typecheckBody(expr.condition, ctx, callstack);
+        this.typecheckBody(expr.condition, ctx);
         this.validateContextStack(expr.loc, ctx, [DataType.Boolean], false, "in the condition of the loop");
         ctx.stackLocations.pop();
         ctx.stack.pop();
 
-        this.typecheckBody(expr.body, ctx, callstack);
+        this.typecheckBody(expr.body, ctx);
         this.validateContextStack(expr.loc, ctx, initialStack, true, "after a single interation of the loop");
       } else if (expr.type == IRType.If) {
         this.validateContextStack(expr.loc, ctx, [DataType.Boolean], false, "for the condition");
         ctx.stackLocations.pop();
         ctx.stack.pop();
 
-        const initialStack = structuredClone(ctx.stack);
+        const branches = [];
 
         if (expr.body.length > 0) {
           const clone = createContext(structuredClone(ctx.stack), ctx.stackLocations.slice());
-
-          this.typecheckBody(expr.body, clone, callstack);
-          this.validateContextStack(expr.loc, clone, initialStack, false, "after the condition");
+          this.typecheckBody(expr.body, clone);
+          branches.push(clone);
         }
 
         if (expr.else.length > 0) {
           const clone = createContext(structuredClone(ctx.stack), ctx.stackLocations.slice());
+          this.typecheckBody(expr.else, clone);
+          branches.push(clone);
+        }
 
-          this.typecheckBody(expr.else, clone, callstack);
-          this.validateContextStack(expr.loc, clone, initialStack, false, "after the condition");
+        if (branches.length > 1) {
+          this.validateContextStack(expr.loc, branches[1], branches[0].stack, false, "after the condition", [
+            "Both branches must result in the same data on the stack"
+          ]);
+        }
+
+        if (branches.length > 0) {
+          this.validateContextStack(expr.loc, branches[0], ctx.stack, false, "after the condition");
+          ctx.stack = branches[0].stack;
+          ctx.stackLocations = branches[0].stackLocations;
         }
       } else if (expr.type == AstType.Push) {
         ctx.stack.push(expr.datatype);
@@ -271,6 +291,25 @@ export class IR {
         throw new Error(`IR Typechecking is not implemented for ${IRType[(expr as IRExpr).type]}`);
       }
     }
+  }
+
+  private typecheckProc(proc: IRProc, ctx: Context) {
+    if (proc.name == "main") {
+      if (proc.signature!.ins.length > 0) {
+        reportError(
+          "The main procedure must not accept any data from the stack",
+          proc.loc
+        );
+      } else if (proc.signature!.outs.length > 0) {
+        reportError(
+          "The main procedure must not return anything",
+          proc.loc
+        );
+      }
+    }
+
+    this.typecheckBody(proc.body, ctx);
+    this.validateContextStack(proc.loc, ctx, proc.signature!.outs, true, "after the procedure call");
   }
 
   private determineSignature(
@@ -343,10 +382,6 @@ export class IR {
         if (expr.body.length > 0) {
           this.determineSignature(expr.body, callstack, stack, ins);
         }
-
-        if (expr.else.length > 0) {
-          this.determineSignature(expr.else, callstack, stack, ins);
-        }
       } else if (expr.type == AstType.Push) {
         stack.push(expr.datatype);
       } else {
@@ -358,17 +393,18 @@ export class IR {
   }
 
   private determineProcSignature(proc: IRProc, callstack: StackElement[] = []): ISignature {
-    if (proc.signature) {
-      return proc.signature;
-    } else {
-      const [outs, ins] = this.determineSignature(proc.body, callstack);
-
-      proc.signature = {
-        ins, outs
+    if (!proc.signature) {
+      if (proc.name == "main") {
+        proc.signature = { ins: [], outs: [] };
+      } else {
+        const [outs, ins] = this.determineSignature(proc.body, callstack);
+        proc.signature = {
+          ins, outs
+        }
       }
-
-      return proc.signature;
     }
+
+    return proc.signature;
   }
 
   private parseBody(exprs: Expr[], ctx: Context): IRExpr[] {
@@ -486,7 +522,7 @@ export class IR {
         ctx.stackLocations.push(proc.loc);
       }
 
-      this.typecheckBody(proc.body, ctx, [proc]);
+      this.typecheckProc(proc, ctx);
     });
 
     return {
