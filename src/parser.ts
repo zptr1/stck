@@ -15,6 +15,7 @@ const tokenFmt = chalk.yellowBright.bold;
 export class Parser {
   public readonly tokens: Token[] = [];
   private readonly includeCache = new Set<string>();
+  private includeDepth: number = 0;
   private lastToken: Token | undefined = undefined;
 
   public readonly program: IProgram = {
@@ -212,10 +213,9 @@ export class Parser {
           const file = token.loc.file.child(path);
           const tokens = new Lexer(file).collect().reverse();
 
-          for (const tok of tokens) {
-            if (tok.kind == Tokens.EOF) continue;
+          this.includeDepth++;
+          for (const tok of tokens)
             this.tokens.push(tok);
-          }
         }
       } else if (token.kind == Tokens.Proc) {
         const proc = this.readTopLevelBlock<IProc>(AstType.Proc, token);
@@ -227,7 +227,11 @@ export class Parser {
         const constant = this.readTopLevelBlock<IConst>(AstType.Const, token);
         this.program.consts.set(constant.name, constant);
       } else if (token.kind == Tokens.EOF) {
-        break;
+        if (this.includeDepth) {
+          this.includeDepth--
+        } else {
+          break;
+        }
       } else {
         reportError(
           `Unexpected ${tokenFmt(token.kind)} at the top level`,
