@@ -1,6 +1,6 @@
 import { AstType, Expr, ICondition, IConst, IMacro, IProc, IProgram, IWhile, TopLevelAst } from "./shared/ast";
+import { DataType, tokenToDataType } from "./shared/types";
 import { Location, formatLoc } from "./shared/location";
-import { tokenToDataType } from "./shared/types";
 import { INTRINSICS } from "./shared/intrinsics";
 import { Token, Tokens } from "./shared/token";
 import { reportError } from "./errors";
@@ -33,6 +33,10 @@ export class Parser {
     return (
       this.lastToken = this.tokens.pop()!
     );
+  }
+
+  private peek(): Token | undefined {
+    return this.tokens.at(-1);
   }
 
   private isEnd(): boolean {
@@ -181,9 +185,74 @@ export class Parser {
     return {
       type,
       name: name.value,
-      loc: name.loc,
+      loc: start.loc,
       body: this.readBlock(start)
     } as T;
+  }
+
+  private readProcSignature(end: Tokens[]): [DataType[], Token] {
+    const signature: DataType[] = [];
+
+    while (true) {
+      const token = this.next();
+      if (end.includes(token.kind)) {
+        return [signature, token];
+      } else if (token.kind == Tokens.Word) {
+        if (token.value == "int") {
+          signature.push(DataType.Int);
+        } else if (token.value == "str") {
+          signature.push(DataType.Str);
+        } else if (token.value == "char") {
+          signature.push(DataType.Char);
+        } else if (token.value == "bool") {
+          signature.push(DataType.Boolean);
+        } else {
+          reportError("Unknown type", token.loc);
+        }
+      } else {
+        reportError(
+          `Unexpected ${tokenFmt(token.kind)} in the procedure signature`,
+          token.loc
+        );
+      }
+    }
+  }
+
+  private readProc(start: Token) {
+    const name = this.nextOf(Tokens.Word);
+    this.checkUniqueDefinition(name.value, name.loc);
+
+    const proc: IProc = {
+      type: AstType.Proc,
+      name: name.value,
+      loc: start.loc,
+      body: []
+    }
+
+    if (this.peek()?.kind == Tokens.SigIns) {
+      const [ins, end] = this.readProcSignature([Tokens.Do, Tokens.SigOuts]);
+
+      proc.signature = { ins: [], outs: [] };
+      proc.signature.ins = ins;
+
+      if (end.kind == Tokens.SigOuts) {
+        const [outs, end] = this.readProcSignature([Tokens.Do]);
+
+        proc.signature.outs = outs;
+        proc.body = this.readBlock(end);
+      } else {
+        proc.body = this.readBlock(end);
+      }
+    } else if (this.peek()?.kind == Tokens.SigOuts) {
+      const [outs, end] = this.readProcSignature([Tokens.Do]);
+
+      proc.signature = { ins: [], outs: [] };
+      proc.signature.outs = outs;
+
+      proc.body = this.readBlock(end);
+    } else {
+      proc.body = this.readBlock(start);
+    }
   }
 
   public parse(): IProgram {
@@ -218,8 +287,7 @@ export class Parser {
             this.tokens.push(tok);
         }
       } else if (token.kind == Tokens.Proc) {
-        const proc = this.readTopLevelBlock<IProc>(AstType.Proc, token);
-        this.program.procs.set(proc.name, proc);
+        this.readProc(token);
       } else if (token.kind == Tokens.Macro) {
         const macro = this.readTopLevelBlock<IMacro>(AstType.Macro, token);
         this.program.macros.set(macro.name, macro);
@@ -228,7 +296,7 @@ export class Parser {
         this.program.consts.set(constant.name, constant);
       } else if (token.kind == Tokens.EOF) {
         if (this.includeDepth) {
-          this.includeDepth--
+          this.includeDepth--;
         } else {
           break;
         }

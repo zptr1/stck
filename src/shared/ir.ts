@@ -1,6 +1,5 @@
+import { IPush, ISignature } from "./ast";
 import { Location } from "./location";
-import { DataType } from "./types";
-import { IPush } from "./ast";
 
 export interface IIR<T extends IRType> {
   type: T;
@@ -17,7 +16,6 @@ export enum IRType {
 
 export enum IRWordKind {
   Proc,
-  Const,
   Intrinsic
 }
 
@@ -45,9 +43,8 @@ export interface IRConst extends IIR<IRType.Const> {
 
 export interface IRProc extends IIR<IRType.Proc> {
   name: string;
-  ins: DataType[];
-  outs: DataType[];
   body: IRExpr[]
+  signature?: ISignature;
 }
 
 export interface IRProgram {

@@ -39,9 +39,15 @@ export interface IWhile extends IAst<AstType.While> {
   body: Expr[];
 }
 
+export interface ISignature {
+  ins: DataType[];
+  outs: DataType[];
+}
+
 export interface IProc extends IAst<AstType.Proc> {
   name: string;
   body: Expr[];
+  signature?: ISignature;
 }
 
 export interface IMacro extends IAst<AstType.Macro> {
