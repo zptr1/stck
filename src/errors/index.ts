@@ -79,8 +79,10 @@ function report(
   console.error();
 }
 
-export function reportErrorWithMacroExpansionStack(
-  message: string, loc: Location, macroStack: IWord[], notes: string[] = []
+export type StackElement = { name?: string, value?: string, loc: Location }
+
+export function reportErrorWithStack(
+  message: string, loc: Location, stack: StackElement[], notes: string[] = []
 ): never {
   const source = loc.file.source + chalk.inverse("%");
 
@@ -94,11 +96,11 @@ export function reportErrorWithMacroExpansionStack(
   }
 
   console.error("", chalk.gray("~ in"), chalk.gray.bold(formatLoc(loc)));
-  for (const macro of macroStack) {
+  for (const o of stack) {
     console.error(
       "", chalk.gray("~ in"),
-      chalk.gray.bold(formatLoc(macro.loc)),
-      `(expand ${chalk.bold(macro.value)})`
+      chalk.gray.bold(formatLoc(o.loc)),
+      `(${chalk.bold(o.name || o.value)})`
     );
   }
 

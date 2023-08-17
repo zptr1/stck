@@ -230,6 +230,7 @@ export class Parser {
     }
 
     if (this.peek()?.kind == Tokens.SigIns) {
+      this.next();
       const [ins, end] = this.readProcSignature([Tokens.Do, Tokens.SigOuts]);
 
       proc.signature = { ins: [], outs: [] };
@@ -244,15 +245,20 @@ export class Parser {
         proc.body = this.readBlock(end);
       }
     } else if (this.peek()?.kind == Tokens.SigOuts) {
+      this.next();
       const [outs, end] = this.readProcSignature([Tokens.Do]);
 
       proc.signature = { ins: [], outs: [] };
       proc.signature.outs = outs;
 
       proc.body = this.readBlock(end);
+    } else if (this.peek()?.kind == Tokens.Do) {
+      proc.body = this.readBlock(this.next());
     } else {
       proc.body = this.readBlock(start);
     }
+
+    this.program.procs.set(proc.name, proc);
   }
 
   public parse(): IProgram {

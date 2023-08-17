@@ -110,6 +110,14 @@ export function printProgramAst(program: IProgram) {
 export function printProgramIR(program: IRProgram) {
   for (const proc of program.procs.values()) {
     console.log(formatIR(proc));
+    if (proc.signature) {
+      console.log(
+        chalk.gray("Signature:"),
+        `[${proc.signature.ins.map((x) => DataType[x]).join(", ")}]`,
+        "->",
+        `[${proc.signature.outs.map((x) => DataType[x]).join(", ")}]`
+      );
+    }
     proc.body.forEach((x) => printIRExpr(x));
   }
 }
