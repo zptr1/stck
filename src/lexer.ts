@@ -39,11 +39,7 @@ export class Lexer {
     }
   }
 
-  private isIntStart(): boolean {
-    return "-0123456789".includes(this.reader.peek()!);
-  }
-
-  private isIntContinue(): boolean {
+  private isInt(): boolean {
     return "0123456789".includes(this.reader.peek()!);
   }
 
@@ -74,8 +70,8 @@ export class Lexer {
   }
 
   private readIntToken(): Token {
-    let value = "";
-    while (this.isIntContinue()) {
+    let value = this.reader.next();
+    while (this.isInt()) {
       value += this.reader.next();
     }
 
@@ -133,7 +129,7 @@ export class Lexer {
       return this.readStrToken();
     } else if (this.reader.peek() == "'") {
       return this.readCharToken();
-    } else if (this.isIntStart()) {
+    } else if (this.isInt()) {
       return this.readIntToken();
     } else if (this.isWord()) {
       return this.readWordToken();
