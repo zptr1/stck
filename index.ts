@@ -9,12 +9,10 @@ import plib from "path";
 
 async function run(file: File) {
   console.log("[INFO] Running", chalk.gray(file.path));
-  console.log("[INFO] Tokenizing");
+  console.log("[INFO] Parsing");
 
   const lexer = new Lexer(file);
   const tokens = lexer.collect();
-
-  console.log("[INFO] Parsing");
   const ast = new Parser(tokens).parse();
 
   console.log("[INFO] Generating IR");
