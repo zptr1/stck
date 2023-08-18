@@ -1,0 +1,19 @@
+--- STDOUT ---
+[INFO] Running /home/yui/stck/tests/01_hello_world.stck
+[INFO] Tokenizing
+[INFO] Parsing
+[INFO] Generating IR
+[INFO] Typechecking
+[DEBUG] Generated IR:
+Proc "print-hi" @ /home/yui/stck/tests/01_hello_world.stck:1:1
+Signature: [] -> []
+ - Push Str("Hello, World\n")
+ - Word Intrinsic("puts")
+Proc "main" @ /home/yui/stck/tests/01_hello_world.stck:5:1
+Signature: [] -> []
+ - Word Intrinsic("print-hi")
+
+--- STDERR ---
+
+--- END ---
+Exited with code 0

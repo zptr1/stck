@@ -1,0 +1,50 @@
+--- STDOUT ---
+[INFO] Running /home/yui/stck/tests/02_control_flow.stck
+[INFO] Tokenizing
+[INFO] Parsing
+[INFO] Generating IR
+[INFO] Typechecking
+[DEBUG] Generated IR:
+Proc "main" @ /home/yui/stck/tests/02_control_flow.stck:1:1
+Signature: [] -> []
+ - Push Int(69)
+ - Word Intrinsic("dup")
+ - Push Int(69)
+ - Word Intrinsic("eq")
+ - If
+   - Push Str("Nice\n")
+   - Word Intrinsic("puts")
+ - Else
+   - Word Intrinsic("dup")
+   - Push Int(42)
+   - Word Intrinsic("eq")
+   - If
+     - Push Str("Nice\n")
+     - Word Intrinsic("puts")
+   - Else
+     - Word Intrinsic("dup")
+     - Push Int(6942)
+     - Word Intrinsic("eq")
+     - If
+       - Push Str("Very nice\n")
+       - Word Intrinsic("puts")
+     - Else
+       - Push Str("Not nice\n")
+       - Word Intrinsic("puts")
+ - Word Intrinsic("drop")
+ - Push Int(0)
+ - While
+   - Word Intrinsic("dup")
+   - Push Int(10)
+   - Word Intrinsic("lt")
+ - Do
+   - Push Int(1)
+   - Word Intrinsic("add")
+   - Word Intrinsic("dup")
+   - Word Intrinsic("print")
+ - Word Intrinsic("drop")
+
+--- STDERR ---
+
+--- END ---
+Exited with code 0
