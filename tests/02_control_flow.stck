@@ -1,0 +1,15 @@
+proc main
+  69 dup 69 eq if
+    "Nice\n" puts
+  else dup 42 eq if*
+    "Nice\n" puts
+  else dup 6942 eq if*
+    "Very nice\n" puts
+  else
+    "Not nice\n" puts
+  end drop
+
+  0 while dup 10 lt do
+    1 add dup print
+  end drop
+end
