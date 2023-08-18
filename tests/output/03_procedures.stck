@@ -1,0 +1,24 @@
+--- STDOUT ---
+[INFO] Running /home/yui/stck/tests/03_procedures.stck
+[INFO] Parsing
+[INFO] Generating IR
+[INFO] Typechecking
+[DEBUG] Generated IR:
+Proc "say-hi-to" @ /home/yui/stck/tests/03_procedures.stck:1:1
+Signature: [Str] -> []
+ - Push Str("Hi, ")
+ - Word Intrinsic("puts")
+ - Word Intrinsic("puts")
+ - Push Str("!\n")
+ - Word Intrinsic("puts")
+Proc "main" @ /home/yui/stck/tests/03_procedures.stck:5:1
+Signature: [] -> []
+ - Push Str("World")
+ - Word Intrinsic("say-hi-to")
+ - Push Str("someone")
+ - Word Intrinsic("say-hi-to")
+
+--- STDERR ---
+
+--- END ---
+Exited with code 0

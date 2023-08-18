@@ -1,6 +1,5 @@
 --- STDOUT ---
 [INFO] Running /home/yui/stck/tests/01_hello_world.stck
-[INFO] Tokenizing
 [INFO] Parsing
 [INFO] Generating IR
 [INFO] Typechecking

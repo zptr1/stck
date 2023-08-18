@@ -1,0 +1,8 @@
+proc say-hi-to
+  "Hi, " puts puts "!\n" puts
+end
+
+proc main
+  "World"   say-hi-to
+  "someone" say-hi-to
+end
