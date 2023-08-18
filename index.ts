@@ -1,9 +1,9 @@
 import { printProgramIR } from "./src/util/prettyprint";
+import { Preprocessor } from "./src/preprocessor";
 import { File } from "./src/shared/location";
 import { Parser } from "./src/parser";
 import { Lexer } from "./src/lexer";
 import { existsSync } from "fs";
-import { IR } from "./src/ir";
 import chalk from "chalk";
 import plib from "path";
 
@@ -17,8 +17,12 @@ async function run(file: File) {
   console.log("[INFO] Parsing");
   const ast = new Parser(tokens).parse();
 
+  console.log("[INFO] Generating IR");
+  const preprocessor = new Preprocessor(ast);
+  const ir = preprocessor.parse();
+
   console.log("[INFO] Typechecking");
-  const ir = new IR(ast).parse();
+  preprocessor.typechecker.typecheckProgram(ir);
 
   console.debug("[DEBUG] Generated IR:");
   printProgramIR(ir);

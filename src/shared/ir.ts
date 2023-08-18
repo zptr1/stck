@@ -16,6 +16,7 @@ export enum IRType {
 
 export enum IRWordKind {
   Proc,
+  Const,
   Intrinsic
 }
 
@@ -43,7 +44,7 @@ export interface IRConst extends IIR<IRType.Const> {
 
 export interface IRProc extends IIR<IRType.Proc> {
   name: string;
-  body: IRExpr[]
+  body: IRExpr[];
   signature?: ISignature;
 }
 
