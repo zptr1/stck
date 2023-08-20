@@ -8,7 +8,7 @@ Proc "add-numbers" @ /home/yui/stck/tests/04_procedure_signatures.stck:1:1
 Signature: [Int, Int] -> [Int]
  - Word Intrinsic("add")
 Proc "is-nice" @ /home/yui/stck/tests/04_procedure_signatures.stck:5:1
-Signature: [Int] -> [Boolean]
+Signature: [Int] -> [Bool]
  - Push Int(69)
  - Word Intrinsic("eq")
 Proc "main" @ /home/yui/stck/tests/04_procedure_signatures.stck:9:1
@@ -18,18 +18,22 @@ Signature: [] -> []
  - Word Intrinsic("add-numbers")
  - Word Intrinsic("is-nice")
  - If
-   - Push Str("34 + 35 is nice!\n")
+   - Push Int(17)
+   - Push Ptr("34 + 35 is nice!\n")
    - Word Intrinsic("puts")
  - Else
-   - Push Str("34 + 35 is not nice\n")
+   - Push Int(20)
+   - Push Ptr("34 + 35 is not nice\n")
    - Word Intrinsic("puts")
  - Push Int(96)
  - Word Intrinsic("is-nice")
  - If
-   - Push Str("96 is nice!\n")
+   - Push Int(12)
+   - Push Ptr("96 is nice!\n")
    - Word Intrinsic("puts")
  - Else
-   - Push Str("96 is not nice\n")
+   - Push Int(15)
+   - Push Ptr("96 is not nice\n")
    - Word Intrinsic("puts")
 
 --- STDERR ---

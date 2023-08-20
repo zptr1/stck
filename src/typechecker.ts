@@ -233,14 +233,14 @@ export class TypeChecker {
         const initialStack = structuredClone(ctx.stack);
 
         this.typecheckBody(expr.condition, ctx);
-        this.validateContextStack(expr.loc, ctx, [DataType.Boolean], false, "in the condition of the loop");
+        this.validateContextStack(expr.loc, ctx, [DataType.Bool], false, "in the condition of the loop");
         ctx.stackLocations.pop();
         ctx.stack.pop();
 
         this.typecheckBody(expr.body, ctx);
         this.validateContextStack(expr.loc, ctx, initialStack, true, "after a single interation of the loop");
       } else if (expr.type == IRType.If) {
-        this.validateContextStack(expr.loc, ctx, [DataType.Boolean], false, "for the condition");
+        this.validateContextStack(expr.loc, ctx, [DataType.Bool], false, "for the condition");
         ctx.stackLocations.pop();
         ctx.stack.pop();
 
@@ -368,7 +368,7 @@ export class TypeChecker {
         this.determineSignature(expr.body, callstack, ins, outs);
       } else if (expr.type == IRType.If) {
         if (outs.length) outs.pop();
-        else ins.push(DataType.Boolean);
+        else ins.push(DataType.Bool);
 
         if (expr.body.length > 0) {
           this.determineSignature(expr.body, callstack, ins, outs);

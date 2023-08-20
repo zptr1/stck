@@ -11,14 +11,14 @@ function formatStr(str: string): string {
   return chalk.yellow(JSON.stringify(str));
 }
 
-function formatObj(type: DataType, obj: any): string {
-  if (type == DataType.Int || type == DataType.Boolean) {
-    return chalk.cyanBright(obj);
-  } else if (type == DataType.Str) {
-    return formatStr(obj);
-  } else {
-    return `${obj}`;
-  }
+function formatObj(obj: any): string {
+  return (
+    typeof obj == "string"
+      ? formatStr(obj)
+    : typeof obj == "number" || typeof obj == "boolean"
+      ? chalk.cyanBright(obj)
+    : `${obj}`
+  );
 }
 
 function formatAst(ast: IAst<any>): string {
@@ -49,7 +49,7 @@ function printExpr(expr: Expr, padding = 1) {
   if (expr.type == AstType.Word) {
     console.log(prefix, `Word ${formatStr(expr.value)}`);
   } else if (expr.type == AstType.Push) {
-    console.log(prefix, `Push ${chalk.bold.whiteBright(DataType[expr.datatype])}(${formatObj(expr.datatype, expr.value)})`);
+    console.log(prefix, `Push ${chalk.bold.whiteBright(DataType[expr.datatype])}(${formatObj(expr.value)})`);
   } else if (expr.type == AstType.If) {
     console.log(prefix, chalk.bold("If"));
     expr.body.forEach((x) => printExpr(x, padding + 2));
@@ -74,7 +74,7 @@ function printIRExpr(expr: IRExpr, padding = 1) {
   if (expr.type == IRType.Word) {
     console.log(prefix, `Word ${chalk.bold(IRWordKind[expr.kind])}(${formatStr(expr.name)})`);
   } else if (expr.type == AstType.Push) {
-    console.log(prefix, `Push ${chalk.bold.whiteBright(DataType[expr.datatype])}(${formatObj(expr.datatype, expr.value)})`);
+    console.log(prefix, `Push ${chalk.bold.whiteBright(DataType[expr.datatype])}(${formatObj(expr.value)})`);
   } else if (expr.type == IRType.If) {
     console.log(prefix, chalk.bold("If"));
     expr.body.forEach((x) => printIRExpr(x, padding + 2));

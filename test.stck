@@ -1,4 +1,3 @@
 proc main
-  'H' print
-  "hello" puts
+  "Hello, World\n" <dump-stack> puts
 end

@@ -200,10 +200,10 @@ export class Parser {
       } else if (token.kind == Tokens.Word) {
         if (token.value == "int") {
           signature.push(DataType.Int);
-        } else if (token.value == "str") {
-          signature.push(DataType.Str);
+        } else if (token.value == "ptr") {
+          signature.push(DataType.Ptr);
         } else if (token.value == "bool") {
-          signature.push(DataType.Boolean);
+          signature.push(DataType.Bool);
         } else {
           reportError("Unknown type", token.loc);
         }

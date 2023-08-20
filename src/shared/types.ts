@@ -2,8 +2,9 @@ import { Tokens } from "./token";
 
 export enum DataType {
   Int,
+  Ptr,
   Str,
-  Boolean,
+  Bool,
   Any
 }
 
@@ -19,7 +20,7 @@ export function tokenToDataType(token: Tokens): DataType {
   } else if (token == Tokens.Str) {
     return DataType.Str;
   } else if (token == Tokens.Boolean) {
-    return DataType.Boolean;
+    return DataType.Bool;
   } else {
     throw new Error(`Cannot convert Tokens[${token}] to DataType`);
   }

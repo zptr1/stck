@@ -11,24 +11,28 @@ Signature: [] -> []
  - Push Int(69)
  - Word Intrinsic("eq")
  - If
-   - Push Str("Nice\n")
+   - Push Int(5)
+   - Push Ptr("Nice\n")
    - Word Intrinsic("puts")
  - Else
    - Word Intrinsic("dup")
    - Push Int(42)
    - Word Intrinsic("eq")
    - If
-     - Push Str("Nice\n")
+     - Push Int(5)
+     - Push Ptr("Nice\n")
      - Word Intrinsic("puts")
    - Else
      - Word Intrinsic("dup")
      - Push Int(6942)
      - Word Intrinsic("eq")
      - If
-       - Push Str("Very nice\n")
+       - Push Int(10)
+       - Push Ptr("Very nice\n")
        - Word Intrinsic("puts")
      - Else
-       - Push Str("Not nice\n")
+       - Push Int(9)
+       - Push Ptr("Not nice\n")
        - Word Intrinsic("puts")
  - Word Intrinsic("drop")
  - Push Int(0)

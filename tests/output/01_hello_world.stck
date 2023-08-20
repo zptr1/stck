@@ -6,7 +6,8 @@
 [DEBUG] Generated IR:
 Proc "print-hi" @ /home/yui/stck/tests/01_hello_world.stck:1:1
 Signature: [] -> []
- - Push Str("Hello, World\n")
+ - Push Int(13)
+ - Push Ptr("Hello, World\n")
  - Word Intrinsic("puts")
 Proc "main" @ /home/yui/stck/tests/01_hello_world.stck:5:1
 Signature: [] -> []

@@ -4,6 +4,7 @@ import { reportErrorWithStack } from "./errors";
 import { INTRINSICS } from "./shared/intrinsics";
 import { formatLoc } from "./shared/location";
 import { TypeChecker } from "./typechecker";
+import { DataType } from "./shared/types";
 import chalk from "chalk";
 
 /**
@@ -95,7 +96,23 @@ export class Preprocessor {
           loc: expr.loc
         });
       } else if (expr.type == AstType.Push) {
-        out.push(expr);
+        if (expr.datatype == DataType.Str) {
+          out.push({
+            type: AstType.Push,
+            datatype: DataType.Int,
+            value: expr.value.length,
+            loc: expr.loc
+          });
+
+          out.push({
+            type: AstType.Push,
+            datatype: DataType.Ptr,
+            value: expr.value,
+            loc: expr.loc
+          });
+        } else {
+          out.push(expr);
+        }
       } else {
         throw new Error(`IR Parsing is not implemented for ${AstType[(expr as Expr).type]}`);
       }

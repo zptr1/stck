@@ -5,17 +5,21 @@
 [INFO] Typechecking
 [DEBUG] Generated IR:
 Proc "say-hi-to" @ /home/yui/stck/tests/03_procedures.stck:1:1
-Signature: [Str] -> []
- - Push Str("Hi, ")
+Signature: [Int, Ptr] -> []
+ - Push Int(4)
+ - Push Ptr("Hi, ")
  - Word Intrinsic("puts")
  - Word Intrinsic("puts")
- - Push Str("!\n")
+ - Push Int(2)
+ - Push Ptr("!\n")
  - Word Intrinsic("puts")
 Proc "main" @ /home/yui/stck/tests/03_procedures.stck:5:1
 Signature: [] -> []
- - Push Str("World")
+ - Push Int(5)
+ - Push Ptr("World")
  - Word Intrinsic("say-hi-to")
- - Push Str("someone")
+ - Push Int(7)
+ - Push Ptr("someone")
  - Word Intrinsic("say-hi-to")
 
 --- STDERR ---
