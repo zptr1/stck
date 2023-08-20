@@ -3,7 +3,6 @@ import { Tokens } from "./token";
 export enum DataType {
   Int,
   Str,
-  Char,
   Boolean,
   Any
 }
@@ -19,8 +18,6 @@ export function tokenToDataType(token: Tokens): DataType {
     return DataType.Int;
   } else if (token == Tokens.Str) {
     return DataType.Str;
-  } else if (token == Tokens.Char) {
-    return DataType.Char;
   } else if (token == Tokens.Boolean) {
     return DataType.Boolean;
   } else {

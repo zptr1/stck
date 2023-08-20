@@ -83,13 +83,13 @@ export class Lexer {
 
     this.reader.next();
     while (true) {
-      value += this.readChar();
-
       if (this.reader.isEnd()) {
         this.error("Unclosed string");
       } else if (this.reader.peek() == '"') {
         break;
       }
+
+      value += this.readChar();
     }
 
     this.reader.next();
@@ -104,7 +104,7 @@ export class Lexer {
       this.error("Unclosed char");
     }
 
-    return this.token(Tokens.Char, value);
+    return this.token(Tokens.Int, value.charCodeAt(0));
   }
 
   private readWordToken(): Token {

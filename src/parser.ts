@@ -202,8 +202,6 @@ export class Parser {
           signature.push(DataType.Int);
         } else if (token.value == "str") {
           signature.push(DataType.Str);
-        } else if (token.value == "char") {
-          signature.push(DataType.Char);
         } else if (token.value == "bool") {
           signature.push(DataType.Boolean);
         } else {

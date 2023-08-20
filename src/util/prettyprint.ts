@@ -14,8 +14,6 @@ function formatStr(str: string): string {
 function formatObj(type: DataType, obj: any): string {
   if (type == DataType.Int || type == DataType.Boolean) {
     return chalk.cyanBright(obj);
-  } else if (type == DataType.Char) {
-    return chalk.yellow(`'${JSON.stringify(obj).replace(/^"|"$/g, "")}'`);
   } else if (type == DataType.Str) {
     return formatStr(obj);
   } else {

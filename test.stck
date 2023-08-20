@@ -1,7 +1,4 @@
-proc test
-  1 true if drop end
-end
-
 proc main
-
+  'H' print
+  "hello" puts
 end
