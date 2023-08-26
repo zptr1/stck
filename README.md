@@ -5,9 +5,9 @@ A stack-based programming language
 ## Roadmap / To-Do
 
 - [x] Lexer
-- [ ] **Parser** (in progress)
+- [x] Parser
 - [ ] **Type-Checker** (in progress)
-- [ ] Compiler into own bytecode
+- [ ] **Compiler into own bytecode** (in progress)
 - [ ] Turing Complete
 - [ ] Bootstrapped
 - [ ] Compiler into native
