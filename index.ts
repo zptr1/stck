@@ -1,6 +1,7 @@
-import { printProgramIR } from "./src/util/prettyprint";
+import { printByteCode } from "./src/util/prettyprint";
 import { Preprocessor } from "./src/preprocessor";
 import { File } from "./src/shared/location";
+import { Compiler } from "./src/compiler";
 import { Parser } from "./src/parser";
 import { Lexer } from "./src/lexer";
 import { existsSync } from "fs";
@@ -22,10 +23,13 @@ async function run(file: File) {
   console.log("[INFO] Typechecking");
   preprocessor.typechecker.typecheckProgram(ir);
 
-  console.debug("[DEBUG] Generated IR:");
-  printProgramIR(ir);
+  console.log("[INFO] Compiling")
+  const bytecode = new Compiler(ir).compile();
 
-  // todo: compilation and execution
+  console.debug("[DEBUG] Bytecode:");
+  printByteCode(bytecode);
+
+  // TODO: Save the bytecode and run it
 }
 
 if (process.argv.length < 3) {

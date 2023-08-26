@@ -3,6 +3,7 @@ import { IAst, AstType, Expr, IProgram } from "../shared/ast";
 import { formatLoc } from "../shared/location";
 import { DataType } from "../shared/types";
 import chalk from "chalk";
+import { ByteCode, Instr } from "../shared/instruction";
 
 // A shitty utility for debugging
 // Will probably be removed
@@ -117,5 +118,35 @@ export function printProgramIR(program: IRProgram) {
       );
     }
     proc.body.forEach((x) => printIRExpr(x));
+  }
+}
+
+export function printByteCode(bytecode: ByteCode) {
+  console.log(chalk.gray(".text"));
+
+  let addr = 0;
+  const text = bytecode.text.map(
+    (x) => [((addr += x.length) - x.length).toString(16), x]
+  );
+
+  const addrPadding = Math.max(...text.map((x) => x[0].length));
+  for (const [addr, str] of text) {
+    console.log("", chalk.green(`0x${addr.padStart(addrPadding, "0")}`), formatStr(str));
+  }
+
+  console.log(chalk.gray(".instr"));
+
+  const instrPadding = Math.max(
+    ...bytecode.instr.map((_, i) => i.toString().length)
+  );
+
+  for (let i = 0; i < bytecode.instr.length; i++) {
+    const instr = bytecode.instr[i];
+    console.log(
+      "",
+      chalk.bold.whiteBright(i.toString().padStart(instrPadding, " ")),
+      chalk.bold.yellow(Instr[instr[0]]),
+      instr.slice(1).map((x) => chalk.cyan(x)).join(", ")
+    );
   }
 }
