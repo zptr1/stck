@@ -3,38 +3,48 @@
 [INFO] Parsing
 [INFO] Generating IR
 [INFO] Typechecking
-[DEBUG] Generated IR:
-Proc "add-numbers" @ /home/yui/stck/tests/04_procedure_signatures.stck:1:1
-Signature: [Int, Int] -> [Int]
- - Word Intrinsic("add")
-Proc "is-nice" @ /home/yui/stck/tests/04_procedure_signatures.stck:5:1
-Signature: [Int] -> [Bool]
- - Push Int(69)
- - Word Intrinsic("eq")
-Proc "main" @ /home/yui/stck/tests/04_procedure_signatures.stck:9:1
-Signature: [] -> []
- - Push Int(34)
- - Push Int(35)
- - Word Intrinsic("add-numbers")
- - Word Intrinsic("is-nice")
- - If
-   - Push Int(17)
-   - Push Ptr("34 + 35 is nice!\n")
-   - Word Intrinsic("puts")
- - Else
-   - Push Int(20)
-   - Push Ptr("34 + 35 is not nice\n")
-   - Word Intrinsic("puts")
- - Push Int(96)
- - Word Intrinsic("is-nice")
- - If
-   - Push Int(12)
-   - Push Ptr("96 is nice!\n")
-   - Word Intrinsic("puts")
- - Else
-   - Push Int(15)
-   - Push Ptr("96 is not nice\n")
-   - Word Intrinsic("puts")
+[INFO] Compiling
+[DEBUG] Compiled bytecode:
+text:
+  0x00 "34 + 35 is nice!\n"
+  0x11 "34 + 35 is not nice\n"
+  0x25 "96 is nice!\n"
+  0x31 "96 is not nice\n"
+instr:
+   0 Push 34
+   1 Push 35
+   2 Call 23
+   3 Call 28
+   4 JmpIfNot 9
+   5 Push 17
+   6 Push 0
+   7 Puts 
+   8 Jmp 12
+   9 Push 20
+  10 Push 17
+  11 Puts 
+  12 Push 96
+  13 Call 28
+  14 JmpIfNot 19
+  15 Push 12
+  16 Push 37
+  17 Puts 
+  18 Jmp 22
+  19 Push 15
+  20 Push 49
+  21 Puts 
+  22 Halt 0
+  23 Add 
+  24 Ret 
+  25 Push 69
+  26 Eq 
+  27 Ret 
+  28 Push 69
+  29 Eq 
+  30 Ret 
+[INFO] Running
+34 + 35 is nice!
+96 is not nice
 
 --- STDERR ---
 

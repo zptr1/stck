@@ -122,7 +122,7 @@ export function printProgramIR(program: IRProgram) {
 }
 
 export function printByteCode(bytecode: ByteCode) {
-  console.log(chalk.gray(".text"));
+  console.log(chalk.gray("text:"));
 
   let addr = 0;
   const text = bytecode.text.map(
@@ -131,10 +131,10 @@ export function printByteCode(bytecode: ByteCode) {
 
   const addrPadding = Math.max(...text.map((x) => x[0].length));
   for (const [addr, str] of text) {
-    console.log("", chalk.green(`0x${addr.padStart(addrPadding, "0")}`), formatStr(str));
+    console.log(" ", chalk.green(`0x${addr.padStart(addrPadding, "0")}`), formatStr(str));
   }
 
-  console.log(chalk.gray(".instr"));
+  console.log(chalk.gray("instr:"));
 
   const instrPadding = Math.max(
     ...bytecode.instr.map((_, i) => i.toString().length)
@@ -143,7 +143,7 @@ export function printByteCode(bytecode: ByteCode) {
   for (let i = 0; i < bytecode.instr.length; i++) {
     const instr = bytecode.instr[i];
     console.log(
-      "",
+      " ",
       chalk.bold.whiteBright(i.toString().padStart(instrPadding, " ")),
       chalk.bold.yellow(Instr[instr[0]]),
       instr.slice(1).map((x) => chalk.cyan(x)).join(", ")

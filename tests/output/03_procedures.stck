@@ -3,24 +3,40 @@
 [INFO] Parsing
 [INFO] Generating IR
 [INFO] Typechecking
-[DEBUG] Generated IR:
-Proc "say-hi-to" @ /home/yui/stck/tests/03_procedures.stck:1:1
-Signature: [Int, Ptr] -> []
- - Push Int(4)
- - Push Ptr("Hi, ")
- - Word Intrinsic("puts")
- - Word Intrinsic("puts")
- - Push Int(2)
- - Push Ptr("!\n")
- - Word Intrinsic("puts")
-Proc "main" @ /home/yui/stck/tests/03_procedures.stck:5:1
-Signature: [] -> []
- - Push Int(5)
- - Push Ptr("World")
- - Word Intrinsic("say-hi-to")
- - Push Int(7)
- - Push Ptr("someone")
- - Word Intrinsic("say-hi-to")
+[INFO] Compiling
+[DEBUG] Compiled bytecode:
+text:
+  0x00 "World"
+  0x05 "someone"
+  0x0c "Hi, "
+  0x10 "!\n"
+instr:
+   0 Push 5
+   1 Push 0
+   2 Call 15
+   3 Push 7
+   4 Push 5
+   5 Call 15
+   6 Halt 0
+   7 Push 4
+   8 Push 12
+   9 Puts 
+  10 Puts 
+  11 Push 2
+  12 Push 16
+  13 Puts 
+  14 Ret 
+  15 Push 4
+  16 Push 12
+  17 Puts 
+  18 Puts 
+  19 Push 2
+  20 Push 16
+  21 Puts 
+  22 Ret 
+[INFO] Running
+Hi, World!
+Hi, someone!
 
 --- STDERR ---
 

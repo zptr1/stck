@@ -3,15 +3,19 @@
 [INFO] Parsing
 [INFO] Generating IR
 [INFO] Typechecking
-[DEBUG] Generated IR:
-Proc "print-hi" @ /home/yui/stck/tests/01_hello_world.stck:1:1
-Signature: [] -> []
- - Push Int(13)
- - Push Ptr("Hello, World\n")
- - Word Intrinsic("puts")
-Proc "main" @ /home/yui/stck/tests/01_hello_world.stck:5:1
-Signature: [] -> []
- - Word Intrinsic("print-hi")
+[INFO] Compiling
+[DEBUG] Compiled bytecode:
+text:
+  0x0 "Hello, World\n"
+instr:
+  0 Call 2
+  1 Halt 0
+  2 Push 13
+  3 Push 0
+  4 Puts 
+  5 Ret 
+[INFO] Running
+Hello, World
 
 --- STDERR ---
 

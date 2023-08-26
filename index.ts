@@ -5,6 +5,7 @@ import { Compiler } from "./src/compiler";
 import { Parser } from "./src/parser";
 import { Lexer } from "./src/lexer";
 import { existsSync } from "fs";
+import { VM } from "./src/vm";
 import chalk from "chalk";
 import plib from "path";
 
@@ -23,13 +24,15 @@ async function run(file: File) {
   console.log("[INFO] Typechecking");
   preprocessor.typechecker.typecheckProgram(ir);
 
-  console.log("[INFO] Compiling")
+  console.log("[INFO] Compiling");
   const bytecode = new Compiler(ir).compile();
 
-  console.debug("[DEBUG] Bytecode:");
+  console.debug("[DEBUG] Compiled bytecode:");
   printByteCode(bytecode);
 
-  // TODO: Save the bytecode and run it
+  console.log("[INFO] Running");
+
+  new VM(bytecode);
 }
 
 if (process.argv.length < 3) {

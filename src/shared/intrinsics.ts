@@ -26,8 +26,15 @@ addIntrinsic("gt",     Instr.Gt,     [DataType.Int, DataType.Int],  [DataType.Bo
 addIntrinsic("dup",    Instr.Dup,    [DataType.Any],                [DataType.Any, DataType.Any]);
 addIntrinsic("drop",   Instr.Drop,   [DataType.Any],                []);
 addIntrinsic("swap",   Instr.Swap,   [DataType.Any, DataType.Any],  [DataType.Any, DataType.Any]);
+addIntrinsic("putu",   Instr.Putu,   [DataType.Int],                []);
+addIntrinsic("putch",  Instr.Putch,  [DataType.Int],                []);
+
+// TODO: temporary; move to std in the future
 addIntrinsic("print",  Instr.Print,  [DataType.Int],                []);
-addIntrinsic("puts",   Instr.Puts,   [DataType.Int, DataType.Ptr],  []); // TODO: temporary; move to std in the future
+addIntrinsic("puts",   Instr.Puts,   [DataType.Int, DataType.Ptr],  []);
 
 // Compile-time intrinsics
 addIntrinsic("<dump-stack>", Instr.Nop, [], []);
+addIntrinsic("cast(int)",    Instr.Nop, [DataType.Any], [DataType.Int]);
+addIntrinsic("cast(ptr)",    Instr.Nop, [DataType.Any], [DataType.Ptr]);
+addIntrinsic("cast(bool)",   Instr.Nop, [DataType.Any], [DataType.Bool]);

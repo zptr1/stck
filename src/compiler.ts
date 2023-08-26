@@ -37,9 +37,11 @@ export class Compiler {
     for (const expr of exprs) {
       if (expr.type == IRType.Word) {
         if (expr.kind == IRWordKind.Intrinsic) {
-          this.instr.push([
-            INTRINSICS.get(expr.name)!.instr
-          ]);
+          const intrinsic = INTRINSICS.get(expr.name)!;
+
+          if (intrinsic.instr != Instr.Nop) {
+            this.instr.push([intrinsic.instr]);
+          }
         } else if (expr.kind == IRWordKind.Proc) {
           if (!this.compiledProcs.has(expr.name)) {
             this.procQueue.push(expr.name);
@@ -96,6 +98,7 @@ export class Compiler {
     this.marker(`proc-${proc.name}`);
     this.compiledProcs.add(proc.name);
     this.compileBody(proc.body);
+    this.instr.push([Instr.Ret]);
   }
 
   public compile(): ByteCode {
@@ -107,6 +110,7 @@ export class Compiler {
     }
 
     this.compileProc(this.program.procs.get("main")!);
+    this.instr.pop();
     this.instr.push([Instr.Halt, 0]);
 
     while (this.procQueue.length) {
@@ -116,6 +120,7 @@ export class Compiler {
     }
 
     return {
+      memorySize: 16_000, // TODO
       text: [...this.text.keys()],
       instr: this.instr.map(
         (x) => x.map((y) => {

@@ -8,7 +8,9 @@ A stack-based programming language
 - [x] Parser
 - [ ] **Type-Checker** (in progress)
 - [ ] **Compiler into own bytecode** (in progress)
+- [ ] **Virtual Machine** (in progress)
 - [ ] Turing Complete
+- [ ] More Examples and Documentation
 - [ ] Bootstrapped
 - [ ] Compiler into native
 
