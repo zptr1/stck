@@ -16,6 +16,7 @@ export enum Instr {
   Swap,
   Print,
   Puts,
+  Halt
 }
 
 export type MarkedInstr = [Instr, ...(number | string)[]];

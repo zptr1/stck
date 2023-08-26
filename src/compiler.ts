@@ -92,6 +92,12 @@ export class Compiler {
     }
   }
 
+  public compileProc(proc: IRProc) {
+    this.marker(`proc-${proc.name}`);
+    this.compiledProcs.add(proc.name);
+    this.compileBody(proc.body);
+  }
+
   public compile(): ByteCode {
     if (!this.program.procs.has("main")) {
       reportErrorWithoutLoc(
@@ -100,15 +106,13 @@ export class Compiler {
       );
     }
 
-    this.procQueue.push("main");
+    this.compileProc(this.program.procs.get("main")!);
+    this.instr.push([Instr.Halt, 0]);
 
     while (this.procQueue.length) {
-      const name = this.procQueue.shift()!;
-      const proc = this.program.procs.get(name)!;
-
-      this.marker(`proc-${name}`);
-      this.compiledProcs.add(name);
-      this.compileBody(proc.body);
+      this.compileProc(
+        this.program.procs.get(this.procQueue.shift()!)!
+      );
     }
 
     return {
