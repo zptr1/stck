@@ -38,8 +38,7 @@ export class Compiler {
       if (expr.type == IRType.Word) {
         if (expr.kind == IRWordKind.Intrinsic) {
           this.instr.push([
-            Instr.Intrinsic,
-            INTRINSICS.get(expr.name)!.index
+            INTRINSICS.get(expr.name)!.instr
           ]);
         } else if (expr.kind == IRWordKind.Proc) {
           if (!this.compiledProcs.has(expr.name)) {

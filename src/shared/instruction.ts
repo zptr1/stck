@@ -1,9 +1,21 @@
 export enum Instr {
   Push,
   Call,
-  Intrinsic,
+  Nop,
   Jmp,
   JmpIfNot,
+  Add,
+  Sub,
+  Mul,
+  DivMod,
+  Lt,
+  Eq,
+  Gt,
+  Dup,
+  Drop,
+  Swap,
+  Print,
+  Puts,
 }
 
 export type MarkedInstr = [Instr, ...(number | string)[]];
