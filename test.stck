@@ -1,3 +1,9 @@
 proc main
-  "Hello, World\n" <dump-stack> puts
+  "Hello, World\n" puts
+
+  34 35 add 69 eq if
+    "Nice\n" puts
+  else
+    "Not nice\n" puts
+  end
 end

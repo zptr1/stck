@@ -1,5 +1,5 @@
+import { File, Location } from "./location";
 import { IPush, ISignature } from "./ast";
-import { Location } from "./location";
 
 export interface IIR<T extends IRType> {
   type: T;
@@ -49,5 +49,6 @@ export interface IRProc extends IIR<IRType.Proc> {
 }
 
 export interface IRProgram {
-  procs: Map<string, IRProc>
+  file: File;
+  procs: Map<string, IRProc>;
 }

@@ -1,4 +1,4 @@
-import { Location, Span, formatLoc } from "../shared/location";
+import { File, Location, Span, formatLoc } from "../shared/location";
 import chalk, { ChalkInstance } from "chalk";
 import { IWord } from "../shared/ast";
 import lineColumn from "line-column";
@@ -119,4 +119,22 @@ export function reportError(message: string, loc: Location, notes: string[] = []
 
 export function reportWarning(message: string, loc: Location, notes: string[] = []) {
   report(chalk.yellow, "warn", message, loc, notes);
+}
+
+export function reportErrorWithoutLoc(message: string, notes: string[] = [], file?: File): never {
+  console.error();
+  console.error(chalk.red.bold(`error:`), chalk.whiteBright(message));
+  for (const note of notes) {
+    console.error(chalk.bold.blue("note:"), chalk.whiteBright(note));
+  }
+
+  if (file) {
+    console.error("", chalk.gray("~ in"), chalk.gray.bold(file.path));
+    for (const path of file.parentStack()) {
+      console.error("", chalk.gray("~ in"), chalk.gray(path));
+    }
+  }
+
+  console.error();
+  process.exit(1);
 }

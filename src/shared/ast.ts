@@ -1,4 +1,4 @@
-import { Location } from "./location";
+import { File, Location } from "./location";
 import { DataType } from "./types";
 
 export enum AstType {
@@ -61,6 +61,7 @@ export interface IConst extends IAst<AstType.Const> {
 }
 
 export interface IProgram {
+  file: File;
   procs: Map<string, IProc>;
   macros: Map<string, IMacro>;
   consts: Map<string, IConst>;

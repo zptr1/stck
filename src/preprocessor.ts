@@ -159,6 +159,7 @@ export class Preprocessor {
     this.program.procs.forEach((proc) => this.parseProc(proc));
 
     return {
+      file: this.program.file,
       procs: this.procs
     };
   }

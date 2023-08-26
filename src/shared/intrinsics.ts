@@ -5,12 +5,14 @@ export const INTRINSICS = new Map<string, Intrinsic>();
 export interface Intrinsic {
   name: string;
   ins: DataType[],
-  outs: DataType[]
+  outs: DataType[],
+  index: number
 }
 
 function addIntrinsic(name: string, ins: DataType[], outs: DataType[]) {
   INTRINSICS.set(name, {
-    name, ins, outs
+    name, ins, outs,
+    index: INTRINSICS.size
   });
 }
 

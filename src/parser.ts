@@ -18,15 +18,20 @@ export class Parser {
   private includeDepth: number = 0;
   private lastToken: Token | undefined = undefined;
 
-  public readonly program: IProgram = {
-    procs: new Map(),
-    macros: new Map(),
-    consts: new Map(),
-  };
+  public readonly program: IProgram;
 
   constructor(tokens: Token[]) {
     this.tokens = tokens.reverse();
-    this.includeCache.add(this.tokens[0].loc.file.path);
+
+    const file = this.tokens[0].loc.file;
+    this.includeCache.add(file.path);
+
+    this.program = {
+      file: file,
+      procs: new Map(),
+      macros: new Map(),
+      consts: new Map(),
+    }
   }
 
   private next(): Token {

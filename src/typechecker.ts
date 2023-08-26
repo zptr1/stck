@@ -334,6 +334,8 @@ export class TypeChecker {
           // TODO: Try to determine DataType.Any by how it is used later
           //       e. g. `<any> <any> add` would replace these types with `<int> <int> add`
 
+          // This would require introducing some metadata for cases like `dup add` etc
+
           if (intrinsic.name == "dup") {
             if (outs.length) {
               const o = outs.pop()!;
