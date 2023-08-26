@@ -65,7 +65,7 @@ export class Preprocessor {
         } else if (this.program.procs.has(expr.value)) {
           out.push({
             type: IRType.Word,
-            kind: IRWordKind.Intrinsic,
+            kind: IRWordKind.Proc,
             name: expr.value,
             loc: expr.loc
           });
@@ -114,7 +114,7 @@ export class Preprocessor {
           out.push(expr);
         }
       } else {
-        throw new Error(`IR Parsing is not implemented for ${AstType[(expr as Expr).type]}`);
+        throw new Error(`Preprocessing is not implemented for ${AstType[(expr as Expr).type]}`);
       }
     }
 
