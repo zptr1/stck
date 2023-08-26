@@ -1,7 +1,7 @@
-import { StackElement, reportError, reportErrorWithStack } from "./errors";
+import { StackElement, reportError, reportErrorWithStack, reportWarning } from "./errors";
 import { AstType, Expr, IProgram, IPush, ISignature, IWord } from "./shared/ast";
-import { DataType, compareDataTypeArrays } from "./shared/types";
 import { IRConst, IRExpr, IRProc, IRProgram, IRType } from "./shared/ir";
+import { DataType, compareDataTypeArrays } from "./shared/types";
 import { INTRINSICS, Intrinsic } from "./shared/intrinsics";
 import { Location, formatLoc } from "./shared/location";
 import { Preprocessor } from "./preprocessor";
@@ -393,6 +393,26 @@ export class TypeChecker {
         proc.signature = { ins: [], outs: [] };
       } else {
         proc.signature = this.determineSignature(proc.body, callstack);
+
+        if (
+          proc.signature.ins.includes(DataType.Any)
+          || proc.signature.outs.includes(DataType.Any)
+          ) {
+          // This situation occurs when `dup` or `swap` have been used without enough data on the stack.
+          // TODO: Make the `determineSignature` method determine the signature more accurately.
+
+          reportWarning(
+            "The procedure has unsafe signature",
+            proc.loc, [
+              "No signature has been specified",
+              `Determined signature: ${
+                chalk.bold(proc.signature.ins.map((x) => DataType[x]).join(" "))
+              } -> ${
+                chalk.bold(proc.signature.outs.map((x) => DataType[x]).join(" "))
+              }`
+            ]
+          );
+        }
       }
     }
 
