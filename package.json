@@ -1,6 +1,6 @@
 {
   "name": "stck",
-  "module": "index.ts",
+  "module": "stck.ts",
   "type": "module",
   "devDependencies": {
     "bun-types": "latest"

@@ -4,6 +4,7 @@ import { formatLoc } from "../shared/location";
 import { DataType } from "../shared/types";
 import chalk from "chalk";
 import { ByteCode, Instr } from "../shared/instruction";
+import { Token } from "../shared/token";
 
 // A shitty utility for debugging
 // Will probably be removed
@@ -147,6 +148,22 @@ export function printByteCode(bytecode: ByteCode) {
       chalk.bold.whiteBright(i.toString().padStart(instrPadding, " ")),
       chalk.bold.yellow(Instr[instr[0]]),
       instr.slice(1).map((x) => chalk.cyan(x)).join(", ")
+    );
+  }
+}
+
+export function printTokens(tokens: Token[]) {
+  for (const token of tokens) {
+    console.log(
+      chalk.gray("-"),
+      chalk.bold(token.kind) + (
+        typeof token.value != "undefined"
+          ? `(${formatObj(token.value)})`
+          : ""
+      ),
+      chalk.gray(
+        `@ ${token.loc.span[0]}..${token.loc.span[1]}`
+      ),
     );
   }
 }

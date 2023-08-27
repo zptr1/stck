@@ -1,9 +1,15 @@
 // The standard library
 
-/// Aliases for builtin operations that accept any types
+const sizeof(u64) 8 end
+const sizeof(u32) 4 end
+const sizeof(u16) 2 end
+const sizeof(u8)  1 end
 
-// TODO: Find a better way to cast two elements on top of the stack,
-//       as doing `swap` every time is not really good for performance
+const sizeof(int)  sizeof(u32) end
+const sizeof(ptr)  sizeof(u32) end
+const sizeof(bool) sizeof(u8)  end
+
+const sizeof(str)  sizeof(int) sizeof(ptr) add end
 
 macro +  cast(int) swap cast(int)      add    end
 macro -  cast(int) swap cast(int) swap sub    end
@@ -21,7 +27,6 @@ macro && cast(bool) swap cast(bool) land end
 macro || cast(bool) swap cast(bool) lor  end
 macro !  cast(bool)                 lnot end
 
-///
 macro lxor
   dup2 land lnot rot rot lor land
 end
