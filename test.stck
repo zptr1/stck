@@ -1,3 +1,16 @@
+proc printstr :: int ptr do
+  swap 0 while
+    dup2 gt
+  do
+    rot dup2 cast(int) add cast(ptr)
+    1 swap puts
+    rot rot
+    1 add
+  end
+
+  drop drop drop
+end
+
 proc main
-  "Hello, World!\n" puts
+  "Hello, World!\n" printstr
 end
