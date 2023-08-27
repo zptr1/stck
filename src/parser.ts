@@ -285,7 +285,6 @@ export class Parser {
 
         const path = plib.resolve(found);
         if (!this.includeCache.has(path)) {
-          console.debug(chalk.gray(`[DEBUG] Including ${chalk.bold(path)}`));
           this.includeCache.add(path);
 
           const file = token.loc.file.child(path);

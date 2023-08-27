@@ -1,7 +1,23 @@
-proc main
-  69 0 cast(ptr) write
-  42 1 cast(ptr) write
+include "std.stck"
 
-  0 cast(ptr) read print
-  1 cast(ptr) read print
+macro mem 8000 cast(ptr) end
+
+proc fib :: int -> int do
+  dup 2 gt if
+    dup  2 sub fib
+    swap 1 sub fib
+    add
+  else
+    drop 1
+  end
+end
+
+proc main
+  8 mem write
+
+  "fib("       puts
+  mem read     putu
+  ") = "       puts
+  mem read fib putu
+  "\n"         puts
 end
