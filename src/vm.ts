@@ -81,6 +81,8 @@ export class VM {
       } else if (type == Instr.Dup2) {
         const a = stack.pop()!, b = stack.pop()!;
         stack.push(b, a, b, a);
+      } else if (type == Instr.Over) {
+        stack.push(stack.at(-2)!);
       } else if (type == Instr.Swap2) {
         stack.push(stack.pop()!, stack.pop()!, stack.pop()!, stack.pop()!);
       } else if (type == Instr.Putch) {

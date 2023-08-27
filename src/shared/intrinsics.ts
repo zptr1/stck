@@ -31,9 +31,9 @@ addIntrinsic("gt", Instr.Gt, [DataType.Int, DataType.Int], [DataType.Bool]);
 addIntrinsic("dup",   Instr.Dup,  [DataType.Any],                             [DataType.Any, DataType.Any]);
 addIntrinsic("drop",  Instr.Drop, [DataType.Any],                             []);
 addIntrinsic("swap",  Instr.Swap, [DataType.Any, DataType.Any],               [DataType.Any, DataType.Any]);
-addIntrinsic("rot",   Instr.Rot,  [DataType.Any, DataType.Any, DataType.Any], [DataType.Any, DataType.Any, DataType.Any])
-addIntrinsic("dup2",  Instr.Dup2, [DataType.Any, DataType.Any],               [DataType.Any, DataType.Any, DataType.Any, DataType.Any])
-// oof
+addIntrinsic("rot",   Instr.Rot,  [DataType.Any, DataType.Any, DataType.Any], [DataType.Any, DataType.Any, DataType.Any]);
+addIntrinsic("over",  Instr.Over, [DataType.Any, DataType.Any],               [DataType.Any, DataType.Any, DataType.Any]);
+addIntrinsic("dup2",  Instr.Dup2, [DataType.Any, DataType.Any],               [DataType.Any, DataType.Any, DataType.Any, DataType.Any]);
 addIntrinsic(
   "swap2", Instr.Swap2,
   [DataType.Any, DataType.Any, DataType.Any, DataType.Any],

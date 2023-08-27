@@ -22,6 +22,7 @@ export enum Instr {
   Drop,
   Swap,
   Rot,
+  Over,
   Dup2,
   Swap2,
 

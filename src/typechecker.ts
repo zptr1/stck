@@ -88,7 +88,7 @@ export class TypeChecker {
     if (intrinsic.name == "dup") {
       const a = ctx.stack.pop()!;
       ctx.stack.push(a, a);
-      ctx.stackLocations.push(loc, loc);
+      ctx.stackLocations.push(loc);
     } else if (intrinsic.name == "dup2") {
       const a = ctx.stack.pop()!, b = ctx.stack.pop()!;
       ctx.stack.push(b, a, b, a);
@@ -98,6 +98,9 @@ export class TypeChecker {
             b = ctx.stack.pop()!,
             c = ctx.stack.pop()!;
       ctx.stack.push(b, a, c);
+    } else if (intrinsic.name == "over") {
+      ctx.stack.push(ctx.stack.at(-2)!);
+      ctx.stackLocations.push(loc);
     } else if (intrinsic.name == "swap") {
       ctx.stack.push(ctx.stack.pop()!, ctx.stack.pop()!);
     } else if (intrinsic.name == "swap2") {
@@ -159,6 +162,8 @@ export class TypeChecker {
           } else if (expr.value == "dup2") {
             const a = stackValues.pop()!, b = stackValues.pop()!;
             stackValues.push(b, a, b, a);
+          } else if (expr.value == "over") {
+            stackValues.push(stackValues.at(-2)!);
           } else if (expr.value == "rot") {
             const a = stackValues.pop()!,
                   b = stackValues.pop()!,
@@ -376,6 +381,8 @@ export class TypeChecker {
                   b = outs.pop() ?? DataType.Any,
                   c = outs.pop() ?? DataType.Any;
             outs.push(b, a, c);
+          } else if (intrinsic.name == "over") {
+            outs.push(outs.at(-2) ?? DataType.Any);
           } else if (intrinsic.name == "swap2") {
             outs.push(
               outs.pop() ?? DataType.Any,
