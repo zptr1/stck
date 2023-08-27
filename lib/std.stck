@@ -1,6 +1,6 @@
 // The standard library
 
-const sizeof(u64) 8 end
+/// Types
 const sizeof(u32) 4 end
 const sizeof(u16) 2 end
 const sizeof(u8)  1 end
@@ -11,11 +11,17 @@ const sizeof(bool) sizeof(u8)  end
 
 const sizeof(str)  sizeof(int) sizeof(ptr) add end
 
+/// Pointer operations
+macro ptr+ + cast(ptr) end
+macro ptr- - cast(ptr) end
+
+/// Mathematical operations
 macro +  cast(int) swap cast(int)      add    end
 macro -  cast(int) swap cast(int) swap sub    end
 macro *  cast(int) swap cast(int)      mul    end
 macro /% cast(int) swap cast(int) swap divmod end
 
+/// Bitwise operations
 macro << cast(int) swap cast(int) swap shl end
 macro >> cast(int) swap cast(int) swap shr end
 macro &  cast(int) swap cast(int) swap and end
@@ -23,10 +29,43 @@ macro |  cast(int) swap cast(int) swap or  end
 macro ^  cast(int) swap cast(int) swap xor end
 macro ~  cast(int)                     not end
 
+/// Logical operations
+macro > cast(int) swap cast(int) lt end
+macro < cast(int) swap cast(int) gt end
+macro = cast(int) swap cast(int) eq end
+
 macro && cast(bool) swap cast(bool) land end
 macro || cast(bool) swap cast(bool) lor  end
 macro !  cast(bool)                 lnot end
 
 macro lxor
   dup2 land lnot rot rot lor land
+end
+
+/// Memory
+
+proc write(int) :: int ptr do
+  swap 4 while dup 0 gt do
+    1 sub
+    // ptr int (inc=3..0) ((int >> 8*inc) & 255)
+    dup2 3 swap sub 8 mul shr 255 and
+    // int ptr (inc=3..0) ((int >> 8*inc) & 255) (ptr+inc)
+    rot swap2 dup2 ptr+ swap swap2 rot write
+    // ptr int (inc=3..0)
+    rot swap
+  end drop drop drop
+end
+
+proc read(int) :: ptr -> int do
+  // ptr int inc
+  0 0 while dup 4 lt do
+    // int inc ptr (read(inc+ptr))
+    rot dup2 ptr+ read
+    // int ptr inc (read(inc+ptr)<<(3-inc)*8)
+    rot dup 3 swap sub 8 mul rot swap shl
+    // ptr inc (int|read(inc+ptr)<<(3-inc)*8)
+    swap rot swap2 swap or
+    // ptr int inc
+    swap 1 add
+  end drop swap drop
 end
