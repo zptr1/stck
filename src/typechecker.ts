@@ -86,11 +86,22 @@ export class TypeChecker {
 
     // TODO: find a better way to handle this
     if (intrinsic.name == "dup") {
-      const x = ctx.stack.pop()!;
-      ctx.stack.push(x, x);
+      const a = ctx.stack.pop()!;
+      ctx.stack.push(a, a);
       ctx.stackLocations.push(loc, loc);
+    } else if (intrinsic.name == "dup2") {
+      const a = ctx.stack.pop()!, b = ctx.stack.pop()!;
+      ctx.stack.push(b, a, b, a);
+      ctx.stackLocations.push(loc, loc);
+    } else if (intrinsic.name == "rot") {
+      const a = ctx.stack.pop()!,
+            b = ctx.stack.pop()!,
+            c = ctx.stack.pop()!;
+      ctx.stack.push(b, a, c);
     } else if (intrinsic.name == "swap") {
       ctx.stack.push(ctx.stack.pop()!, ctx.stack.pop()!);
+    } else if (intrinsic.name == "swap2") {
+      ctx.stack.push(ctx.stack.pop()!, ctx.stack.pop()!, ctx.stack.pop()!, ctx.stack.pop()!);
     } else {
       for (let i = 0; i < intrinsic.ins.length; i++) {
         ctx.stack.pop();
@@ -141,6 +152,18 @@ export class TypeChecker {
             stackValues.pop();
           } else if (expr.value == "swap") {
             stackValues.push(stackValues.pop(), stackValues.pop());
+          } else if (expr.value == "swap2") {
+            stackValues.push(
+              stackValues.pop(), stackValues.pop(), stackValues.pop(), stackValues.pop()
+            );
+          } else if (expr.value == "dup2") {
+            const a = stackValues.pop()!, b = stackValues.pop()!;
+            stackValues.push(b, a, b, a);
+          } else if (expr.value == "rot") {
+            const a = stackValues.pop()!,
+                  b = stackValues.pop()!,
+                  c = stackValues.pop()!;
+            stackValues.push(b, a, c);
           } else {
             reportError("Cannot use this intrinsic in compile-time expression", expr.loc);
           }
@@ -337,32 +360,39 @@ export class TypeChecker {
           // This would require introducing some metadata for cases like `dup add` etc
 
           if (intrinsic.name == "dup") {
-            if (outs.length) {
-              const o = outs.pop()!;
-              outs.push(o, o);
-            } else {
-              ins.push(DataType.Any);
-              outs.push(DataType.Any, DataType.Any);
-            }
+            const o = outs.pop() ?? DataType.Any;
+            outs.push(o, o);
           } else if (intrinsic.name == "swap") {
-            if (outs.length > 1) {
-              outs.push(outs.pop()!, outs.pop()!);
-            } else if (outs.length > 0) {
-              ins.push(DataType.Any);
-              outs.push(outs.pop()!, DataType.Any);
-            } else {
-              ins.push(DataType.Any, DataType.Any);
-              outs.push(DataType.Any, DataType.Any);
-            }
-          } else {
-            for (const i of intrinsic.ins) {
-              if (outs.length) outs.pop();
-              else ins.push(i);
-            }
+            outs.push(
+              outs.pop() ?? DataType.Any,
+              outs.pop() ?? DataType.Any
+            );
+          } else if (intrinsic.name == "dup2") {
+            const a = outs.pop() ?? DataType.Any,
+                  b = outs.pop() ?? DataType.Any;
+            outs.push(b, a, b, a);
+          } else if (intrinsic.name == "rot") {
+            const a = outs.pop() ?? DataType.Any,
+                  b = outs.pop() ?? DataType.Any,
+                  c = outs.pop() ?? DataType.Any;
+            outs.push(b, a, c);
+          } else if (intrinsic.name == "swap2") {
+            outs.push(
+              outs.pop() ?? DataType.Any,
+              outs.pop() ?? DataType.Any,
+              outs.pop() ?? DataType.Any,
+              outs.pop() ?? DataType.Any,
+            );
+          }
 
-            for (const o of intrinsic.outs) {
-              outs.push(o);
-            }
+          for (const i of intrinsic.ins) {
+            if (outs.length) {
+              if (i != DataType.Any) outs.pop();
+            } else ins.push(i);
+          }
+
+          for (const o of intrinsic.outs) {
+            if (o != DataType.Any) outs.push(o);
           }
         }
       } else if (expr.type == IRType.While) {

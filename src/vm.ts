@@ -75,6 +75,14 @@ export class VM {
         stack.pop();
       } else if (type == Instr.Swap) {
         stack.push(stack.pop()!, stack.pop()!);
+      } else if (type == Instr.Rot) {
+        const a = stack.pop()!, b = stack.pop()!, c = stack.pop()!;
+        stack.push(b, a, c);
+      } else if (type == Instr.Dup2) {
+        const a = stack.pop()!, b = stack.pop()!;
+        stack.push(b, a, b, a);
+      } else if (type == Instr.Swap2) {
+        stack.push(stack.pop()!, stack.pop()!, stack.pop()!, stack.pop()!);
       } else if (type == Instr.Putch) {
         process.stdout.write(String.fromCharCode(stack.pop()!));
       } else if (type == Instr.Putu) {

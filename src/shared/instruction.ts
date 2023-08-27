@@ -21,6 +21,9 @@ export enum Instr {
   Dup,
   Drop,
   Swap,
+  Rot,
+  Dup2,
+  Swap2,
 
   // Program
   Print,
