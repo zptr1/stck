@@ -1,0 +1,27 @@
+// The standard library
+
+/// Aliases for builtin operations that accept any types
+
+// TODO: Find a better way to cast two elements on top of the stack,
+//       as doing `swap` every time is not really good for performance
+
+macro +  cast(int) swap cast(int)      add    end
+macro -  cast(int) swap cast(int) swap sub    end
+macro *  cast(int) swap cast(int)      mul    end
+macro /% cast(int) swap cast(int) swap divmod end
+
+macro << cast(int) swap cast(int) swap shl end
+macro >> cast(int) swap cast(int) swap shr end
+macro &  cast(int) swap cast(int) swap and end
+macro |  cast(int) swap cast(int) swap or  end
+macro ^  cast(int) swap cast(int) swap xor end
+macro ~  cast(int)                     not end
+
+macro && cast(bool) swap cast(bool) land end
+macro || cast(bool) swap cast(bool) lor  end
+macro !  cast(bool)                 lnot end
+
+///
+macro lxor
+  dup2 land lnot rot rot lor land
+end
