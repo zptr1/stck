@@ -40,6 +40,10 @@ addIntrinsic(
   [DataType.Any, DataType.Any, DataType.Any, DataType.Any]
 );
 
+// Memory
+addIntrinsic("write",  Instr.Write,  [DataType.Int, DataType.Ptr],  []);
+addIntrinsic("read",   Instr.Read,   [DataType.Ptr],                [DataType.Int])
+
 // Program
 addIntrinsic("putu",   Instr.Putu,   [DataType.Int],                []);
 addIntrinsic("putch",  Instr.Putch,  [DataType.Int],                []);

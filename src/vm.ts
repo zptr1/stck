@@ -85,6 +85,10 @@ export class VM {
         stack.push(stack.at(-2)!);
       } else if (type == Instr.Swap2) {
         stack.push(stack.pop()!, stack.pop()!, stack.pop()!, stack.pop()!);
+      } else if (type == Instr.Write) {
+        this.memory[stack.pop()!] = stack.pop()!;
+      } else if (type == Instr.Read) {
+        stack.push(this.memory[stack.pop()!]);
       } else if (type == Instr.Putch) {
         process.stdout.write(String.fromCharCode(stack.pop()!));
       } else if (type == Instr.Putu) {

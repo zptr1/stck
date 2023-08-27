@@ -6,7 +6,8 @@ A stack-based programming language
 
 - [x] Lexer
 - [x] Parser
-- [ ] **Type-Checker** (in progress)
+- [x] Type-Checker
+- [ ] **Type Inference** (in progress)
 - [ ] **Compiler into own bytecode** (in progress)
 - [ ] **Virtual Machine** (in progress)
 - [ ] Turing Complete
@@ -15,4 +16,4 @@ A stack-based programming language
 - [ ] Compiler into native
 
 The compiler is currently written in TypeScript, but I plan on rewriting the compiler in itself.
-This language will be compiled to its own bytecode and will have a virtual machine written in Rust, but I also plan on making it compilable to native as well.
+This language is compiled to its own bytecode and will have a virtual machine written in Rust, but I also plan on making it compiled to native as well.

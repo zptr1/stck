@@ -1,20 +1,9 @@
 --- STDOUT ---
 [INFO] Running /home/yui/stck/tests/01_hello_world.stck
-[INFO] Parsing
-[INFO] Generating IR
-[INFO] Typechecking
-[INFO] Compiling
-[DEBUG] Compiled bytecode:
-text:
-  0x0 "Hello, World\n"
-instr:
-  0 Call 2
-  1 Halt 0
-  2 Push 13
-  3 Push 0
-  4 Puts 
-  5 Ret 
-[INFO] Running
+[DEBUG] Parsing
+[DEBUG] Typechecking
+[DEBUG] Compiling
+[DEBUG] Running
 Hello, World
 
 --- STDERR ---

@@ -10,27 +10,25 @@ import chalk from "chalk";
 import plib from "path";
 
 async function run(file: File) {
-  console.log("[INFO] Running", chalk.gray(file.path));
-  console.log("[INFO] Parsing");
+  console.log(chalk.gray(`[INFO] Running ${file.path}`));
+  console.log(chalk.gray("[DEBUG] Parsing"));
 
   const lexer = new Lexer(file);
   const tokens = lexer.collect();
   const ast = new Parser(tokens).parse();
-
-  console.log("[INFO] Generating IR");
   const preprocessor = new Preprocessor(ast);
   const ir = preprocessor.parse();
 
-  console.log("[INFO] Typechecking");
+  console.log(chalk.gray("[DEBUG] Typechecking"));
   preprocessor.typechecker.typecheckProgram(ir);
 
-  console.log("[INFO] Compiling");
+  console.log(chalk.gray("[DEBUG] Compiling"));
   const bytecode = new Compiler(ir).compile();
 
-  console.debug("[DEBUG] Compiled bytecode:");
-  printByteCode(bytecode);
+  // console.debug("[DEBUG] Compiled bytecode:");
+  // printByteCode(bytecode);
 
-  console.log("[INFO] Running");
+  console.log(chalk.gray("[DEBUG] Running"));
 
   new VM(bytecode);
 }

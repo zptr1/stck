@@ -26,6 +26,10 @@ export enum Instr {
   Dup2,
   Swap2,
 
+  // Memory
+  Read,
+  Write,
+
   // Program
   Print,
   Puts,
