@@ -2,7 +2,7 @@ import { ByteCode, Instr, Instruction } from "./shared/instruction";
 import { ByteReader, ByteWriter } from "./shared/reader";
 
 export const MAGIC = Buffer.from([0x53, 0x54, 0x43, 0x4b, 0xFF]);
-export const VERSION = 0;
+export const VERSION = 1;
 
 export function encodeBytecode(bytecode: ByteCode): Buffer {
   const writer = new ByteWriter();
@@ -10,7 +10,9 @@ export function encodeBytecode(bytecode: ByteCode): Buffer {
   writer.array.push(...MAGIC);
   writer.write(VERSION);
 
-  writer.u32(bytecode.memorySize);
+  writer.u32(bytecode.progMemSize);
+  writer.u32(bytecode.textMemSize);
+
   writer.u16(bytecode.text.length);
 
   for (const str of bytecode.text) {
@@ -51,7 +53,8 @@ export function decodeBytecode(buffer: Buffer): ByteCode {
   }
 
   const bytecode: ByteCode = {
-    memorySize: reader.u32(),
+    progMemSize: reader.u32(),
+    textMemSize: reader.u32(),
     text: [],
     instr: []
   }

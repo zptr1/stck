@@ -1,6 +1,6 @@
-import { AstType, Expr, IConst, IProc, IProgram, IWord } from "./shared/ast";
-import { IRExpr, IRProc, IRProgram, IRWordKind, IRType, IRConst } from "./shared/ir";
-import { reportErrorWithStack } from "./errors";
+import { IRExpr, IRProc, IRProgram, IRWordKind, IRType, IRConst, IRMemory } from "./shared/ir";
+import { AstType, Expr, IConst, IMemory, IProc, IProgram, IWord } from "./shared/ast";
+import { reportError, reportErrorWithStack } from "./errors";
 import { INTRINSICS } from "./shared/intrinsics";
 import { formatLoc } from "./shared/location";
 import { TypeChecker } from "./typechecker";
@@ -13,7 +13,10 @@ import chalk from "chalk";
 export class Preprocessor {
   public readonly procs = new Map<string, IRProc>();
   public readonly consts = new Map<string, IRConst>();
+  public readonly memories = new Map<string, IRMemory>();
   public readonly typechecker: TypeChecker;
+
+  private memorySize: number = 0;
 
   constructor (
     public readonly program: IProgram
@@ -57,11 +60,13 @@ export class Preprocessor {
             value: constant.body.value,
             loc: expr.loc
           });
-        } else if (this.program.consts.has(expr.value)) {
-          reportErrorWithStack(
-            "Constant is not defined yet",
-            expr.loc, macroExpansionStack
-          );
+        } else if (this.memories.has(expr.value)) {
+          out.push({
+            type: IRType.Word,
+            kind: IRWordKind.Memory,
+            name: expr.value,
+            loc: expr.loc
+          });
         } else if (this.program.procs.has(expr.value)) {
           out.push({
             type: IRType.Word,
@@ -137,6 +142,33 @@ export class Preprocessor {
     return irconst;
   }
 
+  private parseMemory(memory: IMemory): IRMemory {
+    if (this.memories.has(memory.name)) {
+      return this.memories.get(memory.name)!;
+    }
+
+    const body = this.typechecker.evaluateCompileTimeExpr(memory.body, memory.loc);
+    if (body.datatype != DataType.Int) {
+      reportError(
+        "Memory values must be integers", memory.loc,
+        [`Expected Int but got ${DataType[body.datatype]}`]
+      );
+    }
+
+    const irmemory: IRMemory = {
+      type: IRType.Memory,
+      name: memory.name,
+      size: body.value,
+      offset: this.memorySize,
+      loc: memory.loc
+    }
+
+    this.memorySize += body.value;
+    this.memories.set(memory.name, irmemory);
+
+    return irmemory;
+  }
+
   private parseProc(proc: IProc): IRProc {
     if (this.procs.has(proc.name)) {
       return this.procs.get(proc.name)!;
@@ -156,11 +188,14 @@ export class Preprocessor {
 
   public parse(): IRProgram {
     this.program.consts.forEach((constant) => this.parseConst(constant));
+    this.program.memories.forEach((memory) => this.parseMemory(memory));
     this.program.procs.forEach((proc) => this.parseProc(proc));
 
     return {
       file: this.program.file,
-      procs: this.procs
+      procs: this.procs,
+      memories: this.memories,
+      memorySize: this.memorySize
     };
   }
 }

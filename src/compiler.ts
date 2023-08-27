@@ -13,16 +13,19 @@ export class Compiler {
   private readonly compiledProcs: Set<string> = new Set();
   private readonly procQueue: string[] = [];
 
-  private textPtr: number = 0;
+  private progMemSize: number = 0;
+  private textMemSize: number = 0;
 
   constructor(
     public readonly program: IRProgram
-  ) {}
+  ) {
+    this.progMemSize = this.program.memorySize;
+  }
 
   private encodeString(str: string) {
     if (!this.text.has(str)) {
-      this.text.set(str, this.textPtr);
-      this.textPtr += str.length;
+      this.text.set(str, this.progMemSize + this.textMemSize);
+      this.textMemSize += Buffer.from(str, "utf-8").length;
     }
 
     return this.text.get(str)!;
@@ -50,6 +53,11 @@ export class Compiler {
           this.instr.push([
             Instr.Call,
             `proc-${expr.name}`
+          ]);
+        } else if (expr.kind == IRWordKind.Memory) {
+          this.instr.push([
+            Instr.Push,
+            this.program.memories.get(expr.name)!.offset
           ]);
         }
       } else if (expr.type == IRType.While) {
@@ -120,7 +128,8 @@ export class Compiler {
     }
 
     return {
-      memorySize: 16_000, // TODO
+      textMemSize: this.textMemSize,
+      progMemSize: this.progMemSize,
       text: [...this.text.keys()],
       instr: this.instr.map(
         (x) => x.map((y) => {

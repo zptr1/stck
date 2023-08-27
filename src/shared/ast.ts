@@ -5,6 +5,7 @@ export enum AstType {
   Proc,
   Macro,
   Const,
+  Memory,
   If,
   While,
   Push,
@@ -17,7 +18,7 @@ export interface IAst<T extends AstType> {
 }
 
 export type Expr = IWord | IPush | ICondition | IWhile;
-export type TopLevelAst = IProc | IMacro | IConst;
+export type TopLevelAst = IProc | IMacro | IConst | IMemory;
 export type Ast = Expr | IProc | IMacro | IConst;
 
 export interface IWord extends IAst<AstType.Word> {
@@ -60,9 +61,15 @@ export interface IConst extends IAst<AstType.Const> {
   body: Expr[];
 }
 
+export interface IMemory extends IAst<AstType.Memory> {
+  name: string;
+  body: Expr[];
+}
+
 export interface IProgram {
   file: File;
   procs: Map<string, IProc>;
   macros: Map<string, IMacro>;
   consts: Map<string, IConst>;
+  memories: Map<string, IMemory>;
 }

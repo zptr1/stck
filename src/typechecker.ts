@@ -1,6 +1,6 @@
 import { StackElement, reportError, reportErrorWithStack, reportWarning } from "./errors";
 import { AstType, Expr, IProgram, IPush, ISignature, IWord } from "./shared/ast";
-import { IRConst, IRExpr, IRProc, IRProgram, IRType } from "./shared/ir";
+import { IRConst, IRExpr, IRMemory, IRProc, IRProgram, IRType } from "./shared/ir";
 import { DataType, compareDataTypeArrays } from "./shared/types";
 import { INTRINSICS, Intrinsic } from "./shared/intrinsics";
 import { Location, formatLoc } from "./shared/location";
@@ -25,11 +25,13 @@ export function createContext(stack: DataType[] = [], stackLocations: Location[]
 export class TypeChecker {
   public readonly consts: Map<string, IRConst>;
   public readonly procs: Map<string, IRProc>;
+  public readonly memories: Map<string, IRMemory>;
   public readonly program: IProgram;
 
   constructor (preprocessor: Preprocessor) {
     this.consts = preprocessor.consts;
     this.procs = preprocessor.procs;
+    this.memories = preprocessor.memories;
     this.program = preprocessor.program;
   }
 
@@ -172,12 +174,19 @@ export class TypeChecker {
           } else {
             reportError("Cannot use this intrinsic in compile-time expression", expr.loc);
           }
+        } else if (this.consts.has(expr.value)) {
+          const constant = this.consts.get(expr.value)!;
+          stackValues.push(constant.body.value);
+          ctx.stack.push(constant.body.datatype);
+          ctx.stackLocations.push(expr.loc);
         } else if (this.program.consts.has(expr.value)) {
           reportError("That constant is not defined yet", expr.loc);
         } else if (this.program.procs.has(expr.value)) {
           reportError("Cannot use procedures in compile-time expressions", expr.loc);
         } else if (this.program.macros.has(expr.value)) {
           reportError("Cannot use macros in compile-time expressions", expr.loc);
+        } else if (this.program.memories.has(expr.value)) {
+          reportError("Cannot use memories in compile-time expressions", expr.loc);
         } else {
           reportError("Unknown word", expr.loc);
         }
@@ -250,6 +259,9 @@ export class TypeChecker {
             ctx.stack.push(proc.signature.outs[i]);
             ctx.stackLocations.push(expr.loc);
           }
+        } else if (this.memories.has(expr.name)) {
+          ctx.stack.push(DataType.Ptr);
+          ctx.stackLocations.push(expr.loc);
         } else if (INTRINSICS.has(expr.name)) {
           this.handleIntrinsic(
             INTRINSICS.get(expr.name)!, ctx, expr.loc

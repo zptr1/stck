@@ -57,5 +57,6 @@ export type Instruction = [Instr, ...number[]];
 export interface ByteCode {
   text: string[];
   instr: Instruction[];
-  memorySize: number;
+  textMemSize: number;
+  progMemSize: number;
 }

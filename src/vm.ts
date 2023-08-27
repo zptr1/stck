@@ -9,19 +9,14 @@ export class VM {
   constructor(
     bytecode: ByteCode
   ) {
-    this.memory = Buffer.alloc(bytecode.memorySize);
-
-    this.loadStrings(bytecode.text);
-    bytecode.text = [];
-
+    this.memory = Buffer.alloc(bytecode.progMemSize + bytecode.textMemSize + 1);
+    this.loadStrings(bytecode.text, bytecode.progMemSize);
     this.run(bytecode.instr);
   }
 
-  private loadStrings(strings: string[]) {
-    let addr = 0;
+  private loadStrings(strings: string[], offset: number) {
     for (const str of strings) {
-      this.memory.write(str, addr, "utf-8");
-      addr += str.length;
+      offset += this.memory.write(str, offset, "utf-8");
     }
   }
 

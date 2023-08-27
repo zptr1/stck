@@ -1,4 +1,4 @@
-import { AstType, Expr, ICondition, IConst, IMacro, IProc, IProgram, IWhile, TopLevelAst } from "./shared/ast";
+import { AstType, Expr, ICondition, IConst, IMacro, IMemory, IProc, IProgram, IWhile, TopLevelAst } from "./shared/ast";
 import { DataType, tokenToDataType } from "./shared/types";
 import { Location, formatLoc } from "./shared/location";
 import { INTRINSICS } from "./shared/intrinsics";
@@ -31,6 +31,7 @@ export class Parser {
       procs: new Map(),
       macros: new Map(),
       consts: new Map(),
+      memories: new Map()
     }
   }
 
@@ -302,6 +303,9 @@ export class Parser {
       } else if (token.kind == Tokens.Const) {
         const constant = this.readTopLevelBlock<IConst>(AstType.Const, token);
         this.program.consts.set(constant.name, constant);
+      } else if (token.kind == Tokens.Memory) {
+        const memory = this.readTopLevelBlock<IMemory>(AstType.Memory, token);
+        this.program.memories.set(memory.name, memory);
       } else if (token.kind == Tokens.EOF) {
         if (this.includeDepth) {
           this.includeDepth--;

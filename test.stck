@@ -1,23 +1,17 @@
 include "std.stck"
 
-macro mem 8000 cast(ptr) end
-
-proc fib :: int -> int do
-  dup 2 gt if
-    dup  2 sub fib
-    swap 1 sub fib
-    add
-  else
-    drop 1
-  end
-end
+memory numbers 5 end
 
 proc main
-  8 mem write
+  1  numbers        write
+  3  numbers 1 ptr+ write
+  8  numbers 2 ptr+ write
+  10 numbers 3 ptr+ write
+  16 numbers 4 ptr+ write
 
-  "fib("       puts
-  mem read     putu
-  ") = "       puts
-  mem read fib putu
-  "\n"         puts
+  "Number 1: "         puts
+  numbers 1 ptr+ read  print
+
+  "Number 4: "         puts
+  numbers 4 ptr+ read  print
 end

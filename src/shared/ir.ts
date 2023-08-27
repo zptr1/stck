@@ -11,13 +11,14 @@ export enum IRType {
   Word,
   While,
   If,
-  Const
+  Const,
+  Memory,
 }
 
 export enum IRWordKind {
   Proc,
-  Const,
-  Intrinsic
+  Memory,
+  Intrinsic,
 }
 
 export type IRExpr = IRWord | IPush | IRWhile | IRCondition;
@@ -42,6 +43,12 @@ export interface IRConst extends IIR<IRType.Const> {
   body: IPush;
 }
 
+export interface IRMemory extends IIR<IRType.Memory> {
+  name: string;
+  size: number;
+  offset: number;
+}
+
 export interface IRProc extends IIR<IRType.Proc> {
   name: string;
   body: IRExpr[];
@@ -51,4 +58,6 @@ export interface IRProc extends IIR<IRType.Proc> {
 export interface IRProgram {
   file: File;
   procs: Map<string, IRProc>;
+  memories: Map<string, IRMemory>;
+  memorySize: number;
 }
