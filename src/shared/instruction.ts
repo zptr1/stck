@@ -17,6 +17,19 @@ export enum Instr {
   Eq,
   Gt,
 
+  // Bitwise Operations
+  Shl,  // <<
+  Shr,  // >>
+  Not,  // ~
+  Or,   // |
+  And,  // &
+  Xor,  // ^
+
+  // Logical Operations
+  LNot,
+  LOr,
+  LAnd,
+
   // Stack manipulation
   Dup,
   Drop,

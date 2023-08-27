@@ -16,6 +16,9 @@ function addIntrinsic(name: string, instr: Instr, ins: DataType[], outs: DataTyp
   });
 }
 
+// TODO: Add type declaration support and move the signatures from here  to `lib/core.stck`
+//       e. g. `def add int int -> int end`
+
 // Math
 addIntrinsic("add",    Instr.Add,    [DataType.Int, DataType.Int], [DataType.Int]);
 addIntrinsic("sub",    Instr.Sub,    [DataType.Int, DataType.Int], [DataType.Int]);
@@ -26,6 +29,19 @@ addIntrinsic("divmod", Instr.DivMod, [DataType.Int, DataType.Int], [DataType.Int
 addIntrinsic("lt", Instr.Lt, [DataType.Int, DataType.Int], [DataType.Bool]);
 addIntrinsic("eq", Instr.Eq, [DataType.Int, DataType.Int], [DataType.Bool]);
 addIntrinsic("gt", Instr.Gt, [DataType.Int, DataType.Int], [DataType.Bool]);
+
+// Bitwise Operations
+addIntrinsic("shl",  Instr.Shl,  [DataType.Int,  DataType.Int],  [DataType.Int]);
+addIntrinsic("shr",  Instr.Shr,  [DataType.Int,  DataType.Int],  [DataType.Int]);
+addIntrinsic("not",  Instr.Not,  [DataType.Int],                 [DataType.Int]);
+addIntrinsic("or",   Instr.Or,   [DataType.Int,  DataType.Int],  [DataType.Int]);
+addIntrinsic("and",  Instr.And,  [DataType.Int,  DataType.Int],  [DataType.Int]);
+addIntrinsic("xor",  Instr.Xor,  [DataType.Int,  DataType.Int],  [DataType.Int]);
+
+// Logical Operations
+addIntrinsic("lnot", Instr.LNot, [DataType.Bool],                [DataType.Bool]);
+addIntrinsic("lor",  Instr.LOr,  [DataType.Bool, DataType.Bool], [DataType.Bool]);
+addIntrinsic("land", Instr.LAnd, [DataType.Bool, DataType.Bool], [DataType.Bool]);
 
 // Stack manipulation
 addIntrinsic("dup",   Instr.Dup,  [DataType.Any],                             [DataType.Any, DataType.Any]);

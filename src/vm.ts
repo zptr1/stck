@@ -59,6 +59,31 @@ export class VM {
       } else if (type == Instr.DivMod) {
         const rhs = stack.pop()!, lhs = stack.pop()!;
         stack.push(Math.floor(lhs / rhs), lhs % rhs);
+      } else if (type == Instr.Shl) {
+        const rhs = stack.pop()!, lhs = stack.pop()!;
+        stack.push(lhs << rhs);
+      } else if (type == Instr.Shr) {
+        const rhs = stack.pop()!, lhs = stack.pop()!;
+        stack.push(lhs >> rhs);
+      } else if (type == Instr.Not) {
+        stack.push(~stack.pop()!);
+      } else if (type == Instr.Or) {
+        const rhs = stack.pop()!, lhs = stack.pop()!;
+        stack.push(lhs | rhs);
+      } else if (type == Instr.And) {
+        const rhs = stack.pop()!, lhs = stack.pop()!;
+        stack.push(lhs & rhs);
+      } else if (type == Instr.Xor) {
+        const rhs = stack.pop()!, lhs = stack.pop()!;
+        stack.push(lhs ^ rhs);
+      } else if (type == Instr.LNot) {
+        stack.push(Number(stack.pop()! == 0));
+      } else if (type == Instr.LOr) {
+        const a = stack.pop()!, b = stack.pop()!;
+        stack.push(Number(a != 0 || b != 0));
+      } else if (type == Instr.LAnd) {
+        const a = stack.pop()!, b = stack.pop()!;
+        stack.push(Number(a != 0 && b != 0));
       } else if (type == Instr.Lt) {
         const rhs = stack.pop()!, lhs = stack.pop()!;
         stack.push(Number(lhs < rhs));
