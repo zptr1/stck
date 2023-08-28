@@ -4,13 +4,14 @@ export enum DataType {
   Int,
   Ptr,
   Str,
-  Bool,
-  Any
+  Bool
 }
 
-export function compareDataTypeArrays(a: DataType[], b: DataType[]) {
+export type DataTypeArray = (DataType | string)[];
+
+export function compareDataTypeArrays(a: DataTypeArray, b: DataTypeArray) {
   return a.length == b.length && !a.some(
-    (x, i) => x != b[i] && b[i] != DataType.Any && x != DataType.Any
+    (x, i) => x != b[i] && typeof b[i] != "string" && typeof x != "string"
   );
 }
 

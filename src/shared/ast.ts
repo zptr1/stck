@@ -1,5 +1,5 @@
+import { DataType, DataTypeArray } from "./types";
 import { File, Location } from "./location";
-import { DataType } from "./types";
 
 export enum AstType {
   Proc,
@@ -26,7 +26,7 @@ export interface IWord extends IAst<AstType.Word> {
 }
 
 export interface IPush extends IAst<AstType.Push> {
-  datatype: DataType;
+  datatype: DataType | string;
   value: any;
 }
 
@@ -41,8 +41,8 @@ export interface IWhile extends IAst<AstType.While> {
 }
 
 export interface ISignature {
-  ins: DataType[];
-  outs: DataType[];
+  ins: DataTypeArray;
+  outs: DataTypeArray;
 }
 
 export interface IProc extends IAst<AstType.Proc> {

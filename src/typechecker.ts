@@ -1,20 +1,20 @@
 import { StackElement, reportError, reportErrorWithStack, reportWarning } from "./errors";
 import { AstType, Expr, IProgram, IPush, ISignature, IWord } from "./shared/ast";
 import { IRConst, IRExpr, IRMemory, IRProc, IRProgram, IRType } from "./shared/ir";
-import { DataType, compareDataTypeArrays } from "./shared/types";
+import { DataType, DataTypeArray, compareDataTypeArrays } from "./shared/types";
 import { INTRINSICS, Intrinsic } from "./shared/intrinsics";
 import { Location, formatLoc } from "./shared/location";
 import { Preprocessor } from "./preprocessor";
 import chalk from "chalk";
 
 export interface Context {
-  stack: DataType[];
+  stack: DataTypeArray;
   stackLocations: Location[];
   macroExpansionStack: IWord[];
   // ...
 }
 
-export function createContext(stack: DataType[] = [], stackLocations: Location[] = []): Context {
+export function createContext(stack: DataTypeArray = [], stackLocations: Location[] = []): Context {
   return {
     stack,
     stackLocations,
@@ -35,18 +35,28 @@ export class TypeChecker {
     this.program = preprocessor.program;
   }
 
-  private reportErrorWithStackData(message: string, loc: Location, ctx: Context, expectedStack: DataType[], notes: string[] = []): never {
+  private reportErrorWithStackData(
+    message: string,
+    loc: Location,
+    ctx: Context,
+    expectedStack: DataTypeArray,
+    notes: string[] = []
+  ): never {
     if (expectedStack.length) {
       notes.push(chalk.greenBright.bold("Expected data:"));
       for (const e of expectedStack)
-        notes.push(` - ${chalk.bold(DataType[e])}`);
-
+        notes.push(` - ${chalk.bold(
+          typeof e == "string" ? "Any" : DataType[e])
+        }`);
     }
 
     if (ctx.stack.length) {
       notes.push(chalk.redBright.bold("Current data on the stack:"));
       for (let i = 0; i < ctx.stack.length; i++) {
-        notes.push(` - ${chalk.bold(DataType[ctx.stack[i]])} @ ${formatLoc(ctx.stackLocations[i])}`);
+        const e = ctx.stack[i];
+        notes.push(` - ${chalk.bold(
+          typeof e == "string" ? "Any" : DataType[e])
+        } @ ${formatLoc(ctx.stackLocations[i])}`);
       }
     }
 
@@ -56,7 +66,7 @@ export class TypeChecker {
   private validateContextStack(
     loc: Location,
     ctx: Context,
-    stack: DataType[],
+    stack: DataTypeArray,
     strictLength: boolean = true,
     suffix: string = "",
     notes: string[] = []
@@ -205,12 +215,12 @@ export class TypeChecker {
     if (stackValues.length < 0) {
       this.reportErrorWithStackData(
         "Compile time expression resulted in nothing",
-        loc, ctx, [DataType.Any]
+        loc, ctx, ["Any"]
       );
     } else if (stackValues.length > 1) {
       this.reportErrorWithStackData(
         "Compile time expression resulted in multiple values on the stack",
-        loc, ctx, [DataType.Any]
+        loc, ctx, ["Any"]
       );
     }
 
@@ -222,6 +232,28 @@ export class TypeChecker {
     }
   }
 
+  private handleSignature(signature: ISignature, ctx: Context, loc: Location) {
+    const templates = new Map<string, DataType | string>();
+
+    for (const type of signature.ins) {
+      if (typeof type == "string") {
+        templates.set(type, ctx.stack.pop()!);
+      } else {
+        ctx.stack.pop();
+        ctx.stackLocations.pop();
+      }
+    }
+
+    for (const type of signature.outs) {
+      ctx.stackLocations.push(loc);
+      if (typeof type == "string") {
+        ctx.stack.push(templates.get(type)!);
+      } else {
+        ctx.stack.push(type);
+      }
+    }
+  }
+
   public typecheckBody(exprs: IRExpr[], ctx: Context = createContext()) {
     for (const expr of exprs) {
       if (expr.type == IRType.Word) {
@@ -229,9 +261,12 @@ export class TypeChecker {
           console.debug(chalk.blueBright.bold("debug:"), "Current data on the stack at", chalk.gray(formatLoc(expr.loc)));
 
           for (let i = 0; i < ctx.stack.length; i++) {
+            const e = ctx.stack[i];
             console.debug(
               chalk.blueBright.bold("debug:"),
-              "-", chalk.bold(DataType[ctx.stack[i]]),
+              "-", chalk.bold(
+                typeof e == "string" ? "Any" : DataType[e]
+              ),
               "@", chalk.bold(formatLoc(ctx.stackLocations[i]))
             );
           }
@@ -239,33 +274,24 @@ export class TypeChecker {
           const proc = this.procs.get(expr.name)!;
 
           if (!proc.signature) {
-            console.warn(
-              chalk.yellow("WARN:"),
-              "Call of the procedure without a signature",
-              "@", chalk.bold(formatLoc(expr.loc))
-            );
-
-            console.warn(chalk.yellow("WARN:"), "(likely a compiler bug)");
+            reportWarning(
+              "Call of the procedure without a signature", expr.loc, [
+                "likely a compiler bug"
+              ]
+            )
             continue;
           }
 
           this.validateContextStack(expr.loc, ctx, proc.signature.ins, false, "for the procedure call");
-          for (let i = 0; i < proc.signature.ins.length; i++) {
-            ctx.stack.pop();
-            ctx.stackLocations.pop();
-          }
-
-          for (let i = 0; i < proc.signature.outs.length; i++) {
-            ctx.stack.push(proc.signature.outs[i]);
-            ctx.stackLocations.push(expr.loc);
-          }
+          this.handleSignature(proc.signature, ctx, expr.loc);
         } else if (this.memories.has(expr.name)) {
           ctx.stack.push(DataType.Ptr);
           ctx.stackLocations.push(expr.loc);
         } else if (INTRINSICS.has(expr.name)) {
-          this.handleIntrinsic(
-            INTRINSICS.get(expr.name)!, ctx, expr.loc
-          );
+          const intrinsic = INTRINSICS.get(expr.name)!;
+
+          this.validateContextStack(expr.loc, ctx, intrinsic.ins, false, "for the intrinsic call");
+          this.handleSignature(intrinsic, ctx, expr.loc);
         } else {
           reportError("Unknown word", expr.loc);
         }
@@ -315,7 +341,7 @@ export class TypeChecker {
         ctx.stack.push(expr.datatype);
         ctx.stackLocations.push(expr.loc);
       } else {
-        throw new Error(`IR Typechecking is not implemented for ${IRType[(expr as IRExpr).type]}`);
+        throw new Error(`Typechecking is not implemented for ${IRType[(expr as IRExpr).type]}`);
       }
     }
   }
@@ -339,11 +365,11 @@ export class TypeChecker {
     this.validateContextStack(proc.loc, ctx, proc.signature!.outs, true, "after the procedure call");
   }
 
-  public determineSignature(
+  public inferSignature(
     exprs: IRExpr[],
     callstack: StackElement[] = [],
-    ins: DataType[] = [],
-    outs: DataType[] = [],
+    ins: DataTypeArray = [],
+    outs: DataTypeArray = [],
   ): ISignature {
     for (const expr of exprs) {
       if (expr.type == IRType.Word) {
@@ -356,78 +382,75 @@ export class TypeChecker {
                 expr.loc, callstack
               );
             } else {
-              this.determineProcSignature(proc, callstack.concat(expr));
+              this.inferProcSignature(proc, callstack.concat(expr));
             }
           }
 
-          for (const i of proc.signature!.ins) {
-            if (outs.length) outs.pop();
-            else ins.push(i);
+          const templates = new Map<string, DataType | string>();
+
+          for (const type of proc.signature!.ins) {
+            if (typeof type == "string") {
+              if (outs.length) {
+                templates.set(type, outs.pop()!);
+              } else {
+                templates.set(type, type);
+                ins.push(type);
+              }
+            } else if (outs.length) {
+              outs.pop();
+            } else {
+              ins.push(type);
+            }
           }
 
-          for (const o of proc.signature!.outs) {
-            outs.push(o);
+          for (const type of proc.signature!.outs) {
+            if (typeof type == "string") {
+              outs.push(templates.get(type)!);
+            } else {
+              outs.push(type);
+            }
           }
         } else if (INTRINSICS.has(expr.name)) {
           const intrinsic = INTRINSICS.get(expr.name)!;
+          const templates = new Map<string, DataType | string>();
 
-          // TODO: Try to determine DataType.Any by how it is used later
-          //       e. g. `<any> <any> add` would replace these types with `<int> <int> add`
-
-          // This would require introducing some metadata for cases like `dup add` etc
-
-          if (intrinsic.name == "dup") {
-            const o = outs.pop() ?? DataType.Any;
-            outs.push(o, o);
-          } else if (intrinsic.name == "swap") {
-            outs.push(
-              outs.pop() ?? DataType.Any,
-              outs.pop() ?? DataType.Any
-            );
-          } else if (intrinsic.name == "dup2") {
-            const a = outs.pop() ?? DataType.Any,
-                  b = outs.pop() ?? DataType.Any;
-            outs.push(b, a, b, a);
-          } else if (intrinsic.name == "rot") {
-            const a = outs.pop() ?? DataType.Any,
-                  b = outs.pop() ?? DataType.Any,
-                  c = outs.pop() ?? DataType.Any;
-            outs.push(b, a, c);
-          } else if (intrinsic.name == "over") {
-            outs.push(outs.at(-2) ?? DataType.Any);
-          } else if (intrinsic.name == "swap2") {
-            outs.push(
-              outs.pop() ?? DataType.Any,
-              outs.pop() ?? DataType.Any,
-              outs.pop() ?? DataType.Any,
-              outs.pop() ?? DataType.Any,
-            );
+          for (const type of intrinsic.ins) {
+            if (typeof type == "string") {
+              if (outs.length) {
+                templates.set(type, outs.pop()!);
+              } else {
+                templates.set(type, type);
+                ins.push(type);
+              }
+            } else if (outs.length) {
+              outs.pop();
+            } else {
+              ins.push(type);
+            }
           }
 
-          for (const i of intrinsic.ins) {
-            if (outs.length) {
-              if (i != DataType.Any) outs.pop();
-            } else ins.push(i);
-          }
-
-          for (const o of intrinsic.outs) {
-            if (o != DataType.Any) outs.push(o);
+          for (const type of intrinsic.outs) {
+            if (typeof type == "string") {
+              outs.push(templates.get(type)!);
+            } else {
+              outs.push(type);
+            }
           }
         }
       } else if (expr.type == IRType.While) {
-        this.determineSignature(expr.condition, callstack, ins, outs);
-        this.determineSignature(expr.body, callstack, ins, outs);
+        this.inferSignature(expr.condition, callstack, ins, outs);
+        this.inferSignature(expr.body, callstack, ins, outs);
       } else if (expr.type == IRType.If) {
         if (outs.length) outs.pop();
         else ins.push(DataType.Bool);
 
         if (expr.body.length > 0) {
-          this.determineSignature(expr.body, callstack, ins, outs);
+          this.inferSignature(expr.body, callstack, ins, outs);
         }
       } else if (expr.type == AstType.Push) {
         outs.push(expr.datatype);
       } else {
-        throw new Error(`IR Typechecking is not implemented for ${IRType[(expr as IRExpr).type]}`);
+        throw new Error(`Typechecking is not implemented for ${IRType[(expr as IRExpr).type]}`);
       }
     }
 
@@ -436,32 +459,12 @@ export class TypeChecker {
     };
   }
 
-  public determineProcSignature(proc: IRProc, callstack: StackElement[] = []): ISignature {
+  public inferProcSignature(proc: IRProc, callstack: StackElement[] = []): ISignature {
     if (!proc.signature) {
       if (proc.name == "main") {
         proc.signature = { ins: [], outs: [] };
       } else {
-        proc.signature = this.determineSignature(proc.body, callstack);
-
-        if (
-          proc.signature.ins.includes(DataType.Any)
-          || proc.signature.outs.includes(DataType.Any)
-          ) {
-          // This situation occurs when `dup` or `swap` have been used without enough data on the stack.
-          // TODO: Make the `determineSignature` method determine the signature more accurately.
-
-          reportWarning(
-            "The procedure has unsafe signature",
-            proc.loc, [
-              "No signature has been specified",
-              `Determined signature: ${
-                chalk.bold(proc.signature.ins.map((x) => DataType[x]).join(" "))
-              } -> ${
-                chalk.bold(proc.signature.outs.map((x) => DataType[x]).join(" "))
-              }`
-            ]
-          );
-        }
+        proc.signature = this.inferSignature(proc.body, callstack);
       }
     }
 
@@ -473,7 +476,7 @@ export class TypeChecker {
       const ctx = createContext();
 
       if (!proc.signature) {
-        proc.signature = this.determineProcSignature(proc, [{
+        proc.signature = this.inferProcSignature(proc, [{
           name: proc.name,
           loc: proc.loc
         }]);

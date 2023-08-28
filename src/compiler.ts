@@ -94,7 +94,7 @@ export class Compiler {
         if (expr.datatype == DataType.Ptr) {
           this.instr.push([Instr.Push, this.encodeString(expr.value)]);
         } else {
-          this.instr.push([Instr.Push, Number(expr.value)]);
+          this.instr.push([Instr.Push, Number(expr.value) ?? 0]);
         }
       } else {
         throw new Error(`Compilation of ${IRType[(expr as IRExpr).type]} is not implemented`);

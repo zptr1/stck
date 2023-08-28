@@ -1,16 +1,16 @@
+import { DataType, DataTypeArray } from "./types";
 import { Instr } from "./instruction";
-import { DataType } from "./types";
 
 export const INTRINSICS = new Map<string, Intrinsic>();
 
 export interface Intrinsic {
   name: string;
   instr: Instr;
-  ins: DataType[],
-  outs: DataType[],
+  ins: DataTypeArray,
+  outs: DataTypeArray,
 }
 
-function addIntrinsic(name: string, instr: Instr, ins: DataType[], outs: DataType[]) {
+function addIntrinsic(name: string, instr: Instr, ins: DataTypeArray, outs: DataTypeArray) {
   INTRINSICS.set(name, {
     name, instr, ins, outs
   });
@@ -44,16 +44,16 @@ addIntrinsic("lor",  Instr.LOr,  [DataType.Bool, DataType.Bool], [DataType.Bool]
 addIntrinsic("land", Instr.LAnd, [DataType.Bool, DataType.Bool], [DataType.Bool]);
 
 // Stack manipulation
-addIntrinsic("dup",   Instr.Dup,  [DataType.Any],                             [DataType.Any, DataType.Any]);
-addIntrinsic("drop",  Instr.Drop, [DataType.Any],                             []);
-addIntrinsic("swap",  Instr.Swap, [DataType.Any, DataType.Any],               [DataType.Any, DataType.Any]);
-addIntrinsic("rot",   Instr.Rot,  [DataType.Any, DataType.Any, DataType.Any], [DataType.Any, DataType.Any, DataType.Any]);
-addIntrinsic("over",  Instr.Over, [DataType.Any, DataType.Any],               [DataType.Any, DataType.Any, DataType.Any]);
-addIntrinsic("dup2",  Instr.Dup2, [DataType.Any, DataType.Any],               [DataType.Any, DataType.Any, DataType.Any, DataType.Any]);
+addIntrinsic("dup",  Instr.Dup,  ["a"],           ["a", "a"]);
+addIntrinsic("drop", Instr.Drop, ["a"],           []);
+addIntrinsic("swap", Instr.Swap, ["a", "b"],      ["b", "a"]);
+addIntrinsic("rot",  Instr.Rot,  ["a", "b", "c"], ["b", "c", "a"]);
+addIntrinsic("over", Instr.Over, ["a", "b"],      ["a", "b", "a"]);
+addIntrinsic("dup2", Instr.Dup2, ["a", "b"],      ["a", "b", "a", "b"]);
 addIntrinsic(
   "swap2", Instr.Swap2,
-  [DataType.Any, DataType.Any, DataType.Any, DataType.Any],
-  [DataType.Any, DataType.Any, DataType.Any, DataType.Any]
+  ["a", "b", "c", "d"],
+  ["d", "c", "b", "a"]
 );
 
 // Memory
@@ -68,6 +68,6 @@ addIntrinsic("puts",   Instr.Puts,   [DataType.Int, DataType.Ptr],  []);
 
 // Compile-time
 addIntrinsic("<dump-stack>", Instr.Nop, [], []);
-addIntrinsic("cast(int)",    Instr.Nop, [DataType.Any], [DataType.Int]);
-addIntrinsic("cast(ptr)",    Instr.Nop, [DataType.Any], [DataType.Ptr]);
-addIntrinsic("cast(bool)",   Instr.Nop, [DataType.Any], [DataType.Bool]);
+addIntrinsic("cast(int)",    Instr.Nop, ["a"], [DataType.Int]);
+addIntrinsic("cast(ptr)",    Instr.Nop, ["a"], [DataType.Ptr]);
+addIntrinsic("cast(bool)",   Instr.Nop, ["a"], [DataType.Bool]);

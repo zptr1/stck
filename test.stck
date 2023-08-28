@@ -1,9 +1,7 @@
-include "std.stck"
-
-memory a sizeof(int) end
+proc test
+  dup2
+end
 
 proc main
-  69420 a write(int)
-
-  a read(int) print
+  1 test
 end

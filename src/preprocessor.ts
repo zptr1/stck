@@ -150,8 +150,11 @@ export class Preprocessor {
     const body = this.typechecker.evaluateCompileTimeExpr(memory.body, memory.loc);
     if (body.datatype != DataType.Int) {
       reportError(
-        "Memory values must be integers", memory.loc,
-        [`Expected Int but got ${DataType[body.datatype]}`]
+        "Memory sizes must be integers", memory.loc, [
+          `Expected Int but got ${
+            typeof body.datatype == "string" ? "Any" : DataType[body.datatype]
+          }`
+        ]
       );
     }
 
