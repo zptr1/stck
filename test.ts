@@ -25,7 +25,7 @@ for (const test of tests) {
   const start = performance.now();
 
   const proc = Bun.spawnSync({
-    cmd: ["bun", "index.ts", plib.resolve(plib.join("tests", test))],
+    cmd: ["bun", "stck.ts", plib.resolve(plib.join("tests", test))],
     stdout: null
   });
 

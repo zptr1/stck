@@ -1,11 +1,5 @@
 import { Location } from "./location";
 
-export const WORD_CHARS =
-    "QWERTYUIOPASDFGHJKLZXCVBNM"  // Uppercase letters
-  + "qwertyuiopasdfghjklzxcvbnm"  // Lowercase letters
-  + "~!@#$%^&*()_-+=|;:,./<>?"    // Special characters
-  + "0123456789";                 // Numbers
-
 export const KEYWORDS = new Set([
   "proc", "macro", "const", "memory",
   "include", "end", "if", "if*", "else",

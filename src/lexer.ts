@@ -1,6 +1,6 @@
-import { KEYWORDS, Token, Tokens, WORD_CHARS } from "./shared/token";
-import { Reader } from "./shared/reader";
+import { KEYWORDS, Token, Tokens } from "./shared/token";
 import { File, formatLoc } from "./shared/location";
+import { Reader } from "./shared/reader";
 import { reportError } from "./errors";
 
 export class Lexer {
@@ -14,9 +14,8 @@ export class Lexer {
 
   private token(kind: Tokens, value?: any): Token {
     return {
-      kind,
-      loc: this.file.location(this.reader.span()),
-      value
+      kind, value,
+      loc: this.file.location(this.reader.span())
     }
   }
 
@@ -39,12 +38,16 @@ export class Lexer {
     }
   }
 
-  private isInt(): boolean {
+  private isIntStart(): boolean {
+    return "-0123456789".includes(this.reader.peek()!);
+  }
+
+  private isIntContinue(): boolean {
     return "0123456789".includes(this.reader.peek()!);
   }
 
-  private isWord(): boolean {
-    return WORD_CHARS.includes(this.reader.peek()!);
+  private isWhitespace(): boolean {
+    return " \n\r".includes(this.reader.peek()!);
   }
 
   private readChar(): string {
@@ -67,15 +70,6 @@ export class Lexer {
     }
 
     return ch;
-  }
-
-  private readIntToken(): Token {
-    let value = this.reader.next();
-    while (this.isInt()) {
-      value += this.reader.next();
-    }
-
-    return this.token(Tokens.Int, parseInt(value));
   }
 
   private readStrToken(): Token {
@@ -108,12 +102,20 @@ export class Lexer {
   }
 
   private readWordToken(): Token {
+    let isInt = this.isIntStart();
     let value = this.reader.next();
-    while (this.isWord()) {
+
+    while (!this.isWhitespace() && !this.reader.isEnd()) {
+      if (!this.isIntContinue()) {
+        isInt = false;
+      }
+
       value += this.reader.next()!;
     }
 
-    if (value == "true" || value == "false") {
+    if (isInt && value != "-") {
+      return this.token(Tokens.Int, parseInt(value));
+    } else if (value == "true" || value == "false") {
       return this.token(Tokens.Boolean, value == "true");
     } else if (value == "<here>") {
       return this.token(Tokens.Str, formatLoc({
@@ -134,12 +136,8 @@ export class Lexer {
       return this.readStrToken();
     } else if (this.reader.peek() == "'") {
       return this.readCharToken();
-    } else if (this.isInt()) {
-      return this.readIntToken();
-    } else if (this.isWord()) {
-      return this.readWordToken();
     } else {
-      this.error(`Invalid or unexpected token: "${this.reader.peek()}"`);
+      return this.readWordToken();
     }
   }
 
