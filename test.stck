@@ -1,7 +1,5 @@
-proc test :: int ptr do
-  <dump-stack> dup2 <dump-stack> puts puts
-end
+const str "Hello world\n" end
 
 proc main
-  "hello world\n" test
+  str puts
 end

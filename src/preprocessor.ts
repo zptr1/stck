@@ -54,12 +54,28 @@ export class Preprocessor {
           continue;
         } else if (this.consts.has(expr.value)) {
           const constant = this.consts.get(expr.value)!;
-          out.push({
-            type: AstType.Push,
-            datatype: constant.body.datatype,
-            value: constant.body.value,
-            loc: expr.loc
-          });
+          if (constant.body.datatype == DataType.Str) {
+            out.push({
+              type: AstType.Push,
+              datatype: DataType.Int,
+              value: constant.body.value.length,
+              loc: expr.loc
+            });
+
+            out.push({
+              type: AstType.Push,
+              datatype: DataType.Ptr,
+              value: constant.body.value,
+              loc: expr.loc
+            });
+          } else {
+            out.push({
+              type: AstType.Push,
+              datatype: constant.body.datatype,
+              value: constant.body.value,
+              loc: expr.loc
+            });
+          }
         } else if (this.memories.has(expr.value)) {
           out.push({
             type: IRType.Word,
