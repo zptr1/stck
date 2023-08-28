@@ -1,0 +1,8 @@
+--- STDOUT ---
+Hi, World!
+Hi, someone!
+
+--- STDERR ---
+
+--- END ---
+Exited with code 0

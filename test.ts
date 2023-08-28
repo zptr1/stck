@@ -44,8 +44,10 @@ for (const test of tests) {
   process.stdout.write("\x1b[0G");
   let success = true;
 
-  if (fs.existsSync(`./tests/output/${test}`)) {
-    const stored = fs.readFileSync(`./tests/output/${test}`, "utf-8");
+  const out = test.replace(/(\.stck)?$/, "");
+
+  if (fs.existsSync(`./tests/output/${out}.txt`)) {
+    const stored = fs.readFileSync(`./tests/output/${out}.txt`, "utf-8");
     if (stored != output) {
       process.stdout.write(chalk.red.bold(" ✘ "));
       success = false;
@@ -56,11 +58,11 @@ for (const test of tests) {
     }
   } else {
     process.stdout.write(chalk.yellow.bold(" + "));
-    fs.writeFileSync(`./tests/output/${test}`, output);
+    fs.writeFileSync(`./tests/output/${out}`, output);
     status.new++;
   }
 
-  process.stdout.write(`${chalk.gray.bold(test)} ${chalk.gray(`(${took.toFixed(2)}ms)`)}\n`);
+  process.stdout.write(`${chalk.gray.bold(out)} ${chalk.gray(`(${took.toFixed(2)}ms)`)}\n`);
 
   if (!success) {
     console.error(`The program resulted in an unexpected output`);
