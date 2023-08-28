@@ -236,11 +236,11 @@ export class TypeChecker {
     const templates = new Map<string, DataType | string>();
 
     for (const type of signature.ins) {
+      ctx.stackLocations.pop();
       if (typeof type == "string") {
         templates.set(type, ctx.stack.pop()!);
       } else {
         ctx.stack.pop();
-        ctx.stackLocations.pop();
       }
     }
 

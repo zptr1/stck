@@ -1,7 +1,7 @@
-proc test
-  swap sub
+proc asd
+  dup2 puts puts
 end
 
 proc main
-  1 1 test drop
+  "test" asd
 end

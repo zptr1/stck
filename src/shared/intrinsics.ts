@@ -12,7 +12,9 @@ export interface Intrinsic {
 
 function addIntrinsic(name: string, instr: Instr, ins: DataTypeArray, outs: DataTypeArray) {
   INTRINSICS.set(name, {
-    name, instr, ins, outs
+    name, instr,
+    ins: ins.reverse(),
+    outs: outs.reverse()
   });
 }
 
