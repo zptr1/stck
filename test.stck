@@ -1,7 +1,7 @@
 proc test
-  dup2
+  swap sub
 end
 
 proc main
-  1 test
+  1 1 test drop
 end

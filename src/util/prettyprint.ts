@@ -51,7 +51,11 @@ function printExpr(expr: Expr, padding = 1) {
   if (expr.type == AstType.Word) {
     console.log(prefix, `Word ${formatStr(expr.value)}`);
   } else if (expr.type == AstType.Push) {
-    console.log(prefix, `Push ${chalk.bold.whiteBright(DataType[expr.datatype])}(${formatObj(expr.value)})`);
+    console.log(prefix, `Push ${chalk.bold.whiteBright(
+      typeof expr.datatype == "string"
+        ? expr.datatype
+        : DataType[expr.datatype]
+    )}(${formatObj(expr.value)})`);
   } else if (expr.type == AstType.If) {
     console.log(prefix, chalk.bold("If"));
     expr.body.forEach((x) => printExpr(x, padding + 2));
@@ -76,7 +80,11 @@ function printIRExpr(expr: IRExpr, padding = 1) {
   if (expr.type == IRType.Word) {
     console.log(prefix, `Word ${chalk.bold(IRWordKind[expr.kind])}(${formatStr(expr.name)})`);
   } else if (expr.type == AstType.Push) {
-    console.log(prefix, `Push ${chalk.bold.whiteBright(DataType[expr.datatype])}(${formatObj(expr.value)})`);
+    console.log(prefix, `Push ${chalk.bold.whiteBright(
+      typeof expr.datatype == "string"
+        ? expr.datatype
+        : DataType[expr.datatype]
+    )}(${formatObj(expr.value)})`);
   } else if (expr.type == IRType.If) {
     console.log(prefix, chalk.bold("If"));
     expr.body.forEach((x) => printIRExpr(x, padding + 2));
@@ -113,9 +121,13 @@ export function printProgramIR(program: IRProgram) {
     if (proc.signature) {
       console.log(
         chalk.gray("Signature:"),
-        `[${proc.signature.ins.map((x) => DataType[x]).join(", ")}]`,
+        `[${proc.signature.ins.map(
+          (x) => typeof x == "string" ? x : DataType[x]
+        ).join(", ")}]`,
         "->",
-        `[${proc.signature.outs.map((x) => DataType[x]).join(", ")}]`
+        `[${proc.signature.outs.map(
+          (x) => typeof x == "string" ? x : DataType[x]
+        ).join(", ")}]`
       );
     }
     proc.body.forEach((x) => printIRExpr(x));

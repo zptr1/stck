@@ -1,7 +1,7 @@
 import { StackElement, reportError, reportErrorWithStack, reportWarning } from "./errors";
 import { AstType, Expr, IProgram, IPush, ISignature, IWord } from "./shared/ast";
 import { IRConst, IRExpr, IRMemory, IRProc, IRProgram, IRType } from "./shared/ir";
-import { DataType, DataTypeArray, compareDataTypeArrays } from "./shared/types";
+import { DataType, DataTypeArray, TemplateMap, compareDataTypeArrays } from "./shared/types";
 import { INTRINSICS, Intrinsic } from "./shared/intrinsics";
 import { Location, formatLoc } from "./shared/location";
 import { Preprocessor } from "./preprocessor";
@@ -370,7 +370,10 @@ export class TypeChecker {
     callstack: StackElement[] = [],
     ins: DataTypeArray = [],
     outs: DataTypeArray = [],
-  ): ISignature {
+    templates: TemplateMap = new Map()
+  ): ISignature & {
+    templates: TemplateMap
+  } {
     for (const expr of exprs) {
       if (expr.type == IRType.Word) {
         if (this.procs.has(expr.name)) {
@@ -386,18 +389,21 @@ export class TypeChecker {
             }
           }
 
-          const templates = new Map<string, DataType | string>();
+          const tmpl: TemplateMap = new Map();
 
           for (const type of proc.signature!.ins) {
             if (typeof type == "string") {
               if (outs.length) {
-                templates.set(type, outs.pop()!);
+                tmpl.set(type, outs.pop()!);
               } else {
-                templates.set(type, type);
+                tmpl.set(type, type);
                 ins.push(type);
               }
             } else if (outs.length) {
-              outs.pop();
+              const e = outs.pop();
+              if (typeof e == "string" && !templates.has(e)) {
+                templates.set(e, type);
+              }
             } else {
               ins.push(type);
             }
@@ -405,25 +411,28 @@ export class TypeChecker {
 
           for (const type of proc.signature!.outs) {
             if (typeof type == "string") {
-              outs.push(templates.get(type)!);
+              outs.push(tmpl.get(type)!);
             } else {
               outs.push(type);
             }
           }
         } else if (INTRINSICS.has(expr.name)) {
           const intrinsic = INTRINSICS.get(expr.name)!;
-          const templates = new Map<string, DataType | string>();
+          const tmpl: TemplateMap = new Map();
 
           for (const type of intrinsic.ins) {
             if (typeof type == "string") {
               if (outs.length) {
-                templates.set(type, outs.pop()!);
+                tmpl.set(type, outs.pop()!);
               } else {
-                templates.set(type, type);
+                tmpl.set(type, type);
                 ins.push(type);
               }
             } else if (outs.length) {
-              outs.pop();
+              const e = outs.pop();
+              if (typeof e == "string" && !templates.has(e)) {
+                templates.set(e, type);
+              }
             } else {
               ins.push(type);
             }
@@ -431,7 +440,7 @@ export class TypeChecker {
 
           for (const type of intrinsic.outs) {
             if (typeof type == "string") {
-              outs.push(templates.get(type)!);
+              outs.push(tmpl.get(type)!);
             } else {
               outs.push(type);
             }
@@ -455,7 +464,7 @@ export class TypeChecker {
     }
 
     return {
-      ins, outs
+      ins, outs, templates
     };
   }
 
@@ -464,7 +473,20 @@ export class TypeChecker {
       if (proc.name == "main") {
         proc.signature = { ins: [], outs: [] };
       } else {
-        proc.signature = this.inferSignature(proc.body, callstack);
+        const signature = this.inferSignature(proc.body, callstack);
+
+        proc.signature = {
+          ins: signature.ins.map(
+            (x) => typeof x == "string"
+              ? signature.templates.get(x) ?? x
+              : x
+          ),
+          outs: signature.outs.map(
+            (x) => typeof x == "string"
+              ? signature.templates.get(x) ?? x
+              : x
+          )
+        }
       }
     }
 

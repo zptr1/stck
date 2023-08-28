@@ -73,7 +73,10 @@ if (process.argv.length < 3) {
   } else if (process.argv[4] == "ir") {
     const tokens = new Lexer(file).collect();
     const ast = new Parser(tokens).parse();
-    const ir = new Preprocessor(ast).parse();
+    const preprocessor = new Preprocessor(ast)
+    const ir = preprocessor.parse();
+
+    preprocessor.typechecker.typecheckProgram(ir);
     printProgramIR(ir);
   } else if (process.argv[4] == "bytecode") {
     if (src.subarray(0, MAGIC.length).equals(MAGIC)) {

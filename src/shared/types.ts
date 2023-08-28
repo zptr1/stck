@@ -8,6 +8,7 @@ export enum DataType {
 }
 
 export type DataTypeArray = (DataType | string)[];
+export type TemplateMap = Map<string, DataType | string>;
 
 export function compareDataTypeArrays(a: DataTypeArray, b: DataTypeArray) {
   return a.length == b.length && !a.some(
