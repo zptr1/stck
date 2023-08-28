@@ -234,7 +234,8 @@ export class TypeChecker {
       }
     }
 
-    for (const type of signature.outs) {
+    for (let i = signature.outs.length - 1; i >= 0; i--) {
+      const type = signature.outs[i];
       ctx.stackLocations.push(loc);
       if (typeof type == "string") {
         ctx.stack.push(templates.get(type)!);
@@ -399,7 +400,8 @@ export class TypeChecker {
             }
           }
 
-          for (const type of proc.signature!.outs) {
+          for (let i = proc.signature!.outs.length - 1; i >= 0; i--) {
+            const type = proc.signature!.outs[i];
             if (typeof type == "string") {
               outs.push(tmpl.get(type)!);
             } else {
@@ -428,7 +430,8 @@ export class TypeChecker {
             }
           }
 
-          for (const type of intrinsic.outs) {
+          for (let i = intrinsic.outs.length - 1; i >= 0; i--) {
+            const type = intrinsic.outs[i];
             if (typeof type == "string") {
               outs.push(tmpl.get(type)!);
             } else {

@@ -1,7 +1,7 @@
-proc asd
-  dup2 puts puts
+proc test :: int ptr do
+  <dump-stack> dup2 <dump-stack> puts puts
 end
 
 proc main
-  "test" asd
+  "hello world\n" test
 end
