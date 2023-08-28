@@ -124,8 +124,6 @@ export class Parser {
   }
 
   private readIfBlock(start: Token): ICondition {
-    // TODO: `if*` for chained if/else
-
     const condition: ICondition = {
       type: AstType.If,
       body: [],

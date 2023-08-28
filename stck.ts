@@ -1,13 +1,14 @@
 #!bun
 
 import { printByteCode, printProgramAst, printProgramIR, printTokens } from "./src/util/prettyprint";
-import { MAGIC, decodeBytecode, encodeBytecode } from "./src/encoder";
+import { decodeBytecode, encodeBytecode } from "./src/encoder";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { ByteCode } from "./src/shared/instruction";
 import { Preprocessor } from "./src/preprocessor";
 import { File } from "./src/shared/location";
 import { Compiler } from "./src/compiler";
 import { Parser } from "./src/parser";
+import { MAGIC } from "./src/const";
 import { Lexer } from "./src/lexer";
 import { VM } from "./src/vm";
 import chalk from "chalk";

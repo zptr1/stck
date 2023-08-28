@@ -1,5 +1,4 @@
 import { ByteCode, Instr, Instruction } from "./shared/instruction";
-import { writeSync } from "fs";
 
 // TODO: Temporary virtual machine; will be rewritten in Rust
 

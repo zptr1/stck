@@ -1,9 +1,9 @@
-import { StackElement, reportError, reportErrorWithStack, reportWarning } from "./errors";
-import { AstType, Expr, IProgram, IPush, ISignature, IWord } from "./shared/ast";
-import { IRConst, IRExpr, IRMemory, IRProc, IRProgram, IRType } from "./shared/ir";
 import { DataType, DataTypeArray, TemplateMap, compareDataTypeArrays } from "./shared/types";
-import { INTRINSICS, Intrinsic } from "./shared/intrinsics";
+import { StackElement, reportError, reportErrorWithStack, reportWarning } from "./errors";
+import { IRConst, IRExpr, IRMemory, IRProc, IRProgram, IRType } from "./shared/ir";
+import { AstType, Expr, IProgram, IPush, ISignature, IWord } from "./shared/ast";
 import { Location, formatLoc } from "./shared/location";
+import { INTRINSICS } from "./shared/intrinsics";
 import { Preprocessor } from "./preprocessor";
 import chalk from "chalk";
 
@@ -93,50 +93,15 @@ export class TypeChecker {
     }
   }
 
-  public handleIntrinsic(intrinsic: Intrinsic, ctx: Context, loc: Location) {
-    this.validateContextStack(loc, ctx, intrinsic.ins, false, "for the intrinsic call");
-
-    // TODO: find a better way to handle this
-    if (intrinsic.name == "dup") {
-      const a = ctx.stack.pop()!;
-      ctx.stack.push(a, a);
-      ctx.stackLocations.push(loc);
-    } else if (intrinsic.name == "dup2") {
-      const a = ctx.stack.pop()!, b = ctx.stack.pop()!;
-      ctx.stack.push(b, a, b, a);
-      ctx.stackLocations.push(loc, loc);
-    } else if (intrinsic.name == "rot") {
-      const a = ctx.stack.pop()!,
-            b = ctx.stack.pop()!,
-            c = ctx.stack.pop()!;
-      ctx.stack.push(b, a, c);
-    } else if (intrinsic.name == "over") {
-      ctx.stack.push(ctx.stack.at(-2)!);
-      ctx.stackLocations.push(loc);
-    } else if (intrinsic.name == "swap") {
-      ctx.stack.push(ctx.stack.pop()!, ctx.stack.pop()!);
-    } else if (intrinsic.name == "swap2") {
-      ctx.stack.push(ctx.stack.pop()!, ctx.stack.pop()!, ctx.stack.pop()!, ctx.stack.pop()!);
-    } else {
-      for (let i = 0; i < intrinsic.ins.length; i++) {
-        ctx.stack.pop();
-        ctx.stackLocations.pop();
-      }
-
-      for (let i = 0; i < intrinsic.outs.length; i++) {
-        ctx.stack.push(intrinsic.outs[i]);
-        ctx.stackLocations.push(loc);
-      }
-    }
-  }
-
   public evaluateCompileTimeExpr(exprs: Expr[], loc: Location, ctx: Context = createContext()): IPush {
     const stackValues: any[] = [];
 
     for (const expr of exprs) {
       if (expr.type == AstType.Word) {
         if (INTRINSICS.has(expr.value)) {
-          this.handleIntrinsic(INTRINSICS.get(expr.value)!, ctx, expr.loc);
+          this.handleSignature(INTRINSICS.get(expr.value)!, ctx, expr.loc);
+
+          // TODO: Move the implementation to `shared/intrinsics.ts`?
 
           if (expr.value == "add") {
             const rhs = stackValues.pop(), lhs = stackValues.pop();
@@ -160,6 +125,31 @@ export class TypeChecker {
           } else if (expr.value == "gt") {
             const rhs = stackValues.pop(), lhs = stackValues.pop()!;
             stackValues.push(lhs > rhs);
+          } else if (expr.value == "shl") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop()!;
+            stackValues.push(lhs << rhs);
+          } else if (expr.value == "shr") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop()!;
+            stackValues.push(lhs >> rhs);
+          } else if (expr.value == "not") {
+            stackValues.push(~stackValues.pop()!);
+          } else if (expr.value == "or") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop()!;
+            stackValues.push(lhs | rhs);
+          } else if (expr.value == "and") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop()!;
+            stackValues.push(lhs & rhs);
+          } else if (expr.value == "xor") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop()!;
+            stackValues.push(lhs ^ rhs);
+          } else if (expr.value == "lor") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop()!;
+            stackValues.push(lhs || rhs);
+          } else if (expr.value == "land") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop()!;
+            stackValues.push(lhs && rhs);
+          } else if (expr.value == "lnot") {
+            stackValues.push(!stackValues.pop());
           } else if (expr.value == "dup") {
             const a = stackValues.pop();
             stackValues.push(a, a);

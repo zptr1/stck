@@ -1,14 +1,14 @@
 import { ByteCode, Instr, Instruction } from "./shared/instruction";
 import { ByteReader, ByteWriter } from "./shared/reader";
+import { MAGIC } from "./const";
 
-export const MAGIC = Buffer.from([0x53, 0x54, 0x43, 0x4b, 0xFF]);
-export const VERSION = 1;
+const BYTECODE_VERSION = 1;
 
 export function encodeBytecode(bytecode: ByteCode): Buffer {
   const writer = new ByteWriter();
 
   writer.array.push(...MAGIC);
-  writer.write(VERSION);
+  writer.write(BYTECODE_VERSION);
 
   writer.u32(bytecode.progMemSize);
   writer.u32(bytecode.textMemSize);
@@ -48,7 +48,7 @@ export function decodeBytecode(buffer: Buffer): ByteCode {
   const reader = new ByteReader(buffer, MAGIC.length);
   const version = reader.read();
 
-  if (version != VERSION) {
+  if (version != BYTECODE_VERSION) {
     throw new Error(`Unsupported bytecode version - ${version}`);
   }
 

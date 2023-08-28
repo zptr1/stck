@@ -18,9 +18,6 @@ function addIntrinsic(name: string, instr: Instr, ins: DataTypeArray, outs: Data
   });
 }
 
-// TODO: Add type declaration support and move the signatures from here  to `lib/core.stck`
-//       e. g. `def add int int -> int end`
-
 // Math
 addIntrinsic("add",    Instr.Add,    [DataType.Int, DataType.Int], [DataType.Int]);
 addIntrinsic("sub",    Instr.Sub,    [DataType.Int, DataType.Int], [DataType.Int]);
