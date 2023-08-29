@@ -1,10 +1,8 @@
-import { IRExpr, IRProc, IRProgram, IRWordKind, IRType, IRConst, IRMemory } from "./shared/ir";
-import { AstType, Expr, IConst, IMemory, IProc, IProgram, IWord } from "./shared/ast";
-import { reportError, reportErrorWithStack } from "./errors";
-import { INTRINSICS } from "./shared/intrinsics";
-import { formatLoc } from "./shared/location";
-import { TypeChecker } from "./typechecker";
-import { DataType } from "./shared/types";
+import { IRExpr, IRProc, IRProgram, IRWordKind, IRType, IRConst, IRMemory } from "./ir";
+import { AstType, Expr, IConst, IMemory, IProc, IProgram, IWord } from "./ast";
+import { reportError, reportErrorWithStack } from "../errors";
+import { INTRINSICS, formatLoc, DataType } from "../shared";
+import { TypeChecker } from "../compiler";
 import chalk from "chalk";
 
 /**

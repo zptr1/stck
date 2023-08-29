@@ -1,5 +1,4 @@
-import { DataType, DataTypeArray } from "./types";
-import { File, Location } from "./location";
+import { DataType, DataTypeArray, File, Location } from "../shared";
 
 export enum AstType {
   Proc,

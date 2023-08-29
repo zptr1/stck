@@ -1,4 +1,4 @@
-import { File, Location } from "./location";
+import { File, Location } from "../shared";
 import { IPush, ISignature } from "./ast";
 
 export interface IIR<T extends IRType> {

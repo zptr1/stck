@@ -1,14 +1,10 @@
 #!bun
 
-import { printByteCode, printProgramAst, printProgramIR, printTokens } from "./src/util/prettyprint";
-import { decodeBytecode, encodeBytecode } from "./src/encoder";
+import { printByteCode, printProgramAst, printProgramIR, printTokens } from "./src/util";
+import { decodeBytecode, encodeBytecode, Compiler, isBytecode } from "./src/compiler";
 import { existsSync, readFileSync, writeFileSync } from "fs";
-import { ByteCode } from "./src/shared/instruction";
-import { Preprocessor } from "./src/preprocessor";
-import { File } from "./src/shared/location";
-import { Compiler } from "./src/compiler";
-import { Parser } from "./src/parser";
-import { MAGIC } from "./src/const";
+import { Preprocessor, Parser } from "./src/parser";
+import { ByteCode, File } from "./src/shared";
 import { Lexer } from "./src/lexer";
 import { VM } from "./src/vm";
 import chalk from "chalk";
@@ -80,7 +76,7 @@ if (process.argv.length < 3) {
     preprocessor.typechecker.typecheckProgram(ir);
     printProgramIR(ir);
   } else if (process.argv[4] == "bytecode") {
-    if (src.subarray(0, MAGIC.length).equals(MAGIC)) {
+    if (isBytecode(src)) {
       printByteCode(decodeBytecode(src));
     } else {
       const tokens = new Lexer(file).collect();
@@ -98,7 +94,7 @@ if (process.argv.length < 3) {
   const path = plib.resolve(process.argv[2]);
   const src = readFileSync(path);
 
-  if (src.subarray(0, MAGIC.length).equals(MAGIC)) {
+  if (isBytecode(src)) {
     new VM(decodeBytecode(src));
   } else {
     new VM(compile(new File(path, src.toString("utf-8"))));

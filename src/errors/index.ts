@@ -1,6 +1,5 @@
-import { File, Location, Span, formatLoc } from "../shared/location";
+import { File, Location, Span, formatLoc } from "../shared";
 import chalk, { ChalkInstance } from "chalk";
-import { IWord } from "../shared/ast";
 import lineColumn from "line-column";
 
 function printLine(line: string, lineno?: number, padding: number = 2) {

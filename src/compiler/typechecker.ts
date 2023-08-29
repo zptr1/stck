@@ -1,10 +1,8 @@
-import { DataType, DataTypeArray, TemplateMap, compareDataTypeArrays } from "./shared/types";
-import { StackElement, reportError, reportErrorWithStack, reportWarning } from "./errors";
-import { IRConst, IRExpr, IRMemory, IRProc, IRProgram, IRType } from "./shared/ir";
-import { AstType, Expr, IProgram, IPush, ISignature, IWord } from "./shared/ast";
-import { Location, formatLoc } from "./shared/location";
-import { INTRINSICS } from "./shared/intrinsics";
-import { Preprocessor } from "./preprocessor";
+import { DataType, DataTypeArray, TemplateMap, compareDataTypeArrays, Location, formatLoc, INTRINSICS } from "../shared";
+import { StackElement, reportError, reportErrorWithStack, reportWarning } from "../errors";
+import { IRConst, IRExpr, IRMemory, IRProc, IRProgram, IRType } from "../parser/ir";
+import { AstType, Expr, IProgram, IPush, ISignature, IWord } from "../parser/ast";
+import { Preprocessor } from "../parser";
 import chalk from "chalk";
 
 export interface Context {

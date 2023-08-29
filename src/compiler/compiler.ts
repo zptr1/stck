@@ -1,9 +1,6 @@
-import { ByteCode, Instr, Instruction, MarkedInstr } from "./shared/instruction";
-import { IRExpr, IRProc, IRProgram, IRType, IRWordKind } from "./shared/ir";
-import { reportErrorWithoutLoc } from "./errors";
-import { AstType } from "./shared/ast";
-import { DataType } from "./shared/types";
-import { INTRINSICS } from "./shared/intrinsics";
+import { ByteCode, Instr, Instruction, MarkedInstr, DataType, INTRINSICS } from "../shared";
+import { IRExpr, IRProc, IRProgram, IRType, IRWordKind, AstType } from "../parser";
+import { reportErrorWithoutLoc } from "../errors";
 
 export class Compiler {
   public readonly text: Map<string, number> = new Map();

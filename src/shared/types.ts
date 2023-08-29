@@ -1,4 +1,4 @@
-import { Tokens } from "./token";
+import { Tokens } from "../lexer";
 
 export enum DataType {
   Int,

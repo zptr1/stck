@@ -1,7 +1,7 @@
-import { KEYWORDS, Token, Tokens } from "./shared/token";
-import { File, formatLoc } from "./shared/location";
-import { Reader } from "./shared/reader";
-import { reportError } from "./errors";
+import { KEYWORDS, Token, Tokens } from "./token";
+import { File, formatLoc } from "../shared";
+import { reportError } from "../errors";
+import { Reader } from "../util";
 
 export class Lexer {
   public readonly reader: Reader<string>;

@@ -1,4 +1,4 @@
-import { Location } from "./location";
+import { Location } from "../shared";
 
 export const KEYWORDS = new Set([
   "proc", "macro", "const", "memory",

@@ -1,4 +1,4 @@
-import { Span } from "./location";
+import { Span } from "../shared";
 
 type ArrayLike<T> = {
   [K in number]: T

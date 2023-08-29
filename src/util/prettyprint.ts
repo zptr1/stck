@@ -1,10 +1,7 @@
-import { IRExpr, IIR, IRProgram, IRWordKind, IRType } from "../shared/ir";
-import { IAst, AstType, Expr, IProgram } from "../shared/ast";
-import { formatLoc } from "../shared/location";
-import { DataType } from "../shared/types";
+import { IRExpr, IIR, IRProgram, IRWordKind, IRType, IAst, AstType, Expr, IProgram } from "../parser";
+import { formatLoc, DataType, ByteCode, Instr } from "../shared";
+import { Token } from "../lexer";
 import chalk from "chalk";
-import { ByteCode, Instr } from "../shared/instruction";
-import { Token } from "../shared/token";
 
 // A shitty utility for debugging
 // Will probably be removed

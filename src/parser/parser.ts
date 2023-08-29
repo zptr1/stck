@@ -1,12 +1,9 @@
-import { AstType, Expr, ICondition, IConst, IMacro, IMemory, IProc, IProgram, IWhile, TopLevelAst } from "./shared/ast";
-import { DataType, tokenToDataType } from "./shared/types";
-import { Location, formatLoc } from "./shared/location";
-import { INTRINSICS } from "./shared/intrinsics";
-import { Token, Tokens } from "./shared/token";
-import { reportError } from "./errors";
-import { ROOT_DIR } from "./const";
+import { AstType, Expr, ICondition, IConst, IMacro, IMemory, IProc, IProgram, IWhile, TopLevelAst } from "./ast";
+import { DataType, tokenToDataType, Location, formatLoc, INTRINSICS } from "../shared";
+import { Lexer, Token, Tokens } from "../lexer";
+import { reportError } from "../errors";
+import { ROOT_DIR } from "../const";
 import { existsSync } from "fs";
-import { Lexer } from "./lexer";
 import chalk from "chalk";
 import plib from "path";
 

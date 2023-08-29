@@ -1,13 +1,17 @@
-import { ByteCode, Instr, Instruction } from "./shared/instruction";
-import { ByteReader, ByteWriter } from "./shared/reader";
-import { MAGIC } from "./const";
+import { ByteCode, Instr, Instruction } from "../shared";
+import { ByteReader, ByteWriter } from "../util";
 
 const BYTECODE_VERSION = 1;
+const BYTECODE_MAGIC = Buffer.from([0x53, 0x54, 0x43, 0x4b, 0xFF]);
+
+export function isBytecode(buffer: Buffer): boolean {
+  return buffer.subarray(0, BYTECODE_MAGIC.length).equals(BYTECODE_MAGIC);
+}
 
 export function encodeBytecode(bytecode: ByteCode): Buffer {
   const writer = new ByteWriter();
 
-  writer.array.push(...MAGIC);
+  writer.array.push(...BYTECODE_MAGIC);
   writer.write(BYTECODE_VERSION);
 
   writer.u32(bytecode.progMemSize);
@@ -41,11 +45,11 @@ export function encodeBytecode(bytecode: ByteCode): Buffer {
 }
 
 export function decodeBytecode(buffer: Buffer): ByteCode {
-  if (!buffer.subarray(0, MAGIC.length).equals(MAGIC)) {
+  if (!isBytecode(buffer)) {
     throw new Error("Invalid bytecode");
   }
 
-  const reader = new ByteReader(buffer, MAGIC.length);
+  const reader = new ByteReader(buffer, BYTECODE_MAGIC.length);
   const version = reader.read();
 
   if (version != BYTECODE_VERSION) {
