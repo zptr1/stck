@@ -439,6 +439,8 @@ export class TypeChecker {
         }
       } else if (expr.type == IRType.While) {
         this.inferSignature(expr.condition, callstack, ins, outs);
+        outs.pop();
+
         this.inferSignature(expr.body, callstack, ins, outs);
       } else if (expr.type == IRType.If) {
         if (outs.length) outs.pop();
