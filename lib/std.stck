@@ -20,6 +20,11 @@ macro +  cast(int) swap cast(int)      add    end
 macro -  cast(int) swap cast(int) swap sub    end
 macro *  cast(int) swap cast(int)      mul    end
 macro /% cast(int) swap cast(int) swap divmod end
+macro /  /%      drop end
+macro %  /% swap drop end
+
+macro div divmod      drop end
+macro mov divmod swap drop end
 
 /// Bitwise operations
 macro << cast(int) swap cast(int) swap shl end
