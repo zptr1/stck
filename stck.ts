@@ -1,6 +1,5 @@
 #!bun
 
-import { printByteCode, printProgramAst, printProgramIR, printTokens } from "./src/util";
 import { decodeBytecode, encodeBytecode, Compiler, isBytecode } from "./src/compiler";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { Preprocessor, Parser } from "./src/parser";
@@ -51,42 +50,6 @@ if (process.argv.length < 3) {
   writeFileSync(path, encodeBytecode(bytecode));
 
   console.log("[INFO] Compiled to", chalk.bold(plib.resolve(path)));
-} else if (process.argv[2] == "debug") {
-  if (!process.argv[3]) printHelp();
-  if (!existsSync(process.argv[3])) {
-    console.error(`No such file or directory: ${process.argv[3]}`);
-    process.exit(1);
-  }
-
-  const src = readFileSync(process.argv[3]);
-  const file = new File(plib.resolve(process.argv[3]), src.toString("utf-8"));
-
-  if (process.argv[4] == "tokens") {
-    printTokens(new Lexer(file).collect());
-  } else if (process.argv[4] == "ast") {
-    const tokens = new Lexer(file).collect();
-    const ast = new Parser(tokens).parse();
-    printProgramAst(ast);
-  } else if (process.argv[4] == "ir") {
-    const tokens = new Lexer(file).collect();
-    const ast = new Parser(tokens).parse();
-    const preprocessor = new Preprocessor(ast)
-    const ir = preprocessor.parse();
-
-    preprocessor.typechecker.typecheckProgram(ir);
-    printProgramIR(ir);
-  } else if (process.argv[4] == "bytecode") {
-    if (isBytecode(src)) {
-      printByteCode(decodeBytecode(src));
-    } else {
-      const tokens = new Lexer(file).collect();
-      const ast = new Parser(tokens).parse();
-      const ir = new Preprocessor(ast).parse();
-      const bytecode = new Compiler(ir).compile();
-
-      printByteCode(bytecode);
-    }
-  }
 } else if (!existsSync(process.argv[2])) {
   console.error(`No such file or directory: ${process.argv[2]}`);
   process.exit(1);
