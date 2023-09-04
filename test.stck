@@ -1,5 +1,3 @@
-const str "Hello world\n" end
-
 proc main
-  str puts
+  "Hello, World!\n" puts
 end

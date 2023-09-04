@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@types/line-column": "^1.0.0",
+    "@types/minimist": "^1.2.2",
     "chalk": "^5.3.0",
-    "line-column": "^1.0.2"
+    "line-column": "^1.0.2",
+    "minimist": "^1.2.8"
   }
 }
