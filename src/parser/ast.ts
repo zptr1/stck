@@ -47,6 +47,7 @@ export interface ISignature {
 export interface IProc extends IAst<AstType.Proc> {
   name: string;
   body: Expr[];
+  inline: boolean;
   signature?: ISignature;
 }
 

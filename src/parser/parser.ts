@@ -225,7 +225,8 @@ export class Parser {
       type: AstType.Proc,
       name: name.value,
       loc: start.loc,
-      body: []
+      body: [],
+      inline: false
     }
 
     if (this.peek()?.kind == Tokens.SigIns) {
@@ -258,6 +259,7 @@ export class Parser {
     }
 
     this.program.procs.set(proc.name, proc);
+    return proc;
   }
 
   public parse(): IProgram {
@@ -292,6 +294,9 @@ export class Parser {
         }
       } else if (token.kind == Tokens.Proc) {
         this.readProc(token);
+      } else if (token.kind == Tokens.Inline) {
+        const proc = this.readProc(this.nextOf(Tokens.Proc));
+        proc.inline = true;
       } else if (token.kind == Tokens.Macro) {
         const macro = this.readTopLevelBlock<IMacro>(AstType.Macro, token);
         this.program.macros.set(macro.name, macro);

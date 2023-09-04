@@ -52,6 +52,7 @@ export interface IRMemory extends IIR<IRType.Memory> {
 export interface IRProc extends IIR<IRType.Proc> {
   name: string;
   body: IRExpr[];
+  inline: boolean;
   signature?: ISignature;
 }
 
