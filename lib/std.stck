@@ -43,6 +43,18 @@ macro && cast(bool) swap cast(bool) land end
 macro || cast(bool) swap cast(bool) lor  end
 macro !  cast(bool)                 lnot end
 
+macro lnot
+  cast(int) 1 swap sub cast(bool)
+end
+
+macro land
+  cast(int) swap cast(int) and cast(bool)
+end
+
+macro lor
+  cast(int) swap cast(int) or cast(bool)
+end
+
 macro lxor
   dup2 land lnot rot rot lor land
 end

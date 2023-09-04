@@ -36,11 +36,6 @@ addIntrinsic("or",   Instr.Or,   [DataType.Int,  DataType.Int],  [DataType.Int])
 addIntrinsic("and",  Instr.And,  [DataType.Int,  DataType.Int],  [DataType.Int]);
 addIntrinsic("xor",  Instr.Xor,  [DataType.Int,  DataType.Int],  [DataType.Int]);
 
-// Logical Operations
-addIntrinsic("lnot", Instr.LNot, [DataType.Bool],                [DataType.Bool]);
-addIntrinsic("lor",  Instr.LOr,  [DataType.Bool, DataType.Bool], [DataType.Bool]);
-addIntrinsic("land", Instr.LAnd, [DataType.Bool, DataType.Bool], [DataType.Bool]);
-
 // Stack manipulation
 addIntrinsic("dup",  Instr.Dup,  ["a"],           ["a", "a"]);
 addIntrinsic("drop", Instr.Drop, ["a"],           []);

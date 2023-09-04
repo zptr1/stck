@@ -25,11 +25,6 @@ export enum Instr {
   And,  // &
   Xor,  // ^
 
-  // Logical Operations
-  LNot,
-  LOr,
-  LAnd,
-
   // Stack manipulation
   Dup,
   Drop,

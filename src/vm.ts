@@ -35,6 +35,10 @@ export class VM {
       } else if (type == Instr.Call) {
         returnStack.push(ip);
         ip = instr[1];
+
+        if (returnStack.length > 4096) {
+          throw "Maximum call stack size exceeded";
+        }
       } else if (type == Instr.Ret) {
         ip = returnStack.pop()!;
       } else if (type == Instr.Jmp) {
@@ -70,14 +74,6 @@ export class VM {
       } else if (type == Instr.Xor) {
         const rhs = stack.pop()!, lhs = stack.pop()!;
         stack.push(lhs ^ rhs);
-      } else if (type == Instr.LNot) {
-        stack.push(Number(stack.pop()! == 0));
-      } else if (type == Instr.LOr) {
-        const a = stack.pop()!, b = stack.pop()!;
-        stack.push(Number(a != 0 || b != 0));
-      } else if (type == Instr.LAnd) {
-        const a = stack.pop()!, b = stack.pop()!;
-        stack.push(Number(a != 0 && b != 0));
       } else if (type == Instr.Lt) {
         const rhs = stack.pop()!, lhs = stack.pop()!;
         stack.push(Number(lhs < rhs));
