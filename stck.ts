@@ -1,7 +1,7 @@
 #!bun
 
 import { BytecodeCompiler, FasmCompiler, decodeBytecode, encodeBytecode, isBytecode } from "./src/compiler";
-import { existsSync, readFileSync, statSync, writeFileSync } from "fs";
+import { existsSync, readFileSync, statSync, unlinkSync, writeFileSync } from "fs";
 import { Parser, Preprocessor } from "./src/parser";
 import { Lexer } from "./src/lexer";
 import { File } from "./src/shared";
@@ -75,7 +75,7 @@ function main() {
   }
 
   const file = new File(plib.resolve(path), source.toString("utf-8"));
-  const out = file.path.replace(/(\.stck)?$/, "");
+  const out = file.path.replace(/(\.stck)?$/, build ? "" : "_temp");
 
   log.timeit("Parsing");
 
@@ -137,6 +137,9 @@ function main() {
           process.exit(code ?? 0);
         },
       });
+
+      unlinkSync(out);
+      unlinkSync(out + ".asm");
     }
   } else {
     throw new Error("unreachable");
