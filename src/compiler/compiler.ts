@@ -43,14 +43,20 @@ export class BytecodeCompiler {
             this.instr.push([intrinsic.instr]);
           }
         } else if (expr.kind == IRWordKind.Proc) {
-          if (!this.compiledProcs.has(expr.name)) {
-            this.procQueue.push(expr.name);
-          }
+          const proc = this.program.procs.get(expr.name)!;
 
-          this.instr.push([
-            Instr.Call,
-            `proc-${expr.name}`
-          ]);
+          if (proc.inline) {
+            this.compileBody(proc.body);
+          } else {
+            if (!this.compiledProcs.has(expr.name)) {
+              this.procQueue.push(expr.name);
+            }
+
+            this.instr.push([
+              Instr.Call,
+              `proc-${expr.name}`
+            ]);
+          }
         } else if (expr.kind == IRWordKind.Memory) {
           this.instr.push([
             Instr.Push,
@@ -89,9 +95,9 @@ export class BytecodeCompiler {
         }
       } else if (expr.type == AstType.Push) {
         if (expr.datatype == DataType.Ptr) {
-          this.instr.push([Instr.Push, this.encodeString(expr.value)]);
+          this.instr.push([Instr.Push, BigInt(this.encodeString(expr.value))]);
         } else {
-          this.instr.push([Instr.Push, Number(expr.value) ?? 0]);
+          this.instr.push([Instr.Push, BigInt(expr.value) ?? 0n]);
         }
       } else {
         throw new Error(`Compilation of ${IRType[(expr as IRExpr).type]} to bytecode is not implemented`);
@@ -151,27 +157,34 @@ export class FasmCompiler {
 
   private readonly strings: string[] = [];
   private readonly compiledProcs: Set<string> = new Set();
+  private readonly procIds: Map<string, number> = new Map();
   private readonly procQueue: string[] = [];
 
-  private labelIncrement: number = 0;
+  private labelId: number = 0;
 
   constructor(
     public readonly program: IRProgram
   ) {}
 
   private label(prefix: string = "label"): string {
-    return `${prefix}_${this.labelIncrement++}`;
+    return `${prefix}_${this.labelId++}`;
   }
 
-  private encodeString(str: string): number {
+  private getStrId(str: string): number {
     const idx = this.strings.indexOf(str);
     return idx == -1
       ? this.strings.push(str) - 1
       : idx;
   }
 
+  private getProcId(proc: string): number {
+    if (!this.procIds.has(proc))
+      this.procIds.set(proc, this.procIds.size);
+    return this.procIds.get(proc)!;
+  }
+
   public includeBuiltins() {
-    this.out.push("; beigin builtins");
+    this.out.push("; begin builtins");
 
     // print intrinsic
     // definitely not stolen from somewhere idk
@@ -215,27 +228,205 @@ export class FasmCompiler {
   }
 
   public compileIntrinsic(instr: Instr) {
+    // TODO: Introduce assembly blocks and move this to `lib/core.stck` that will be automatically included into every program
     if (
       instr == Instr.Add
       || instr == Instr.Sub
       || instr == Instr.Mul
+      || instr == Instr.DivMod
+      || instr == Instr.Or
+      || instr == Instr.And
+      || instr == Instr.Xor
     ) {
-      const op = (
-        instr == Instr.Add
-          ? "add"
-        : instr == Instr.Sub
-          ? "sub"
-        : instr == Instr.Mul
-          ? "mul"
-        : ""
+      this.out.push(
+        "pop rbx",
+        "pop rax",
       );
 
+      if (instr == Instr.Add) {
+        this.out.push("add rax, rbx");
+      } else if (instr == Instr.Sub) {
+        this.out.push("sub rax, rbx");
+      } else if (instr == Instr.Mul) {
+        this.out.push("mul rbx");
+      } else if (instr == Instr.DivMod) {
+        this.out.push(
+          "xor rdx, rdx",
+          "div rbx",
+          "push rax",
+          "push rdx"
+        );
+      } else if (instr == Instr.Or) {
+        this.out.push("or rax, rbx");
+      } else if (instr == Instr.And) {
+        this.out.push("and rax, rbx");
+      } else if (instr == Instr.Xor) {
+        this.out.push("xor rax, rbx");
+      }
+
+      if (instr != Instr.DivMod) {
+        this.out.push("push rax");
+      }
+    } else if (
+      instr == Instr.Lt
+      || instr == Instr.Eq
+      || instr == Instr.Gt
+    ) {
+      this.out.push(
+        "mov rcx, 0",
+        "mov rdx, 1",
+        "pop rbx",
+        "pop rax",
+        "cmp rax, rbx"
+      );
+
+      if (instr == Instr.Lt) {
+        this.out.push("cmovl rcx, rdx");
+      } else if (instr == Instr.Eq) {
+        this.out.push("cmove rcx, rdx");
+      } else if (instr == Instr.Gt) {
+        this.out.push("cmovg rcx, rdx");
+      }
+
+      this.out.push("push rcx");
+    } else if (
+      instr == Instr.Shl
+      || instr == Instr.Shr
+    ) {
+      this.out.push(
+        "pop rcx",
+        "pop rbx"
+      );
+
+      if (instr == Instr.Shl) {
+        this.out.push("shl rbx, cl");
+      } else if (instr == Instr.Shr) {
+        this.out.push("shr rbx, cl");
+      }
+
+      this.out.push("push rbx");
+    } else if (instr == Instr.Not) {
+      this.out.push(
+        "pop rax",
+        "not rax",
+        "push rax"
+      );
+    } else if (instr == Instr.Dup) {
+      this.out.push(
+        "pop rax",
+        "push rax",
+        "push rax"
+      );
+    } else if (instr == Instr.Drop) {
+      this.out.push("pop rax");
+    } else if (instr == Instr.Swap) {
       this.out.push(
         "pop rax",
         "pop rbx",
-        `${op} rax, rbx`,
-        "push rax"
+        "push rax",
+        "push rbx"
       );
+    } else if (instr == Instr.Rot) {
+      this.out.push(
+        "pop rax",
+        "pop rbx",
+        "pop rcx",
+        "push rbx",
+        "push rax",
+        "push rcx"
+      );
+    } else if (instr == Instr.Over) {
+      this.out.push(
+        "pop rax",
+        "pop rbx",
+        "push rbx",
+        "push rax",
+        "push rbx"
+      );
+    } else if (instr == Instr.Dup2) {
+      this.out.push(
+        "pop rax",
+        "pop rbx",
+        "push rbx",
+        "push rax",
+        "push rbx",
+        "push rax",
+      );
+    } else if (instr == Instr.Swap2) {
+      this.out.push(
+        "pop rax",
+        "pop rbx",
+        "pop rcx",
+        "pop rdx",
+        "push rax",
+        "push rbx",
+        "push rcx",
+        "push rdx"
+      );
+    } else if (
+      instr == Instr.Write8
+      || instr == Instr.Write16
+      || instr == Instr.Write32
+      || instr == Instr.Write64
+    ) {
+      this.out.push(
+        "pop rax",
+        "pop rbx"
+      );
+
+      if (instr == Instr.Write8) {
+        this.out.push("mov [rax], bl");
+      } else if (instr == Instr.Write16) {
+        this.out.push("mov [rax], bx");
+      } else if (instr == Instr.Write32) {
+        this.out.push("mov [rax], ebx");
+      } else if (instr == Instr.Write64) {
+        this.out.push("mov [rax], rbx");
+      }
+    } else if (
+      instr == Instr.Read8
+      || instr == Instr.Read16
+      || instr == Instr.Read32
+      || instr == Instr.Read64
+    ) {
+      this.out.push(
+        "pop rax",
+        "xor rbx, rbx"
+      );
+
+      if (instr == Instr.Read8) {
+        this.out.push("mov bl, [rax]");
+      } else if (instr == Instr.Read16) {
+        this.out.push("mov bx, [rax]");
+      } else if (instr == Instr.Read32) {
+        this.out.push("mov ebx, [rax]");
+      } else if (instr == Instr.Read64) {
+        this.out.push("mov rbx, [rax]");
+      }
+
+      this.out.push("push rbx");
+    } else if (instr == Instr.Putu) {
+      this.out.push(
+        "pop rdi",
+        "call print"
+      );
+    } else if (instr == Instr.Putch) {
+      throw new Error("not implemented");
+    } else if (instr == Instr.Print) {
+      this.out.push(
+        "pop rdi",
+        "call print"
+      );
+    } else if (instr == Instr.Puts) {
+      this.out.push(
+        "mov rax, 1",
+        "mov rdi, 1",
+        "pop rsi",
+        "pop rdx",
+        "syscall"
+      );
+    } else if (instr != Instr.Nop) {
+      throw new Error(`Compilation of the instruction ${Instr[instr as Instr]} to NASM is not supported`);
     }
   }
 
@@ -245,17 +436,73 @@ export class FasmCompiler {
         if (expr.kind == IRWordKind.Intrinsic) {
           this.compileIntrinsic(INTRINSICS.get(expr.name)!.instr);
         } else if (expr.kind == IRWordKind.Proc) {
-          throw new Error("TODO");
+          const proc = this.program.procs.get(expr.name)!;
+          if (proc.inline) {
+            this.compileBody(proc.body);
+          } else {
+            const id = this.getProcId(proc.name);
+            if (!this.compiledProcs.has(proc.name)) {
+              this.procQueue.push(proc.name);
+            }
+
+            this.out.push(
+              "mov rax, rsp",
+              "mov rsp, [callstack_rsp]",
+              `call proc_${id}`,
+              "mov [callstack_rsp], rsp",
+              "mov rsp, rax"
+            );
+          }
         } else if (expr.kind == IRWordKind.Memory) {
-          throw new Error("TODO");
+          this.out.push(
+            `push mem+${this.program.memories.get(expr.name)!.offset}`
+          );
         }
       } else if (expr.type == IRType.While) {
-        throw new Error("TODO");
+        const whileLb = this.label(".while");
+        const endLb   = this.label(".end");
+
+        this.out.push(`${whileLb}:`);
+        this.compileBody(expr.condition);
+        this.out.push(
+          "pop rax",
+          "test rax, rax",
+          `jz ${endLb}`
+        );
+        this.compileBody(expr.body);
+        this.out.push(
+          `jmp ${whileLb}`,
+          `${endLb}:`
+        );
       } else if (expr.type == IRType.If) {
-        throw new Error("TODO");
+        this.out.push(
+          "pop rax",
+          "test rax, rax"
+        );
+
+        if (expr.body.length > 0 && expr.else.length > 0) {
+          const elseLb = this.label(".else");
+          const endLb  = this.label(".endif");
+          this.out.push(`jz ${elseLb}`);
+          this.compileBody(expr.body);
+          this.out.push(`jmp ${endLb}`);
+          this.out.push(`${elseLb}:`);
+          this.compileBody(expr.else);
+          this.out.push(`${endLb}:`);
+        } else if (expr.body.length > 0) {
+          const lb = this.label(".endif");
+          this.out.push(`jz ${lb}`);
+          this.compileBody(expr.body);
+          this.out.push(`${lb}:`);
+        } else if (expr.else.length > 0) {
+          const lb = this.label(".endif");
+          this.out.push(`jnz ${lb}`);
+          this.compileBody(expr.else);
+          this.out.push(`${lb}:`);
+        }
       } else if (expr.type == AstType.Push) {
         if (expr.datatype == DataType.Ptr) {
-          this.out.push(`push str${this.encodeString(expr.value)}`);
+          this.out.push(`push str${this.getStrId(expr.value)}`);
         } else {
           this.out.push(`push ${Number(expr.value) ?? 0}`);
         }
@@ -266,9 +513,25 @@ export class FasmCompiler {
   }
 
   public compileProc(proc: IRProc) {
+    if (this.compiledProcs.has(proc.name))
+      return;
+
+    const id = this.getProcId(proc.name);
     this.compiledProcs.add(proc.name);
+
+    this.out.push(
+      `proc_${id}: ;; ${proc.name} @ ${proc.loc.file.path}`,
+      "sub rsp, 8",
+      "mov [callstack_rsp], rsp",
+      "mov rsp, rax"
+    );
     this.compileBody(proc.body);
-    this.out.push("ret");
+    this.out.push(
+      "mov rax, rsp",
+      "mov rsp, [callstack_rsp]",
+      "add rsp, 8",
+      "ret"
+    );
   }
 
   public compile(): string[] {
@@ -277,13 +540,18 @@ export class FasmCompiler {
     this.out.push("format ELF64 executable 3");
     this.out.push("segment readable executable");
 
+    this.out.push(
+      "_start:",
+      "mov rax, callstack_end",
+      "mov [callstack_rsp], rax",
+      "call proc_0",
+      "mov rax, 60",
+      "mov rdi, 0",
+      "syscall",
+    );
+
     this.includeBuiltins();
     this.compileProc(this.program.procs.get("main")!);
-
-    this.out.pop();
-    this.out.push("mov rax, 60");
-    this.out.push("mov rdi, 0");
-    this.out.push("syscall");
 
     while (this.procQueue.length) {
       this.compileProc(
@@ -292,6 +560,11 @@ export class FasmCompiler {
     }
 
     this.out.push("segment readable writeable");
+
+    this.out.push("callstack_rsp: rq 1");
+    this.out.push("callstack:     rb 64000");
+    this.out.push("callstack_end:");
+    this.out.push(`mem:           rb ${this.program.memorySize}`);
 
     for (let i = 0; i < this.strings.length; i++) {
       this.out.push(`str${i} db ${

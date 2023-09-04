@@ -35,8 +35,14 @@ export enum Instr {
   Swap2,
 
   // Memory
-  Read,
-  Write,
+  Write8,
+  Write16,
+  Write32,
+  Write64,
+  Read8,
+  Read16,
+  Read32,
+  Read64,
 
   // Program
   Print,
@@ -46,8 +52,8 @@ export enum Instr {
   Halt
 }
 
-export type MarkedInstr = [Instr, ...(number | string)[]];
-export type Instruction = [Instr, ...number[]];
+export type MarkedInstr = [Instr, ...(number | bigint | string)[]];
+export type Instruction = [Instr, ...(number | bigint)[]];
 
 export interface ByteCode {
   text: string[];

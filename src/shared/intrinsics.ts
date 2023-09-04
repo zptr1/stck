@@ -29,12 +29,12 @@ addIntrinsic("eq", Instr.Eq, [DataType.Int, DataType.Int], [DataType.Bool]);
 addIntrinsic("gt", Instr.Gt, [DataType.Int, DataType.Int], [DataType.Bool]);
 
 // Bitwise Operations
-addIntrinsic("shl",  Instr.Shl,  [DataType.Int,  DataType.Int],  [DataType.Int]);
-addIntrinsic("shr",  Instr.Shr,  [DataType.Int,  DataType.Int],  [DataType.Int]);
-addIntrinsic("not",  Instr.Not,  [DataType.Int],                 [DataType.Int]);
-addIntrinsic("or",   Instr.Or,   [DataType.Int,  DataType.Int],  [DataType.Int]);
-addIntrinsic("and",  Instr.And,  [DataType.Int,  DataType.Int],  [DataType.Int]);
-addIntrinsic("xor",  Instr.Xor,  [DataType.Int,  DataType.Int],  [DataType.Int]);
+addIntrinsic("shl", Instr.Shl, [DataType.Int,  DataType.Int], [DataType.Int]);
+addIntrinsic("shr", Instr.Shr, [DataType.Int,  DataType.Int], [DataType.Int]);
+addIntrinsic("not", Instr.Not, [DataType.Int],                [DataType.Int]);
+addIntrinsic("or",  Instr.Or,  [DataType.Int,  DataType.Int], [DataType.Int]);
+addIntrinsic("and", Instr.And, [DataType.Int,  DataType.Int], [DataType.Int]);
+addIntrinsic("xor", Instr.Xor, [DataType.Int,  DataType.Int], [DataType.Int]);
 
 // Stack manipulation
 addIntrinsic("dup",  Instr.Dup,  ["a"],           ["a", "a"]);
@@ -50,14 +50,20 @@ addIntrinsic(
 );
 
 // Memory
-addIntrinsic("write",  Instr.Write,  [DataType.Int, DataType.Ptr],  []);
-addIntrinsic("read",   Instr.Read,   [DataType.Ptr],                [DataType.Int])
+addIntrinsic("write8",  Instr.Write8,  [DataType.Int, DataType.Ptr], []);
+addIntrinsic("write16", Instr.Write16, [DataType.Int, DataType.Ptr], []);
+addIntrinsic("write32", Instr.Write32, [DataType.Int, DataType.Ptr], []);
+addIntrinsic("write64", Instr.Write32, [DataType.Int, DataType.Ptr], []);
+addIntrinsic("read8",   Instr.Read8,   [DataType.Ptr],               [DataType.Int]);
+addIntrinsic("read16",  Instr.Read16,  [DataType.Ptr],               [DataType.Int]);
+addIntrinsic("read32",  Instr.Read32,  [DataType.Ptr],               [DataType.Int]);
+addIntrinsic("read64",  Instr.Read32,  [DataType.Ptr],               [DataType.Int]);
 
 // Program
-addIntrinsic("putu",   Instr.Putu,   [DataType.Int],                []);
-addIntrinsic("putch",  Instr.Putch,  [DataType.Int],                []);
-addIntrinsic("print",  Instr.Print,  [DataType.Int],                []);
-addIntrinsic("puts",   Instr.Puts,   [DataType.Int, DataType.Ptr],  []);
+addIntrinsic("putu",  Instr.Putu,  [DataType.Int],               []);
+addIntrinsic("putch", Instr.Putch, [DataType.Int],               []);
+addIntrinsic("print", Instr.Print, [DataType.Int],               []);
+addIntrinsic("puts",  Instr.Puts,  [DataType.Int, DataType.Ptr], []);
 
 // Compile-time
 addIntrinsic("<dump-stack>", Instr.Nop, [], []);

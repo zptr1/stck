@@ -1,6 +1,6 @@
 #!bun
 
-import { BytecodeCompiler, decodeBytecode, encodeBytecode, isBytecode } from "./src/compiler";
+import { BytecodeCompiler, FasmCompiler, decodeBytecode, encodeBytecode, isBytecode } from "./src/compiler";
 import { existsSync, readFileSync, statSync, writeFileSync } from "fs";
 import { Parser, Preprocessor } from "./src/parser";
 import { Lexer } from "./src/lexer";
@@ -75,6 +75,7 @@ function main() {
   }
 
   const file = new File(plib.resolve(path), source.toString("utf-8"));
+  const out = file.path.replace(/(\.stck)?$/, "");
 
   log.timeit("Parsing");
 
@@ -86,22 +87,57 @@ function main() {
   log.timeit("Typechecking");
   preprocessor.typechecker.typecheckProgram(program);
 
-  log.timeit("Compiling");
-
   if (target == "bytecode") {
+    log.timeit("Compiling bytecode");
     const bytecode = new BytecodeCompiler(program).compile();
     log.end();
 
     if (build) {
-      const out = file.path.replace(/(\.stck)?$/, ".stckb");
-      writeFileSync(out, encodeBytecode(bytecode));
-      log.info(`Compiled to ${out}`);
+      writeFileSync(out + ".stbin", encodeBytecode(bytecode));
+      log.info(`Compiled to ${out}.stbin`);
     } else {
       log.info(`Running ${file.path}`);
       new VM(bytecode);
     }
   } else if (target == "fasm") {
-    throw new Error("Not implemented");
+    log.timeit("Generating assembly");
+
+    const asm = new FasmCompiler(program).compile();
+    writeFileSync(out + ".asm", asm.join("\n"));
+
+    log.timeit("Compiling");
+
+    try {
+      const cmd = Bun.spawnSync({
+        cmd: ["fasm", out + ".asm", out]
+      });
+
+      log.end();
+
+      if (cmd.exitCode != 0) {
+        console.error("Compilation failed");
+        console.error(cmd.stderr.toString());
+        process.exit(1);
+      }
+
+      log.info(`Compiled to ${out}`);
+    } catch (err) {
+      console.error();
+      console.error("Compilation failed");
+      console.error("Do you have fasm installed?");
+      process.exit(1);
+    }
+
+    if (!build) {
+      log.info("Running");
+      Bun.spawn({
+        cmd: [out],
+        stdio: ["inherit", "inherit", "inherit"],
+        onExit(_, code) {
+          process.exit(code ?? 0);
+        },
+      });
+    }
   } else {
     throw new Error("unreachable");
   }

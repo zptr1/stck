@@ -57,6 +57,18 @@ export class ByteWriter {
   public i32(value: number) { this.writeInt(4, value);  }
   public u32(value: number) { this.writeUInt(4, value); }
 
+  public i64(value: bigint) {
+    const buf = Buffer.alloc(8);
+    buf.writeBigInt64LE(value);
+    this.array.push(...buf);
+  }
+
+  public u64(value: bigint) {
+    const buf = Buffer.alloc(8);
+    buf.writeBigUInt64LE(value);
+    this.array.push(...buf);
+  }
+
   public str(value: string) {
     const buf = Buffer.from(value, "utf-8");
     this.u16(buf.length);
@@ -96,6 +108,18 @@ export class ByteReader {
   public u16() { return this.readUInt(2); }
   public i32() { return this.readInt(4);  }
   public u32() { return this.readUInt(4); }
+
+  public i64() {
+    return this.buffer.readBigInt64LE(
+      (this.cursor += 8) - 8
+    );
+  }
+
+  public u64() {
+    return this.buffer.readBigUInt64LE(
+      (this.cursor += 8) - 8
+    );
+  }
 
   public str() {
     const ln = this.u16();

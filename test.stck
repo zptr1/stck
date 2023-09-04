@@ -1,3 +1,5 @@
+include "std.stck"
+
 proc main
-  "Hello, World!\n" puts
+  "Hello, native!\n" puts
 end

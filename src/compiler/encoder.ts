@@ -1,7 +1,7 @@
 import { ByteCode, Instr, Instruction } from "../shared";
 import { ByteReader, ByteWriter } from "../util";
 
-const BYTECODE_VERSION = 1;
+const BYTECODE_VERSION = 2;
 const BYTECODE_MAGIC = Buffer.from([0x53, 0x54, 0x43, 0x4b, 0xFF]);
 
 export function isBytecode(buffer: Buffer): boolean {
@@ -27,15 +27,15 @@ export function encodeBytecode(bytecode: ByteCode): Buffer {
     writer.write(instr[0]);
 
     if (instr[0] == Instr.Push) {
-      writer.i32(instr[1]);
+      writer.i64(instr[1] as bigint);
     } else if (
       instr[0] == Instr.Call
       || instr[0] == Instr.Jmp
       || instr[0] == Instr.JmpIfNot
     ) {
-      writer.u32(instr[1]);
+      writer.u32(instr[1] as number);
     } else if (instr[0] == Instr.Halt) {
-      writer.i8(instr[1]);
+      writer.i8(instr[1] as number);
     }
   }
 
@@ -78,7 +78,7 @@ export function decodeBytecode(buffer: Buffer): ByteCode {
     }
 
     if (typ == Instr.Push) {
-      instr.push(reader.i32());
+      instr.push(reader.i64());
     } else if (
       typ == Instr.Call
       || typ == Instr.Jmp

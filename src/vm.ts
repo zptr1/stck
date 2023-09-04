@@ -23,7 +23,7 @@ export class VM {
     Bun.gc(true);
 
     let ip = 0;
-    const stack: number[] = [];
+    const stack: bigint[] = [];
     const returnStack: number[] = [];
 
     while (true) {
@@ -31,10 +31,10 @@ export class VM {
       const type = instr[0];
 
       if (type == Instr.Push) {
-        stack.push(instr[1]);
+        stack.push(BigInt(instr[1]));
       } else if (type == Instr.Call) {
         returnStack.push(ip);
-        ip = instr[1];
+        ip = instr[1] as number;
 
         if (returnStack.length > 4096) {
           throw "Maximum call stack size exceeded";
@@ -42,9 +42,9 @@ export class VM {
       } else if (type == Instr.Ret) {
         ip = returnStack.pop()!;
       } else if (type == Instr.Jmp) {
-        ip = instr[1];
+        ip = instr[1] as number;
       } else if (type == Instr.JmpIfNot) {
-        if (!stack.pop()) ip = instr[1];
+        if (!stack.pop()) ip = instr[1] as number;
       } else if (type == Instr.Add) {
         const rhs = stack.pop()!, lhs = stack.pop()!;
         stack.push(lhs + rhs);
@@ -56,7 +56,7 @@ export class VM {
         stack.push(lhs * rhs);
       } else if (type == Instr.DivMod) {
         const rhs = stack.pop()!, lhs = stack.pop()!;
-        stack.push(Math.floor(lhs / rhs), lhs % rhs);
+        stack.push(lhs / rhs, lhs % rhs);
       } else if (type == Instr.Shl) {
         const rhs = stack.pop()!, lhs = stack.pop()!;
         stack.push(lhs << rhs);
@@ -64,7 +64,7 @@ export class VM {
         const rhs = stack.pop()!, lhs = stack.pop()!;
         stack.push(lhs >> rhs);
       } else if (type == Instr.Not) {
-        stack.push(~stack.pop()!);
+        stack.push(~(stack.pop()!));
       } else if (type == Instr.Or) {
         const rhs = stack.pop()!, lhs = stack.pop()!;
         stack.push(lhs | rhs);
@@ -76,13 +76,13 @@ export class VM {
         stack.push(lhs ^ rhs);
       } else if (type == Instr.Lt) {
         const rhs = stack.pop()!, lhs = stack.pop()!;
-        stack.push(Number(lhs < rhs));
+        stack.push(BigInt(lhs < rhs));
       } else if (type == Instr.Eq) {
         const rhs = stack.pop()!, lhs = stack.pop()!;
-        stack.push(Number(lhs == rhs));
+        stack.push(BigInt(lhs == rhs));
       } else if (type == Instr.Gt) {
         const rhs = stack.pop()!, lhs = stack.pop()!;
-        stack.push(Number(lhs > rhs));
+        stack.push(BigInt(lhs > rhs));
       } else if (type == Instr.Dup) {
         const a = stack.pop()!;
         stack.push(a, a);
@@ -100,26 +100,50 @@ export class VM {
         stack.push(stack.at(-2)!);
       } else if (type == Instr.Swap2) {
         stack.push(stack.pop()!, stack.pop()!, stack.pop()!, stack.pop()!);
-      } else if (type == Instr.Write) {
-        this.memory[stack.pop()!] = stack.pop()!;
-      } else if (type == Instr.Read) {
-        stack.push(this.memory[stack.pop()!]);
+      } else if (type == Instr.Write8) {
+        this.memory[Number(stack.pop()!)] = Number(stack.pop()!);
+      } else if (type == Instr.Read8) {
+        stack.push(BigInt(this.memory[Number(stack.pop()!)]));
+      } else if (type == Instr.Write16) {
+        this.writeInt(2, Number(stack.pop()!), stack.pop()!);
+      } else if (type == Instr.Read16) {
+        stack.push(this.readInt(2, Number(stack.pop()!)));
+      } else if (type == Instr.Write32) {
+        this.writeInt(4, Number(stack.pop()!), stack.pop()!);
+      } else if (type == Instr.Read32) {
+        stack.push(this.readInt(4, Number(stack.pop()!)));
+      } else if (type == Instr.Write64) {
+        this.writeInt(8, Number(stack.pop()!), stack.pop()!);
+      } else if (type == Instr.Read64) {
+        stack.push(this.readInt(8, Number(stack.pop()!)));
       } else if (type == Instr.Putch) {
-        process.stdout.write(String.fromCharCode(stack.pop()!));
+        process.stdout.write(String.fromCharCode(Number(stack.pop()!)));
       } else if (type == Instr.Putu) {
         process.stdout.write(stack.pop()!.toString());
       } else if (type == Instr.Print) {
         process.stdout.write(stack.pop()!.toString() + "\n");
       } else if (type == Instr.Puts) {
-        const ptr = stack.pop()!;
-        const size = stack.pop()!;
+        const ptr = Number(stack.pop()!);
+        const size = Number(stack.pop()!);
 
         process.stdout.write(this.memory.subarray(ptr, ptr + size));
       } else if (type == Instr.Halt) {
-        process.exit(instr[1]);
+        process.exit(instr[1] as number);
       } else if (type != Instr.Nop) {
         throw new Error(`Invalid instrction ${Instr[type]} (${type})`);
       }
     }
+  }
+
+  private writeInt(size: number, addr: number, value: bigint) {
+    for (let i = 0n, s = BigInt(size) - 1n; i < size; i++)
+      this.memory[addr] = Number(value >> (8n * (s - i))) & 0xFF;
+  }
+
+  private readInt(size: number, addr: number): bigint {
+    let value = 0n;
+    for (let i = 0, s = size - 1; i < size; i++)
+      value |= BigInt(this.memory[addr + i] << (8 * (s - i)));
+    return value;
   }
 }
