@@ -24,7 +24,7 @@ macro /  /%      drop end
 macro %  /% swap drop end
 
 macro div divmod      drop end
-macro mov divmod swap drop end
+macro mod divmod swap drop end
 
 /// Bitwise operations
 macro << cast(int) swap cast(int) swap shl end
