@@ -1,7 +1,8 @@
 import { KEYWORDS, Token, Tokens } from "./token";
 import { File, formatLoc } from "../shared";
-import { reportError, reportWarning } from "../errors";
+import { reportError } from "../errors";
 import { Reader } from "../util";
+import chalk from "chalk";
 
 export class Lexer {
   public readonly reader: Reader<string>;
@@ -101,8 +102,6 @@ export class Lexer {
     return this.token(Tokens.Int, value.charCodeAt(0));
   }
 
-  private _asmBlockUsed: boolean = false; // TODO: temporary, remove later
-
   private readAsmBlock(): Token {
     const lines: string[] = [];
     const line: string[] = [];
@@ -127,16 +126,6 @@ export class Lexer {
       } else if (char != " ") {
         word += char;
       }
-    }
-
-    if (!this._asmBlockUsed) {
-      this._asmBlockUsed = true;
-      reportWarning(
-        "Assembly blocks are currently experimental and might lead to undefined behavior. Use at your own risk!", {
-          file: this.file,
-          span: [this.reader.spanStart, this.reader.spanStart + 3]
-        }
-      );
     }
 
     lines.push(line.join(" ".trim()));
