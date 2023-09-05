@@ -116,10 +116,6 @@ export class VM {
         this.writeInt(8, Number(stack.pop()!), stack.pop()!);
       } else if (type == Instr.Read64) {
         stack.push(this.readInt(8, Number(stack.pop()!)));
-      } else if (type == Instr.Putch) {
-        process.stdout.write(String.fromCharCode(Number(stack.pop()!)));
-      } else if (type == Instr.Putu) {
-        process.stdout.write(stack.pop()!.toString());
       } else if (type == Instr.Print) {
         process.stdout.write(stack.pop()!.toString() + "\n");
       } else if (type == Instr.Puts) {

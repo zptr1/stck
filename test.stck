@@ -1,13 +1,15 @@
-include "std.stck"
+include "std"
 
-proc fib :: int -> int do
-  dup 2 gt if
-    dup  2 sub fib
-    swap 1 sub fib
-    add
-  else drop 1 end
+proc printint :: int do
+  dup 0 eq if
+    0 print
+  else dup 0 lt if*
+    "-" puts dup not 1 add print
+  else
+    dup print
+  end drop
 end
 
 proc main
-  30 fib print
+  -69420 printint
 end

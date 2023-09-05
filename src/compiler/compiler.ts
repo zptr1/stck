@@ -188,6 +188,7 @@ export class FasmCompiler {
 
     // print intrinsic
     // definitely not stolen from somewhere idk
+    // TODO: Does not display negative integers
     this.out.push(
       "print:",
       "mov r9, -3689348814741910323",
@@ -430,13 +431,6 @@ export class FasmCompiler {
       }
 
       this.out.push("push rbx");
-    } else if (instr == Instr.Putu) {
-      this.out.push(
-        "pop rdi",
-        "call print"
-      );
-    } else if (instr == Instr.Putch) {
-      throw new Error("not implemented");
     } else if (instr == Instr.Print) {
       this.out.push(
         "pop rdi",

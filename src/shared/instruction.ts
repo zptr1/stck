@@ -47,8 +47,6 @@ export enum Instr {
   // Program
   Print,
   Puts,
-  Putu,
-  Putch,
   Halt
 }
 
