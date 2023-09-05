@@ -1,8 +1,0 @@
---- STDOUT ---
-34 + 35 is nice!
-96 is not nice
-
---- STDERR ---
-
---- END ---
-Exited with code 0

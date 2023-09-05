@@ -1,7 +1,0 @@
-proc print-hi
-  "Hello, World\n" puts
-end
-
-proc main
-  print-hi
-end
