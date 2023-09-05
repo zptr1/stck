@@ -55,6 +55,7 @@ function main() {
   const path = args._[0];
   const target: string = args.target || args.t || "bytecode";
   const build = args.build ?? args.b ?? false;
+  const unsafe = args.unsafe ?? args.u ?? false;
 
   log.verbose = !!(args.verbose ?? args.v ?? false);
 
@@ -84,11 +85,16 @@ function main() {
   const preprocessor = new Preprocessor(ast);
   const program = preprocessor.parse();
 
-  log.timeit("Typechecking");
-  preprocessor.typechecker.typecheckProgram(program);
+  if (unsafe) {
+    log.end();
+    console.warn(chalk.yellow.bold("[WARN]"), "Typechecking is disabled");
+  } else {
+    log.timeit("Typechecking");
+    preprocessor.typechecker.typecheckProgram(program);
+  }
 
   if (target == "bytecode") {
-    log.timeit("Compiling bytecode");
+    log.timeit("Compiling");
     const bytecode = new BytecodeCompiler(program).compile();
     log.end();
 
@@ -100,12 +106,10 @@ function main() {
       new VM(bytecode);
     }
   } else if (target == "fasm") {
-    log.timeit("Generating assembly");
+    log.timeit("Compiling");
 
     const asm = new FasmCompiler(program).compile();
     writeFileSync(out + ".asm", asm.join("\n"));
-
-    log.timeit("Compiling");
 
     try {
       const cmd = Bun.spawnSync({
@@ -119,8 +123,6 @@ function main() {
         console.error(cmd.stderr.toString());
         process.exit(1);
       }
-
-      log.info(`Compiled to ${out}`);
     } catch (err) {
       console.error();
       console.error("Compilation failed");
@@ -128,12 +130,19 @@ function main() {
       process.exit(1);
     }
 
-    if (!build) {
+    if (build) {
+      log.info(`Compiled to ${out}`);
+    } else {
       log.info("Running");
       Bun.spawn({
         cmd: [out],
         stdio: ["inherit", "inherit", "inherit"],
-        onExit(_, code) {
+        onExit(_, code, sig) {
+          if (typeof sig == "string" && sig == "SIGSEGV") {
+            console.error("Segmentation fault");
+            process.exit(1);
+          }
+
           process.exit(code ?? 0);
         },
       });
