@@ -141,7 +141,10 @@ export class TypeChecker {
                 ]
               );
             } else {
-              throw new Error("Call of ")
+              proc.signature = this.inferProcSignature(proc, [{
+                loc: expr.loc,
+                name: proc.name
+              }]);
             }
           }
 
@@ -370,8 +373,9 @@ export class TypeChecker {
 
   public typecheckProgram(program: IRProgram) {
     program.procs.forEach((proc) => {
-      if (proc.unsafe)
+      if (proc.unsafe) {
         return;
+      }
 
       const ctx = createContext();
 
@@ -380,6 +384,13 @@ export class TypeChecker {
           name: proc.name,
           loc: proc.loc
         }]);
+      } else if (
+        proc.signature.ins.find((x) => typeof x == "string")
+        || proc.signature.outs.find((x) => typeof x == "string")
+      ) {
+        reportError(
+          "Generics in the signatures are allowed only for unsafe procedures", proc.loc
+        );
       }
 
       for (const e of proc.signature.ins) {

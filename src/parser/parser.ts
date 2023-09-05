@@ -1,5 +1,5 @@
 import { AstType, Expr, ICondition, IConst, IMacro, IMemory, IProc, IProgram, IWhile, TopLevelAst } from "./ast";
-import { DataType, tokenToDataType, Location, formatLoc, INTRINSICS } from "../shared";
+import { DataType, tokenToDataType, Location, formatLoc, INTRINSICS, DataTypeArray } from "../shared";
 import { Lexer, Token, Tokens } from "../lexer";
 import { reportError } from "../errors";
 import { ROOT_DIR } from "../const";
@@ -197,8 +197,8 @@ export class Parser {
     } as T;
   }
 
-  private readProcSignature(end: Tokens[]): [DataType[], Token] {
-    const signature: DataType[] = [];
+  private readProcSignature(end: Tokens[]): [DataTypeArray, Token] {
+    const signature: DataTypeArray = [];
 
     while (true) {
       const token = this.next();
@@ -211,6 +211,8 @@ export class Parser {
           signature.push(DataType.Ptr);
         } else if (token.value == "bool") {
           signature.push(DataType.Bool);
+        } else if (token.value.length == 1) { // template
+          signature.push(token.value);
         } else {
           reportError("Unknown type", token.loc);
         }
