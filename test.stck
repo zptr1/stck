@@ -1,6 +1,7 @@
 include "std"
 
 proc main
-  69 print
-  -42 print
+  2 0 while dup 10 lt do
+    1 add swap dup mul dup print swap
+  end drop drop
 end

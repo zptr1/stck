@@ -552,7 +552,7 @@ export class FasmCompiler {
         if (expr.datatype == DataType.Ptr) {
           this.out.push(`push str${this.getStrId(expr.value)}`);
         } else {
-          this.out.push(`push ${Number(expr.value) ?? 0}`);
+          this.out.push(`push ${BigInt(expr.value)}`);
         }
       } else {
         throw new Error(`Compilation of ${IRType[(expr as IRExpr).type]} to NASM is not implemented`);

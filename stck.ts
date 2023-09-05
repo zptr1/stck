@@ -121,12 +121,14 @@ function main() {
       if (cmd.exitCode != 0) {
         console.error("Compilation failed");
         console.error(cmd.stderr.toString());
+        build || unlinkSync(out + ".asm");
         process.exit(1);
       }
     } catch (err) {
       console.error();
       console.error("Compilation failed");
       console.error("Do you have fasm installed?");
+      build || unlinkSync(out + ".asm");
       process.exit(1);
     }
 

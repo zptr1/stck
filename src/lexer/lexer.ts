@@ -114,7 +114,13 @@ export class Lexer {
     }
 
     if (isInt && value != "-") {
-      return this.token(Tokens.Int, parseInt(value));
+      const int = parseInt(value);
+      return this.token(
+        Tokens.Int,
+        Number.isSafeInteger(int)
+          ? int
+          : BigInt(value)
+      );
     } else if (value == "true" || value == "false") {
       return this.token(Tokens.Boolean, value == "true");
     } else if (value == "<here>") {

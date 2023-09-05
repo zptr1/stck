@@ -112,7 +112,7 @@ export class TypeChecker {
             stackValues.push(lhs * rhs);
           } else if (expr.value == "divmod") {
             const rhs = stackValues.pop(), lhs = stackValues.pop();
-            stackValues.push(Math.floor(lhs / rhs));
+            stackValues.push(lhs / rhs);
             stackValues.push(lhs % rhs);
           } else if (expr.value == "lt") {
             const rhs = stackValues.pop(), lhs = stackValues.pop();
@@ -189,7 +189,12 @@ export class TypeChecker {
           reportError("Unknown word", expr.loc);
         }
       } else if (expr.type == AstType.Push) {
-        stackValues.push(expr.value);
+        if (typeof expr.value == "number") {
+          stackValues.push(BigInt(expr.value));
+        } else {
+          stackValues.push(expr.value);
+        }
+
         ctx.stack.push(expr.datatype);
         ctx.stackLocations.push(expr.loc);
       } else {
