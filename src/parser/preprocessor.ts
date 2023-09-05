@@ -1,8 +1,8 @@
 import { IRExpr, IRProc, IRProgram, IRWordKind, IRType, IRConst, IRMemory } from "./ir";
-import { AstType, Expr, IConst, IMemory, IProc, IProgram, IWord } from "./ast";
+import { AstType, Expr, IConst, IMemory, IProc, IProgram, IPush, IWord } from "./ast";
+import { INTRINSICS, formatLoc, DataType, Location } from "../shared";
+import { Context, TypeChecker, createContext } from "../compiler";
 import { reportError, reportErrorWithStack } from "../errors";
-import { INTRINSICS, formatLoc, DataType } from "../shared";
-import { TypeChecker } from "../compiler";
 import chalk from "chalk";
 
 /**
@@ -38,6 +38,142 @@ export class Preprocessor {
     stack.pop();
 
     return body;
+  }
+
+  private evaluateCompileTimeExpr(exprs: Expr[], loc: Location, ctx: Context = createContext()): IPush {
+    const stackValues: any[] = [];
+
+    for (const expr of exprs) {
+      if (expr.type == AstType.Word) {
+        if (INTRINSICS.has(expr.value)) {
+          this.typechecker.handleSignature(INTRINSICS.get(expr.value)!, ctx, expr.loc);
+
+          if (expr.value == "add") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop();
+            stackValues.push(lhs + rhs);
+          } else if (expr.value == "sub") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop();
+            stackValues.push(lhs - rhs);
+          } else if (expr.value == "mul") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop();
+            stackValues.push(lhs * rhs);
+          } else if (expr.value == "divmod") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop();
+            stackValues.push(lhs / rhs);
+            stackValues.push(lhs % rhs);
+          } else if (expr.value == "lt") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop();
+            stackValues.push(lhs < rhs);
+          } else if (expr.value == "eq") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop();
+            stackValues.push(lhs == rhs);
+          } else if (expr.value == "gt") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop()!;
+            stackValues.push(lhs > rhs);
+          } else if (expr.value == "shl") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop()!;
+            stackValues.push(lhs << rhs);
+          } else if (expr.value == "shr") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop()!;
+            stackValues.push(lhs >> rhs);
+          } else if (expr.value == "not") {
+            stackValues.push(~stackValues.pop()!);
+          } else if (expr.value == "or") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop()!;
+            stackValues.push(lhs | rhs);
+          } else if (expr.value == "and") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop()!;
+            stackValues.push(lhs & rhs);
+          } else if (expr.value == "xor") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop()!;
+            stackValues.push(lhs ^ rhs);
+          } else if (expr.value == "lor") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop()!;
+            stackValues.push(lhs || rhs);
+          } else if (expr.value == "land") {
+            const rhs = stackValues.pop(), lhs = stackValues.pop()!;
+            stackValues.push(lhs && rhs);
+          } else if (expr.value == "lnot") {
+            stackValues.push(!stackValues.pop());
+          } else if (expr.value == "dup") {
+            const a = stackValues.pop();
+            stackValues.push(a, a);
+          } else if (expr.value == "drop") {
+            stackValues.pop();
+          } else if (expr.value == "swap") {
+            stackValues.push(stackValues.pop(), stackValues.pop());
+          } else if (expr.value == "swap2") {
+            stackValues.push(
+              stackValues.pop(), stackValues.pop(), stackValues.pop(), stackValues.pop()
+            );
+          } else if (expr.value == "dup2") {
+            const a = stackValues.pop()!, b = stackValues.pop()!;
+            stackValues.push(b, a, b, a);
+          } else if (expr.value == "over") {
+            stackValues.push(stackValues.at(-2)!);
+          } else if (expr.value == "rot") {
+            const a = stackValues.pop()!,
+                  b = stackValues.pop()!,
+                  c = stackValues.pop()!;
+            stackValues.push(b, a, c);
+          } else {
+            reportError("Cannot use this intrinsic in compile-time expression", expr.loc);
+          }
+        } else if (this.consts.has(expr.value)) {
+          const constant = this.consts.get(expr.value)!;
+          stackValues.push(constant.body.value);
+          ctx.stack.push(constant.body.datatype);
+          ctx.stackLocations.push(expr.loc);
+        } else if (this.program.consts.has(expr.value)) {
+          reportError("That constant is not defined yet", expr.loc);
+        } else if (this.program.procs.has(expr.value)) {
+          reportError("Cannot use procedures in compile-time expressions", expr.loc);
+        } else if (this.program.macros.has(expr.value)) {
+          reportError("Cannot use macros in compile-time expressions", expr.loc);
+        } else if (this.program.memories.has(expr.value)) {
+          reportError("Cannot use memories in compile-time expressions", expr.loc);
+        } else {
+          reportError("Unknown word", expr.loc);
+        }
+      } else if (expr.type == AstType.Push) {
+        if (expr.datatype == DataType.AsmBlock) {
+          reportError("Cannot use assembly blocks in compile-time expressions", expr.loc);
+        }
+
+        if (typeof expr.value == "number") {
+          stackValues.push(BigInt(expr.value));
+        } else {
+          stackValues.push(expr.value);
+        }
+
+        ctx.stack.push(expr.datatype);
+        ctx.stackLocations.push(expr.loc);
+      } else {
+        reportError(
+          `${chalk.yellow.bold(AstType[expr.type])} is not supported in compile-time expressions`,
+          expr.loc
+        );
+      }
+    }
+
+    if (stackValues.length < 0) {
+      this.typechecker.reportErrorWithStackData(
+        "Compile time expression resulted in nothing",
+        loc, ctx, ["Any"]
+      );
+    } else if (stackValues.length > 1) {
+      this.typechecker.reportErrorWithStackData(
+        "Compile time expression resulted in multiple values on the stack",
+        loc, ctx, ["Any"]
+      );
+    }
+
+    return {
+      type: AstType.Push,
+      datatype: ctx.stack.pop()!,
+      value: stackValues.pop()!,
+      loc: ctx.stackLocations.pop()!
+    }
   }
 
   private parseBody(exprs: Expr[], macroExpansionStack: IWord[] = []): IRExpr[] {
@@ -149,7 +285,7 @@ export class Preprocessor {
       type: IRType.Const,
       name: constant.name,
       loc: constant.loc,
-      body: this.typechecker.evaluateCompileTimeExpr(constant.body, constant.loc)
+      body: this.evaluateCompileTimeExpr(constant.body, constant.loc)
     }
 
     this.consts.set(constant.name, irconst);
@@ -161,7 +297,7 @@ export class Preprocessor {
       return this.memories.get(memory.name)!;
     }
 
-    const body = this.typechecker.evaluateCompileTimeExpr(memory.body, memory.loc);
+    const body = this.evaluateCompileTimeExpr(memory.body, memory.loc);
     if (body.datatype != DataType.Int) {
       reportError(
         "Memory sizes must be integers", memory.loc, [
