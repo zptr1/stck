@@ -197,6 +197,7 @@ export class Preprocessor {
       name: proc.name,
       loc: proc.loc,
       inline: proc.inline,
+      unsafe: proc.unsafe,
       body: this.parseBody(proc.body)
     };
 

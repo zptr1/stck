@@ -1,7 +1,7 @@
 import { Location } from "../shared";
 
 export const KEYWORDS = new Set([
-  "proc", "inline", "macro", "const", "memory",
+  "proc", "unsafe", "inline", "macro", "const", "memory",
   "include", "end", "if", "if*", "else",
   "while", "do", "::", "->"
 ]);
@@ -14,6 +14,7 @@ export enum Tokens {
   Word = "<word>",
 
   Proc = "proc",
+  Unsafe = "unsafe",
   Inline = "inline",
   Macro = "macro",
   Const = "const",

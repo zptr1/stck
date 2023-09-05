@@ -53,6 +53,7 @@ export interface IRProc extends IIR<IRType.Proc> {
   name: string;
   body: IRExpr[];
   inline: boolean;
+  unsafe: boolean;
   signature?: ISignature;
 }
 

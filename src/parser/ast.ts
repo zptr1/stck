@@ -48,6 +48,7 @@ export interface IProc extends IAst<AstType.Proc> {
   name: string;
   body: Expr[];
   inline: boolean;
+  unsafe: boolean;
   signature?: ISignature;
 }
 

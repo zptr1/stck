@@ -220,7 +220,7 @@ export class TypeChecker {
     }
   }
 
-  private handleSignature(signature: ISignature, ctx: Context, loc: Location) {
+  public handleSignature(signature: ISignature, ctx: Context, loc: Location) {
     const templates = new Map<string, DataType | string>();
 
     for (const type of signature.ins) {
@@ -263,12 +263,15 @@ export class TypeChecker {
           const proc = this.procs.get(expr.name)!;
 
           if (!proc.signature) {
-            reportWarning(
-              "Call of the procedure without a signature", expr.loc, [
-                "likely a compiler bug"
-              ]
-            )
-            continue;
+            if (proc.unsafe) {
+              reportError(
+                "Call of an unsafe procedure in a safe context", expr.loc, [
+                  "the unsafe procedure must have a signature defined"
+                ]
+              );
+            } else {
+              throw new Error("Call of ")
+            }
           }
 
           this.validateContextStack(expr.loc, ctx, proc.signature.ins, false, "for the procedure call");
@@ -488,6 +491,9 @@ export class TypeChecker {
 
   public typecheckProgram(program: IRProgram) {
     program.procs.forEach((proc) => {
+      if (proc.unsafe)
+        return;
+
       const ctx = createContext();
 
       if (!proc.signature) {

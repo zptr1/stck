@@ -226,7 +226,8 @@ export class Parser {
       name: name.value,
       loc: start.loc,
       body: [],
-      inline: false
+      inline: false,
+      unsafe: false
     }
 
     if (this.peek()?.kind == Tokens.SigIns) {
@@ -267,11 +268,12 @@ export class Parser {
       const token = this.next();
       if (token.kind == Tokens.Include) {
         const tok = this.nextOf(Tokens.Str);
+
         const paths = tok.value.startsWith(".") ? [
-          plib.join(plib.dirname(token.loc.file.path), tok.value, ".stck")
+          plib.join(plib.dirname(token.loc.file.path), tok.value + ".stck")
         ] : [
-          plib.join(ROOT_DIR, "lib", tok.value, ".stck"),
-          plib.join(process.cwd(), "lib", tok.value, ".stck"),
+          plib.join(ROOT_DIR, "lib", tok.value + ".stck"),
+          plib.join(process.cwd(), "lib", tok.value + ".stck"),
         ];
 
         const found = paths.find((x) => existsSync(x));
@@ -297,6 +299,21 @@ export class Parser {
       } else if (token.kind == Tokens.Inline) {
         const proc = this.readProc(this.nextOf(Tokens.Proc));
         proc.inline = true;
+      } else if (token.kind == Tokens.Unsafe) {
+        const tok = this.next();
+        if (tok.kind == Tokens.Inline) {
+          const proc = this.readProc(this.nextOf(Tokens.Proc));
+          proc.unsafe = true;
+          proc.inline = true;
+        } else if (tok.kind == Tokens.Proc) {
+          const proc = this.readProc(tok);
+          proc.unsafe = true;
+        } else {
+          reportError(
+            `Expected ${tokenFmt("inline")} or ${tokenFmt("proc")} but got ${tokenFmt(tok.kind)}`,
+            token.loc
+          );
+        }
       } else if (token.kind == Tokens.Macro) {
         const macro = this.readTopLevelBlock<IMacro>(AstType.Macro, token);
         this.program.macros.set(macro.name, macro);
