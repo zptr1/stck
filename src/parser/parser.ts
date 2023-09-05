@@ -268,10 +268,10 @@ export class Parser {
       if (token.kind == Tokens.Include) {
         const tok = this.nextOf(Tokens.Str);
         const paths = tok.value.startsWith(".") ? [
-          plib.join(plib.dirname(token.loc.file.path), tok.value)
+          plib.join(plib.dirname(token.loc.file.path), tok.value, ".stck")
         ] : [
-          plib.join(ROOT_DIR, "lib", tok.value),
-          plib.join(process.cwd(), "lib", tok.value),
+          plib.join(ROOT_DIR, "lib", tok.value, ".stck"),
+          plib.join(process.cwd(), "lib", tok.value, ".stck"),
         ];
 
         const found = paths.find((x) => existsSync(x));

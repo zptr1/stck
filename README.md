@@ -21,7 +21,7 @@ First of all, you need to have [Bun](https://bun.sh/) installed. Bun will be rep
 ## Hello, World!
 
 ```
-include "std.stck"
+include "std"
 
 proc main
   "Hello, World!\n" puts
