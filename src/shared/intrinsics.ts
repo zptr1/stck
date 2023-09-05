@@ -42,9 +42,9 @@ addIntrinsic("drop", Instr.Drop, ["a"],           []);
 addIntrinsic("swap", Instr.Swap, ["a", "b"],      ["b", "a"]);
 addIntrinsic("rot",  Instr.Rot,  ["a", "b", "c"], ["c", "a", "b"]);
 addIntrinsic("over", Instr.Over, ["a", "b"],      ["a", "b", "a"]);
-addIntrinsic("dup2", Instr.Dup2, ["a", "b"],      ["a", "b", "a", "b"]);
+addIntrinsic("2dup", Instr.Dup2, ["a", "b"],      ["a", "b", "a", "b"]);
 addIntrinsic(
-  "swap2", Instr.Swap2,
+  "2swap", Instr.Swap2,
   ["a", "b", "c", "d"],
   ["d", "c", "b", "a"]
 );

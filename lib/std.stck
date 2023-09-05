@@ -57,7 +57,7 @@ inline proc lor :: bool bool -> bool do
 end
 
 inline proc lxor :: bool bool -> bool do
-  dup2 land lnot rot rot lor land
+  2dup land lnot rot rot lor land
 end
 
 /// Memory
@@ -76,9 +76,9 @@ proc write(int) :: int ptr do
   swap sizeof(int) while dup 0 gt do
     1 sub
     // ptr int (inc=3..0) ((int >> 8*inc) & 255)
-    dup2 3 swap sub 8 mul shr 255 and
+    2dup 3 swap sub 8 mul shr 255 and
     // int ptr (inc=3..0) ((int >> 8*inc) & 255) (ptr+inc)
-    rot swap2 dup2 ptr+ swap swap2 rot write8
+    rot 2swap 2dup ptr+ swap 2swap rot write8
     // ptr int (inc=3..0)
     rot swap
   end drop drop drop
@@ -88,11 +88,11 @@ proc read(int) :: ptr -> int do
   // ptr int inc
   0 0 while dup sizeof(int) lt do
     // int inc ptr (read(inc+ptr))
-    rot dup2 ptr+ read8
+    rot 2dup ptr+ read8
     // int ptr inc (read(inc+ptr)<<(3-inc)*8)
     rot dup 3 swap sub 8 mul rot swap shl
     // ptr inc (int|read(inc+ptr)<<(3-inc)*8)
-    swap rot swap2 swap or
+    swap rot 2swap swap or
     // ptr int inc
     swap 1 add
   end drop swap drop
