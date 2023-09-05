@@ -1,5 +1,6 @@
 include "std"
 
-unsafe proc main
-  "undefined behavior go brrrr\n" puts
+proc main
+  69 print
+  -42 print
 end

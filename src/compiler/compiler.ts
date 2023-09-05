@@ -186,39 +186,67 @@ export class FasmCompiler {
   public includeBuiltins() {
     this.out.push("; begin builtins");
 
-    // print intrinsic
-    // definitely not stolen from somewhere idk
-    // TODO: Does not display negative integers
+    /*
+      // Reference implementation in C
+      void print(unsigned long long n) {
+        int i = 1, neg = (long long)n < 0;
+        if (neg) n = -n;
+
+        char buf[32];
+        buf[31] = '\n';
+        do {
+          buf[32 - i++ - 1] = n % 10 + '0';
+          n /= 10;
+        } while (n);
+
+        if (neg) buf[32 - i++ - 1] = '-';
+        write(1, &buf[32 - i], i);
+      }
+    */
     this.out.push(
       "print:",
-      "mov r9, -3689348814741910323",
       "sub rsp, 40",
+      "mov rax, rdi",
+      "mov rcx, rdi",
+      "mov r11, rdi",
+      "neg rax",
       "mov BYTE [rsp+31], 10",
-      "lea rcx, [rsp+30]",
-      ".L2:",
-      "mov rax, rdi",
-      "lea r8, [rsp+32]",
+      "lea r8, [rsp+30]",
+      "mov edi, 1",
+      "mov r9, -3689348814741910323",
+      "cmovns rcx, rax",
+      ".L3:",
+      "mov rax, rcx",
+      "mov r10d, edi",
+      "sub r8, 1",
       "mul r9",
-      "mov rax, rdi",
-      "sub r8, rcx",
+      "mov rax, rcx",
+      "add edi, 1",
       "shr rdx, 3",
       "lea rsi, [rdx+rdx*4]",
       "add rsi, rsi",
       "sub rax, rsi",
       "add eax, 48",
-      "mov BYTE [rcx], al",
-      "mov rax, rdi",
-      "mov rdi, rdx",
-      "mov rdx, rcx",
-      "sub rcx, 1",
+      "mov BYTE [r8+1], al",
+      "mov rax, rcx",
+      "mov rcx, rdx",
       "cmp rax, 9",
-      "ja .L2",
-      "lea rax, [rsp+32]",
+      "ja .L3",
+      "test r11, r11",
+      "jns .L4",
+      "mov eax, 31",
+      "sub eax, edi",
+      "lea edi, [r10+2]",
+      "cdqe",
+      "mov BYTE [rsp+rax], 45",
+      ".L4:",
+      "mov eax, 32",
+      "mov edx, edi",
+      "sub eax, edi",
       "mov edi, 1",
-      "sub rdx, rax",
+      "cdqe",
+      "lea rsi, [rsp+rax]",
       "xor eax, eax",
-      "lea rsi, [rsp+32+rdx]",
-      "mov rdx, r8",
       "mov rax, 1",
       "syscall",
       "add rsp, 40",
