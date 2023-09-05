@@ -1,6 +1,6 @@
 import { ByteCode, Instr, Instruction, MarkedInstr, DataType, INTRINSICS, formatLoc } from "../shared";
 import { IRExpr, IRProc, IRProgram, IRType, IRWordKind, AstType } from "../parser";
-import { reportErrorWithoutLoc } from "../errors";
+import { reportError, reportErrorWithoutLoc } from "../errors";
 
 export class BytecodeCompiler {
   public readonly text: Map<string, number> = new Map();
@@ -94,7 +94,12 @@ export class BytecodeCompiler {
           this.marker(end);
         }
       } else if (expr.type == AstType.Push) {
-        if (expr.datatype == DataType.Ptr) {
+        if (expr.datatype == DataType.AsmBlock) {
+          reportError(
+            "Assembly blocks are not supported for this target",
+            expr.loc
+          );
+        } else if (expr.datatype == DataType.Ptr) {
           this.instr.push([Instr.Push, BigInt(this.encodeString(expr.value))]);
         } else {
           this.instr.push([Instr.Push, BigInt(expr.value) ?? 0n]);

@@ -1,10 +1,6 @@
 include "std"
+include "sys"
 
-unsafe proc main
-  asm
-    mov rax, 34
-    mov rbx, 35
-    add rax, rbx
-    push rax
-  end print
+proc main
+  "Hello, world!\n" stdout write drop
 end
