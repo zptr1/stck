@@ -1,7 +1,10 @@
 include "std"
 
-proc main
-  2 0 while dup 10 lt do
-    1 add swap dup mul dup print swap
-  end drop drop
+unsafe proc main
+  asm
+    mov rax, 34
+    mov rbx, 35
+    add rax, rbx
+    push rax
+  end print
 end

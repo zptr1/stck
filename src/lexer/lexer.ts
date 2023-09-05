@@ -1,6 +1,6 @@
 import { KEYWORDS, Token, Tokens } from "./token";
 import { File, formatLoc } from "../shared";
-import { reportError } from "../errors";
+import { reportError, reportWarning } from "../errors";
 import { Reader } from "../util";
 
 export class Lexer {
@@ -101,6 +101,51 @@ export class Lexer {
     return this.token(Tokens.Int, value.charCodeAt(0));
   }
 
+  private _asmBlockUsed: boolean = false; // TODO: temporary, remove later
+
+  private readAsmBlock(): Token {
+    const lines: string[] = [];
+    const line: string[] = [];
+    let word = "";
+
+    while (true) {
+      const char = this.reader.peek();
+      if ((char == " " || char == "\n") && word) {
+        if (word == "end") break;
+        else if (word.startsWith("\\"))
+          line.push(word.slice(1));
+        else line.push(word);
+        word = "";
+      }
+
+      this.reader.next();
+      if (char == "\n") {
+        lines.push(line.join(" ").trim());
+        line.splice(0, line.length);
+      } else if (!char) {
+        this.error("Unclosed asm block");
+      } else if (char != " ") {
+        word += char;
+      }
+    }
+
+    if (!this._asmBlockUsed) {
+      this._asmBlockUsed = true;
+      reportWarning(
+        "Assembly blocks are currently experimental and might lead to undefined behavior. Use at your own risk!", {
+          file: this.file,
+          span: [this.reader.spanStart, this.reader.spanStart + 3]
+        }
+      );
+    }
+
+    lines.push(line.join(" ".trim()));
+    return this.token(
+      Tokens.AsmBlock,
+      lines.join("\n").trim()
+    );
+  }
+
   private readWordToken(): Token {
     let isInt = this.isIntStart();
     let value = this.reader.next();
@@ -130,6 +175,8 @@ export class Lexer {
       }));
     } else if (KEYWORDS.has(value)) {
       return this.token(value as Tokens);
+    } else if (value == "asm") {
+      return this.readAsmBlock();
     } else {
       return this.token(Tokens.Word, value);
     }

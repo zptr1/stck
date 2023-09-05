@@ -105,7 +105,13 @@ export class Parser {
         value: token.value,
         loc: token.loc
       };
-    } else if (token.kind == Tokens.Int || token.kind == Tokens.Str || token.kind == Tokens.Boolean || token.kind == Tokens.Char) {
+    } else if (
+      token.kind == Tokens.Int
+      || token.kind == Tokens.Str
+      || token.kind == Tokens.Boolean
+      || token.kind == Tokens.Char
+      || token.kind == Tokens.AsmBlock
+    ) {
       return {
         type: AstType.Push,
         datatype: tokenToDataType(token.kind),

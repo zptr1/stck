@@ -4,7 +4,8 @@ export enum DataType {
   Int,
   Ptr,
   Str,
-  Bool
+  Bool,
+  AsmBlock
 }
 
 export type DataTypeArray = (DataType | string)[];
@@ -23,6 +24,8 @@ export function tokenToDataType(token: Tokens): DataType {
     return DataType.Str;
   } else if (token == Tokens.Boolean) {
     return DataType.Bool;
+  } else if (token == Tokens.AsmBlock) {
+    return DataType.AsmBlock;
   } else {
     throw new Error(`Cannot convert Tokens[${token}] to DataType`);
   }

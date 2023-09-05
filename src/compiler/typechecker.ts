@@ -189,6 +189,10 @@ export class TypeChecker {
           reportError("Unknown word", expr.loc);
         }
       } else if (expr.type == AstType.Push) {
+        if (expr.datatype == DataType.AsmBlock) {
+          reportError("Cannot use assembly blocks in compile-time expressions", expr.loc);
+        }
+
         if (typeof expr.value == "number") {
           stackValues.push(BigInt(expr.value));
         } else {
@@ -335,6 +339,12 @@ export class TypeChecker {
           ctx.stackLocations = branches[0].stackLocations;
         }
       } else if (expr.type == AstType.Push) {
+        if (expr.datatype == DataType.AsmBlock) {
+          reportError(
+            "Assembly blocks cannot be used outside of unsafe procedures", expr.loc
+          );
+        }
+
         ctx.stack.push(expr.datatype);
         ctx.stackLocations.push(expr.loc);
       } else {
@@ -458,7 +468,9 @@ export class TypeChecker {
           this.inferSignature(expr.body, callstack, ins, outs);
         }
       } else if (expr.type == AstType.Push) {
-        outs.push(expr.datatype);
+        if (expr.datatype != DataType.AsmBlock) {
+          outs.push(expr.datatype);
+        }
       } else {
         throw new Error(`Typechecking is not implemented for ${IRType[(expr as IRExpr).type]}`);
       }

@@ -12,6 +12,7 @@ export enum Tokens {
   Char = "<char>",
   Boolean = "<boolean>",
   Word = "<word>",
+  AsmBlock = "<asm>",
 
   Proc = "proc",
   Unsafe = "unsafe",

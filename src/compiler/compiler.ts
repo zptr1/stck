@@ -1,4 +1,4 @@
-import { ByteCode, Instr, Instruction, MarkedInstr, DataType, INTRINSICS } from "../shared";
+import { ByteCode, Instr, Instruction, MarkedInstr, DataType, INTRINSICS, formatLoc } from "../shared";
 import { IRExpr, IRProc, IRProgram, IRType, IRWordKind, AstType } from "../parser";
 import { reportErrorWithoutLoc } from "../errors";
 
@@ -549,7 +549,11 @@ export class FasmCompiler {
           this.out.push(`${lb}:`);
         }
       } else if (expr.type == AstType.Push) {
-        if (expr.datatype == DataType.Ptr) {
+        if (expr.datatype == DataType.AsmBlock) {
+          this.out.push(`;; begin asm block`);
+          this.out.push(expr.value.trim());
+          this.out.push(`;; end asm block`);
+        } else if (expr.datatype == DataType.Ptr) {
           this.out.push(`push str${this.getStrId(expr.value)}`);
         } else {
           this.out.push(`push ${BigInt(expr.value)}`);
