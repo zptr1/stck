@@ -1,5 +1,13 @@
 include "std.stck"
 
+proc fib :: int -> int do
+  dup 2 gt if
+    dup  2 sub fib
+    swap 1 sub fib
+    add
+  else drop 1 end
+end
+
 proc main
-  "Hello, native!\n" puts
+  30 fib print
 end
