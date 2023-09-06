@@ -1,6 +1,6 @@
 import { ByteCode, Instr, Instruction, MarkedInstr, DataType, INTRINSICS } from "../shared";
 import { IRExpr, IRProc, IRProgram, IRType, IRWordKind, AstType } from "../parser";
-import { reportError, reportErrorWithoutLoc } from "../errors";
+import { StackElement, reportError, reportErrorWithStack, reportErrorWithoutLoc } from "../errors";
 import { ROOT_DIR } from "../const";
 import plib from "path";
 
@@ -35,7 +35,7 @@ export class BytecodeCompiler {
     return id;
   }
 
-  private compileBody(exprs: IRExpr[]) {
+  private compileBody(exprs: IRExpr[], inlineExpandStack: StackElement[] = []) {
     for (const expr of exprs) {
       if (expr.type == IRType.Word) {
         if (expr.kind == IRWordKind.Intrinsic) {
@@ -48,7 +48,17 @@ export class BytecodeCompiler {
           const proc = this.program.procs.get(expr.name)!;
 
           if (proc.inline) {
-            this.compileBody(proc.body);
+            if (inlineExpandStack.find((x) => x.name == proc.name)) {
+              reportErrorWithStack(
+                "Recursion is not allowed for inline procedures",
+                expr.loc, inlineExpandStack
+              );
+            }
+
+            this.compileBody(proc.body, inlineExpandStack.concat({
+              name: proc.name,
+              loc: expr.loc
+            }));
           } else {
             if (!this.compiledProcs.has(expr.name)) {
               this.procQueue.push(expr.name);
@@ -69,10 +79,10 @@ export class BytecodeCompiler {
         const start = this.marker();
         const end = this.marker();
 
-        this.compileBody(expr.condition);
+        this.compileBody(expr.condition, inlineExpandStack);
         this.instr.push([Instr.JmpIfNot, end]);
 
-        this.compileBody(expr.body);
+        this.compileBody(expr.body, inlineExpandStack);
         this.instr.push([Instr.Jmp, start]);
 
         this.marker(end);
@@ -82,17 +92,17 @@ export class BytecodeCompiler {
           const els = this.marker();
 
           this.instr.push([Instr.JmpIfNot, els]);
-          this.compileBody(expr.body);
+          this.compileBody(expr.body, inlineExpandStack);
           this.instr.push([Instr.Jmp, end]);
 
           this.marker(els);
-          this.compileBody(expr.else);
+          this.compileBody(expr.else, inlineExpandStack);
           this.marker(end);
         } else {
           const end = this.marker();
 
           this.instr.push([Instr.JmpIfNot, end]);
-          this.compileBody(expr.body);
+          this.compileBody(expr.body, inlineExpandStack);
           this.marker(end);
         }
       } else if (expr.type == AstType.Push) {
@@ -198,7 +208,7 @@ export class FasmCompiler {
     }
   }
 
-  public compileBody(exprs: IRExpr[]) {
+  public compileBody(exprs: IRExpr[], inlineExpandStack: StackElement[] = []) {
     this.ident += 2;
 
     for (const expr of exprs) {
@@ -209,7 +219,17 @@ export class FasmCompiler {
         } else if (expr.kind == IRWordKind.Proc) {
           const proc = this.program.procs.get(expr.name)!;
           if (proc.inline) {
-            this.compileBody(proc.body);
+            if (inlineExpandStack.find((x) => x.name == proc.name)) {
+              reportErrorWithStack(
+                "Recursion is not allowed for inline procedures",
+                expr.loc, inlineExpandStack
+              )
+            }
+
+            this.compileBody(proc.body, inlineExpandStack.concat({
+              name: proc.name,
+              loc: expr.loc
+            }));
           } else {
             const id = this.getProcId(proc.name);
             if (!this.compiledProcs.has(proc.name)) {
@@ -228,13 +248,13 @@ export class FasmCompiler {
         const endLb   = this.label(".end");
 
         this.push(`${whileLb}:`);
-        this.compileBody(expr.condition);
+        this.compileBody(expr.condition, inlineExpandStack);
         this.push(
           "pop rax",
           "test rax, rax",
           `jz ${endLb}`
         );
-        this.compileBody(expr.body);
+        this.compileBody(expr.body, inlineExpandStack);
         this.push(
           `jmp ${whileLb}`,
           `${endLb}:`
@@ -249,26 +269,26 @@ export class FasmCompiler {
           const elseLb = this.label(".else");
           const endLb  = this.label(".endif");
           this.push(`jz ${elseLb}`);
-          this.compileBody(expr.body);
+          this.compileBody(expr.body, inlineExpandStack);
           this.push(`jmp ${endLb}`);
           this.push(`${elseLb}:`);
-          this.compileBody(expr.else);
+          this.compileBody(expr.else, inlineExpandStack);
           this.push(`${endLb}:`);
         } else if (expr.body.length > 0) {
           const lb = this.label(".endif");
           this.push(`jz ${lb}`);
-          this.compileBody(expr.body);
+          this.compileBody(expr.body, inlineExpandStack);
           this.push(`${lb}:`);
         } else if (expr.else.length > 0) {
           const lb = this.label(".endif");
           this.push(`jnz ${lb}`);
-          this.compileBody(expr.else);
+          this.compileBody(expr.else, inlineExpandStack);
           this.push(`${lb}:`);
         }
       } else if (expr.type == AstType.Push) {
         if (expr.datatype == DataType.AsmBlock) {
           this.push(`;; begin asm block`);
-          this.push(expr.value.trim());
+          this.push(...expr.value.trim().split("\n"));
           this.push(`;; end asm block`);
         } else if (expr.datatype == DataType.Ptr) {
           this.push(`push str${this.getStrId(expr.value)}`);
