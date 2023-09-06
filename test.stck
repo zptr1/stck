@@ -1,6 +1,13 @@
 include "std"
-include "sys"
+
+proc fib :: int -> int do
+  dup 2 gt if
+    dup  2 sub fib
+    swap 1 sub fib
+    add
+  else drop 1 end
+end
 
 proc main
-  "Hello, world!\n" stdout write drop
+  "fib(31) = " puts 31 fib print
 end
