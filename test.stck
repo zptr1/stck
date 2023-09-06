@@ -1,11 +1,22 @@
-proc fib :: int -> int do
-  dup 2 gt if
-    dup  2 sub fib
-    swap 1 sub fib
-    add
-  else drop 1 end
-end
+include "std"
+include "linux"
+
+const  st_size  48 end
+memory statbuf 144 end
 
 proc main
-  42 fib print
+  0 O_RDONLY c"test.stck" openat  // fd
+  statbuf over            fstat drop
+
+  statbuf st_size ptr+ read64    // len
+
+  // offset fd flags prot length addr
+  2dup 0 rot rot 2 1 rot 0
+  sys_mmap syscall6              // ptr
+
+  cast(ptr) 2dup
+  puts
+
+  swap sys_munmap syscall2 drop
+  close drop
 end
