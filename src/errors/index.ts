@@ -95,12 +95,16 @@ export function reportErrorWithStack(
   }
 
   console.error("", chalk.gray("~ in"), chalk.gray.bold(formatLoc(loc)));
-  for (const o of stack) {
+  for (const o of stack.slice(0, 10)) {
     console.error(
       "", chalk.gray("~ in"),
       chalk.gray.bold(formatLoc(o.loc)),
       `(${chalk.bold(o.name || o.value)})`
     );
+  }
+
+  if (stack.length > 10) {
+    console.error("", chalk.black.dim(`... ${stack.length - 10} more elements`))
   }
 
   for (const path of loc.file.parentStack()) {
