@@ -1,3 +1,6 @@
+// List of all linux syscalls.
+// Copypasted from https://filippo.io/linux-syscall-table/
+
 const sys_read           0 end
 const sys_write          1 end
 const sys_open           2 end
