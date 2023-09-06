@@ -1,5 +1,3 @@
-include "std"
-
 proc fib :: int -> int do
   dup 2 gt if
     dup  2 sub fib
@@ -9,5 +7,5 @@ proc fib :: int -> int do
 end
 
 proc main
-  "fib(31) = " puts 31 fib print
+  42 fib print
 end

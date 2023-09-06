@@ -374,6 +374,10 @@ export class TypeChecker {
   public typecheckProgram(program: IRProgram) {
     program.procs.forEach((proc) => {
       if (proc.unsafe) {
+        if (proc.name == "main") {
+          console.warn(chalk.yellow("warn:"), "Unsafe main procedure");
+        }
+
         return;
       }
 

@@ -312,10 +312,16 @@ export class FasmCompiler {
 
     this.out.push(
       `proc_${id}: ;; ${proc.name} @ ${proc.loc.file.path}`,
-      "enter_proc"
+      "swap_stack_pointers"
     );
+
     this.compileBody(proc.body);
-    this.out.push("leave_proc\n");
+
+    this.out.push(
+      "swap_stack_pointers",
+      "ret",
+      ""
+    );
   }
 
   public compile(): string[] {

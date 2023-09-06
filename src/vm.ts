@@ -36,8 +36,9 @@ export class VM {
         returnStack.push(ip);
         ip = instr[1] as number;
 
-        if (returnStack.length > 4096) {
-          throw "Maximum call stack size exceeded";
+        if (returnStack.length > 10000) {
+          process.stderr.write("[RUNTIME ERROR] Stack overflow\n");
+          process.exit(1);
         }
       } else if (type == Instr.Ret) {
         ip = returnStack.pop()!;

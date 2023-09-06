@@ -4,35 +4,27 @@
 segment readable executable
 
 _start:
-  mov rax, callstack_end
-  mov [callstack_rsp], rax
+  mov rbp, rsp
+  mov rsp, callstack_end
   call proc_0
   mov rax, 60
   mov rdi, 0
   syscall
 
 _core:
-  macro enter_proc {
-    sub rsp, 8
-    mov [callstack_rsp], rsp
-    mov rsp, rax
-  }
-
-  macro leave_proc {
+  macro swap_stack_pointers {
     mov rax, rsp
-    mov rsp, [callstack_rsp]
-    add rsp, 8
-    ret
+    mov rsp, rbp
+    mov rbp, rax
   }
 
   macro call_proc id {
     call check_callstack_overflow
-    mov rax, rsp
-    mov rsp, [callstack_rsp]
+    swap_stack_pointers
     call proc_#id
-    mov [callstack_rsp], rsp
-    mov rsp, rax
+    swap_stack_pointers
   }
+
 _intrinsics:
   macro intrinsic_add {
     pop rbx
@@ -256,6 +248,7 @@ _intrinsics:
 
   macro intrinsic_nop {}
 _builtins:
+  ; Prints a signed integer from rdi
   print:
     sub rsp, 40
     mov rax, rdi
@@ -305,15 +298,10 @@ _builtins:
       ret
 
   check_callstack_overflow:
-    mov rcx, 0
-    mov rdx, 1
-    mov rax, [callstack_rsp]
-    mov rbx, [callstack]
-    cmp rax, rbx
-    cmovl rcx, rdx
-    mov rax, rcx
-    test rax, rax
-    jz .L2
+    ; mov rcx, 0
+    ; mov rdx, 1
+    cmp rbp, callstack
+    jge .L2
       mov rax, 1
       mov rdi, 2
       mov rsi, stack_overflow_msg
@@ -325,9 +313,9 @@ _builtins:
     .L2: ret
 
 segment readable writeable
-  callstack_rsp: rq 1
-  callstack:     rb 64000
+  callstack:     rb 80000
   callstack_end:
 
+segment readable
   stack_overflow_msg:       db '[RUNTIME ERROR] Stack overflow', 10
   stack_overflow_msg_size = $ - stack_overflow_msg

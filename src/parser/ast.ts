@@ -52,6 +52,7 @@ export interface IProc extends IAst<AstType.Proc> {
   signature?: ISignature;
 }
 
+// -
 export interface IMacro extends IAst<AstType.Macro> {
   name: string;
   body: Expr[];
@@ -59,18 +60,22 @@ export interface IMacro extends IAst<AstType.Macro> {
 
 export interface IConst extends IAst<AstType.Const> {
   name: string;
-  body: Expr[];
+  body: Expr[]; // -
+  // + body: IPush
 }
 
 export interface IMemory extends IAst<AstType.Memory> {
   name: string;
-  body: Expr[];
+  body: Expr[]; // -
+  // + size
+  // + offset
 }
 
 export interface IProgram {
   file: File;
   procs: Map<string, IProc>;
-  macros: Map<string, IMacro>;
+  macros: Map<string, IMacro>; // -
   consts: Map<string, IConst>;
   memories: Map<string, IMemory>;
+  // + memorySize
 }
