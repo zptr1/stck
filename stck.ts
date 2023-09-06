@@ -76,7 +76,9 @@ function main() {
   }
 
   const file = new File(plib.resolve(path), source.toString("utf-8"));
-  const out = file.path.replace(/(\.stck)?$/, build ? "" : "_temp");
+  const out = typeof build == "string"
+    ? build
+    : file.path.replace(/(\.stck)?$/, build ? "" : "_temp");
 
   log.timeit("Parsing");
 
