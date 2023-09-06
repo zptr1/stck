@@ -9,7 +9,7 @@ export const KEYWORDS = new Set([
 export enum Tokens {
   Int = "<int>",
   Str = "<str>",
-  Char = "<char>",
+  CStr = "<cstr>",  // C-style (null-terminated) string
   Boolean = "<boolean>",
   Word = "<word>",
   AsmBlock = "<asm>",

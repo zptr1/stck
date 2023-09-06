@@ -4,6 +4,7 @@ export enum DataType {
   Int,
   Ptr,
   Str,
+  CStr,
   Bool,
   AsmBlock
 }
@@ -22,6 +23,8 @@ export function tokenToDataType(token: Tokens): DataType {
     return DataType.Int;
   } else if (token == Tokens.Str) {
     return DataType.Str;
+  } else if (token == Tokens.CStr) {
+    return DataType.CStr;
   } else if (token == Tokens.Boolean) {
     return DataType.Bool;
   } else if (token == Tokens.AsmBlock) {

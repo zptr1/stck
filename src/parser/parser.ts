@@ -108,8 +108,8 @@ export class Parser {
     } else if (
       token.kind == Tokens.Int
       || token.kind == Tokens.Str
+      || token.kind == Tokens.CStr
       || token.kind == Tokens.Boolean
-      || token.kind == Tokens.Char
       || token.kind == Tokens.AsmBlock
     ) {
       return {

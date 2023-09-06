@@ -202,6 +202,13 @@ export class Preprocessor {
               value: constant.body.value,
               loc: expr.loc
             });
+          } else if (constant.body.datatype == DataType.CStr) {
+            out.push({
+              type: AstType.Push,
+              datatype: DataType.Ptr,
+              value: constant.body.value + "\x00",
+              loc: expr.loc
+            });
           } else {
             out.push({
               type: AstType.Push,
@@ -265,6 +272,13 @@ export class Preprocessor {
             value: expr.value,
             loc: expr.loc
           });
+        } else if (expr.datatype == DataType.CStr) {
+          out.push({
+            type: AstType.Push,
+            datatype: DataType.Ptr,
+            value: expr.value + "\x00",
+            loc: expr.loc
+          });
         } else {
           out.push(expr);
         }
@@ -316,7 +330,7 @@ export class Preprocessor {
       loc: memory.loc
     }
 
-    this.memorySize += body.value;
+    this.memorySize += Number(body.value);
     this.memories.set(memory.name, irmemory);
 
     return irmemory;

@@ -2,7 +2,6 @@ import { KEYWORDS, Token, Tokens } from "./token";
 import { File, formatLoc } from "../shared";
 import { reportError } from "../errors";
 import { Reader } from "../util";
-import chalk from "chalk";
 
 export class Lexer {
   public readonly reader: Reader<string>;
@@ -73,7 +72,7 @@ export class Lexer {
     return ch;
   }
 
-  private readStrToken(): Token {
+  private readStr(): string {
     let value = "";
 
     this.reader.next();
@@ -88,7 +87,15 @@ export class Lexer {
     }
 
     this.reader.next();
-    return this.token(Tokens.Str, value);
+    return value;
+  }
+
+  private readStrToken(): Token {
+    return this.token(Tokens.Str, this.readStr());
+  }
+
+  private readCStrToken(): Token {
+    return this.token(Tokens.CStr, this.readStr());
   }
 
   private readCharToken(): Token {
@@ -138,6 +145,10 @@ export class Lexer {
   private readWordToken(): Token {
     let isInt = this.isIntStart();
     let value = this.reader.next();
+
+    if (value == "c" && this.reader.peek() == '"') {
+      return this.readCStrToken();
+    }
 
     while (!this.isWhitespace() && !this.reader.isEnd()) {
       if (!this.isIntContinue()) {
