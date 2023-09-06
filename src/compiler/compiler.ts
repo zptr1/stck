@@ -214,8 +214,11 @@ export class FasmCompiler {
     for (const expr of exprs) {
       if (expr.type == IRType.Word) {
         if (expr.kind == IRWordKind.Intrinsic) {
-          // Calls a macro included from lib/core.asm
-          this.push(`intrinsic_${expr.name}`);
+          const intrinsic = INTRINSICS.get(expr.name)!;
+          if (intrinsic.instr != Instr.Nop) {
+            // Calls a macro included from lib/core.asm
+            this.push(`intrinsic_${expr.name}`);
+          }
         } else if (expr.kind == IRWordKind.Proc) {
           const proc = this.program.procs.get(expr.name)!;
           if (proc.inline) {
@@ -325,6 +328,8 @@ export class FasmCompiler {
   }
 
   public compile(): string[] {
+    // TODO: Linking?
+
     this.out.push(
       ";; Compiled with stck v0.0.2\n",
       "format ELF64 executable 3",
