@@ -194,12 +194,13 @@ export class TypeChecker {
           this.validateContextStack(expr.loc, branches[1], branches[0].stack, true, "after the condition", [
             "Both branches must result in the same data on the stack"
           ]);
-        }
-
-        if (branches.length > 0) {
+        } else if (branches.length > 0) {
           this.validateContextStack(expr.loc, branches[0], ctx.stack, true, "after the condition", [
             "Conditions must not change the types and the amount of elements on the stack"
           ]);
+        }
+
+        if (branches.length > 0) {
           ctx.stack = branches[0].stack;
           ctx.stackLocations = branches[0].stackLocations;
         }
