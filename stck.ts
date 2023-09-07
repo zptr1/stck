@@ -1,6 +1,6 @@
 #!bun
 
-import { BytecodeCompiler, FasmCompiler, decodeBytecode, encodeBytecode, isBytecode } from "./src/compiler";
+import { BytecodeCompiler, FasmCompiler, TypeChecker, decodeBytecode, encodeBytecode, isBytecode } from "./src/compiler";
 import { existsSync, readFileSync, statSync, unlinkSync, writeFileSync } from "fs";
 import { Parser, Preprocessor } from "./src/parser";
 import { Lexer } from "./src/lexer";
@@ -83,16 +83,19 @@ function main() {
   log.timeit("Parsing");
 
   const tokens = new Lexer(file).collect();
-  const ast = new Parser(tokens).parse();
-  const preprocessor = new Preprocessor(ast);
-  const program = preprocessor.parse();
+  const iprogram = new Preprocessor(tokens).preprocess();
+  const program = new Parser(iprogram).parse();
+
+  // const ast = new Parser(tokens).parse();
+  // const preprocessor = new Preprocessor(ast);
+  // const program = preprocessor.parse();
 
   if (unsafe) {
     log.end();
     console.warn(chalk.yellow.bold("[WARN]"), "Typechecking is disabled");
   } else {
     log.timeit("Typechecking");
-    preprocessor.typechecker.typecheckProgram(program);
+    new TypeChecker(program).typecheck();
   }
 
   if (target == "bytecode") {

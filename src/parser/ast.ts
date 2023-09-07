@@ -1,81 +1,82 @@
 import { DataType, DataTypeArray, File, Location } from "../shared";
+import { Token } from "../lexer";
 
-export enum AstType {
-  Proc,
-  Macro,
-  Const,
-  Memory,
-  If,
-  While,
-  Push,
-  Word,
-}
-
-export interface IAst<T extends AstType> {
-  type: T;
-  loc: Location;
-}
-
-export type Expr = IWord | IPush | ICondition | IWhile;
-export type TopLevelAst = IProc | IMacro | IConst | IMemory;
-export type Ast = Expr | IProc | IMacro | IConst;
-
-export interface IWord extends IAst<AstType.Word> {
-  value: string;
-}
-
-export interface IPush extends IAst<AstType.Push> {
-  datatype: DataType | string;
-  value: any;
-}
-
-export interface ICondition extends IAst<AstType.If> {
-  body: Expr[];
-  else: Expr[];
-}
-
-export interface IWhile extends IAst<AstType.While> {
-  condition: Expr[];
-  body: Expr[];
-}
-
-export interface ISignature {
+export interface Signature {
   ins: DataTypeArray;
   outs: DataTypeArray;
 }
 
-export interface IProc extends IAst<AstType.Proc> {
+export enum AstKind {
+  Proc,
+  Const,
+  Push,
+  Word,
+  If,
+  While,
+}
+
+export interface Ast<T extends AstKind> {
+  kind: T;
+  loc: Location;
+}
+
+// Preprocessed unparsed procedure
+export interface IProc extends Ast<AstKind.Proc> {
   name: string;
-  body: Expr[];
-  inline: boolean;
+  body: Token[];
+  signature?: Signature;
   unsafe: boolean;
-  signature?: ISignature;
+  inline: boolean;
 }
 
-// -
-export interface IMacro extends IAst<AstType.Macro> {
-  name: string;
-  body: Expr[];
-}
-
-export interface IConst extends IAst<AstType.Const> {
-  name: string;
-  body: Expr[]; // -
-  // + body: IPush
-}
-
-export interface IMemory extends IAst<AstType.Memory> {
-  name: string;
-  body: Expr[]; // -
-  // + size
-  // + offset
-}
-
+// Preprocessed unparsed program
 export interface IProgram {
   file: File;
   procs: Map<string, IProc>;
-  macros: Map<string, IMacro>; // -
-  consts: Map<string, IConst>;
-  memories: Map<string, IMemory>;
-  // + memorySize
+  consts: Map<string, Const>;
+  memories: Map<string, Const>;
+}
+
+export interface Const extends Ast<AstKind.Const> {
+  name: string;
+  type: DataType;
+  value: any;
+}
+
+// Parsed procedure
+export type Proc = Omit<IProc, 'body'> & {
+  body: Expr[];
+}
+
+// Parsed program
+export type Program = Omit<IProgram, 'procs'> & {
+  procs: Map<string, Proc>;
+}
+
+export type Expr = Word | Push | Condition | While;
+export enum WordType {
+  Intrinsic,
+  Proc,
+  Memory,
+  Constant
+}
+
+export interface Word extends Ast<AstKind.Word> {
+  value: string;
+  type: WordType;
+}
+
+export interface Push extends Ast<AstKind.Push> {
+  type: DataType | string;
+  value: any;
+}
+
+export interface Condition extends Ast<AstKind.If> {
+  body: Expr[];
+  else: Expr[];
+}
+
+export interface While extends Ast<AstKind.While> {
+  condition: Expr[];
+  body: Expr[];
 }

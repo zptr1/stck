@@ -1,14 +1,16 @@
 import { ByteCode, Instr, Instruction, MarkedInstr, DataType, INTRINSICS } from "../shared";
-import { IRExpr, IRProc, IRProgram, IRType, IRWordKind, AstType } from "../parser";
+import { AstKind, Expr, Proc, Program, WordType } from "../parser";
 import { StackElement, reportError, reportErrorWithStack, reportErrorWithoutLoc } from "../errors";
 import { ROOT_DIR } from "../const";
 import plib from "path";
 
 export class BytecodeCompiler {
-  public readonly text: Map<string, number> = new Map();
   public readonly instr: MarkedInstr[] = [];
 
+  private readonly text: Map<string, number> = new Map();
   private readonly markers: Map<string, number> = new Map();
+  private readonly memoryOffsets: Map<string, number> = new Map();
+
   private readonly compiledProcs: Set<string> = new Set();
   private readonly procQueue: string[] = [];
 
@@ -16,12 +18,12 @@ export class BytecodeCompiler {
   private textMemSize: number = 0;
 
   constructor(
-    public readonly program: IRProgram
+    public readonly program: Program
   ) {
-    this.progMemSize = this.program.memorySize;
+    this.calcMemoryOffsets();
   }
 
-  private encodeString(str: string) {
+  private getStrId(str: string) {
     if (!this.text.has(str)) {
       this.text.set(str, this.progMemSize + this.textMemSize);
       this.textMemSize += Buffer.from(str, "utf-8").length;
@@ -30,22 +32,29 @@ export class BytecodeCompiler {
     return this.text.get(str)!;
   }
 
+  private calcMemoryOffsets() {
+    this.program.memories.forEach((memory) => {
+      this.memoryOffsets.set(memory.name, this.progMemSize);
+      this.progMemSize += memory.value;
+    });
+  }
+
   private marker(id: string = `marker-${this.markers.size}`): string {
     this.markers.set(id, this.instr.length);
     return id;
   }
 
-  private compileBody(exprs: IRExpr[], inlineExpandStack: StackElement[] = []) {
+  private compileBody(exprs: Expr[], inlineExpandStack: StackElement[] = []) {
     for (const expr of exprs) {
-      if (expr.type == IRType.Word) {
-        if (expr.kind == IRWordKind.Intrinsic) {
-          const intrinsic = INTRINSICS.get(expr.name)!;
+      if (expr.kind == AstKind.Word) {
+        if (expr.type == WordType.Intrinsic) {
+          const intrinsic = INTRINSICS.get(expr.value)!;
 
           if (intrinsic.instr != Instr.Nop) {
             this.instr.push([intrinsic.instr]);
           }
-        } else if (expr.kind == IRWordKind.Proc) {
-          const proc = this.program.procs.get(expr.name)!;
+        } else if (expr.type == WordType.Proc) {
+          const proc = this.program.procs.get(expr.value)!;
 
           if (proc.inline) {
             if (inlineExpandStack.find((x) => x.name == proc.name)) {
@@ -60,22 +69,29 @@ export class BytecodeCompiler {
               loc: expr.loc
             }));
           } else {
-            if (!this.compiledProcs.has(expr.name)) {
-              this.procQueue.push(expr.name);
+            if (!this.compiledProcs.has(expr.value)) {
+              this.procQueue.push(expr.value);
             }
 
             this.instr.push([
               Instr.Call,
-              `proc-${expr.name}`
+              `proc-${expr.value}`
             ]);
           }
-        } else if (expr.kind == IRWordKind.Memory) {
-          this.instr.push([
-            Instr.Push,
-            this.program.memories.get(expr.name)!.offset
-          ]);
+        } else if (expr.type == WordType.Constant) {
+          const constant = this.program.consts.get(expr.value)!;
+          if (constant.type == DataType.Str) {
+            this.instr.push([Instr.Push, BigInt(constant.value.length)])
+            this.instr.push([Instr.Push, BigInt(this.getStrId(constant.value))]);
+          } else if (constant.type == DataType.CStr) {
+            this.instr.push([Instr.Push, BigInt(this.getStrId(constant.value + "\x00"))]);
+          } else {
+            this.instr.push([Instr.Push, BigInt(constant.value) ?? 0n]);
+          }
+        } else if (expr.type == WordType.Memory) {
+          this.instr.push([Instr.Push, this.memoryOffsets.get(expr.value)!]);
         }
-      } else if (expr.type == IRType.While) {
+      } else if (expr.kind == AstKind.While) {
         const start = this.marker();
         const end = this.marker();
 
@@ -86,7 +102,7 @@ export class BytecodeCompiler {
         this.instr.push([Instr.Jmp, start]);
 
         this.marker(end);
-      } else if (expr.type == IRType.If) {
+      } else if (expr.kind == AstKind.If) {
         if (expr.else.length > 0) {
           const end = this.marker();
           const els = this.marker();
@@ -105,24 +121,27 @@ export class BytecodeCompiler {
           this.compileBody(expr.body, inlineExpandStack);
           this.marker(end);
         }
-      } else if (expr.type == AstType.Push) {
-        if (expr.datatype == DataType.AsmBlock) {
+      } else if (expr.kind == AstKind.Push) {
+        if (expr.type == DataType.AsmBlock) {
           reportError(
             "Assembly blocks are not supported for this target",
             expr.loc
           );
-        } else if (expr.datatype == DataType.Ptr) {
-          this.instr.push([Instr.Push, BigInt(this.encodeString(expr.value))]);
+        } else if (expr.type == DataType.Str) {
+          this.instr.push([Instr.Push, BigInt(expr.value.length)])
+          this.instr.push([Instr.Push, BigInt(this.getStrId(expr.value))]);
+        } else if (expr.type == DataType.CStr) {
+          this.instr.push([Instr.Push, BigInt(this.getStrId(expr.value + "\x00"))]);
         } else {
           this.instr.push([Instr.Push, BigInt(expr.value) ?? 0n]);
         }
       } else {
-        throw new Error(`Compilation of ${IRType[(expr as IRExpr).type]} to bytecode is not implemented`);
+        throw new Error(`Compilation of ${AstKind[(expr as Expr).kind]} to bytecode is not implemented`);
       }
     }
   }
 
-  public compileProc(proc: IRProc) {
+  public compileProc(proc: Proc) {
     this.marker(`proc-${proc.name}`);
     this.compiledProcs.add(proc.name);
     this.compileBody(proc.body);
@@ -173,15 +192,17 @@ export class FasmCompiler {
   public readonly out: string[] = [];
 
   private readonly strings: string[] = [];
+  private readonly memoryOffsets: Map<string, number> = new Map();
   private readonly compiledProcs: Set<string> = new Set();
   private readonly procIds: Map<string, number> = new Map();
   private readonly procQueue: string[] = [];
 
+  private memorySize: number = 0;
   private labelId: number = 0;
   private ident: number = 0;
 
   constructor(
-    public readonly program: IRProgram
+    public readonly program: Program
   ) {}
 
   private label(prefix: string = "label"): string {
@@ -193,6 +214,15 @@ export class FasmCompiler {
     return idx == -1
       ? this.strings.push(str) - 1
       : idx;
+  }
+
+  private getMemoryOffset(memory: string): number {
+    if (!this.memoryOffsets.has(memory)) {
+      this.memoryOffsets.set(memory, this.memorySize);
+      this.memorySize += this.program.memories.get(memory)!.value;
+    }
+
+    return this.memoryOffsets.get(memory)!;
   }
 
   private getProcId(proc: string): number {
@@ -208,19 +238,19 @@ export class FasmCompiler {
     }
   }
 
-  public compileBody(exprs: IRExpr[], inlineExpandStack: StackElement[] = []) {
+  public compileBody(exprs: Expr[], inlineExpandStack: StackElement[] = []) {
     this.ident += 2;
 
     for (const expr of exprs) {
-      if (expr.type == IRType.Word) {
-        if (expr.kind == IRWordKind.Intrinsic) {
-          const intrinsic = INTRINSICS.get(expr.name)!;
+      if (expr.kind == AstKind.Word) {
+        if (expr.type == WordType.Intrinsic) {
+          const intrinsic = INTRINSICS.get(expr.value)!;
           if (intrinsic.instr != Instr.Nop) {
             // Calls a macro included from lib/core.asm
-            this.push(`intrinsic_${expr.name}`);
+            this.push(`intrinsic_${expr.value}`);
           }
-        } else if (expr.kind == IRWordKind.Proc) {
-          const proc = this.program.procs.get(expr.name)!;
+        } else if (expr.type == WordType.Proc) {
+          const proc = this.program.procs.get(expr.value)!;
           if (proc.inline) {
             if (inlineExpandStack.find((x) => x.name == proc.name)) {
               reportErrorWithStack(
@@ -241,12 +271,26 @@ export class FasmCompiler {
 
             this.push(`call_proc ${id}`);
           }
-        } else if (expr.kind == IRWordKind.Memory) {
+        } else if (expr.type == WordType.Constant) {
+          const constant = this.program.consts.get(expr.value)!;
+          if (constant.type == DataType.Str) {
+            this.push(
+              `push ${constant.value.length}`,
+              `push str${this.getStrId(constant.value)}`
+            );
+          } else if (constant.type == DataType.CStr) {
+            this.push(`push str${
+              this.getStrId(constant.value + "\x00")
+            }`);
+          } else {
+            this.push(`push ${BigInt(constant.value)}`);
+          }
+        } else if (expr.type == WordType.Memory) {
           this.push(
-            `push mem+${this.program.memories.get(expr.name)!.offset}`
+            `push mem+${this.getMemoryOffset(expr.value)}`
           );
         }
-      } else if (expr.type == IRType.While) {
+      } else if (expr.kind == AstKind.While) {
         const whileLb = this.label(".while");
         const endLb   = this.label(".end");
 
@@ -262,7 +306,7 @@ export class FasmCompiler {
           `jmp ${whileLb}`,
           `${endLb}:`
         );
-      } else if (expr.type == IRType.If) {
+      } else if (expr.kind == AstKind.If) {
         this.push(
           "pop rax",
           "test rax, rax"
@@ -288,25 +332,32 @@ export class FasmCompiler {
           this.compileBody(expr.else, inlineExpandStack);
           this.push(`${lb}:`);
         }
-      } else if (expr.type == AstType.Push) {
-        if (expr.datatype == DataType.AsmBlock) {
+      } else if (expr.kind == AstKind.Push) {
+        if (expr.type == DataType.AsmBlock) {
           this.push(`;; begin asm block`);
           this.push(...expr.value.trim().split("\n"));
           this.push(`;; end asm block`);
-        } else if (expr.datatype == DataType.Ptr) {
-          this.push(`push str${this.getStrId(expr.value)}`);
+        } else if (expr.type == DataType.Str) {
+          this.push(
+            `push ${expr.value.length}`,
+            `push str${this.getStrId(expr.value)}`
+          );
+        } else if (expr.type == DataType.CStr) {
+          this.push(`push str${
+            this.getStrId(expr.value + "\x00")
+          }`);
         } else {
           this.push(`push ${BigInt(expr.value)}`);
         }
       } else {
-        throw new Error(`Compilation of ${IRType[(expr as IRExpr).type]} to NASM is not implemented`);
+        throw new Error(`Compilation of ${AstKind[(expr as Expr).kind]} to NASM is not implemented`);
       }
     }
 
     this.ident -= 2;
   }
 
-  public compileProc(proc: IRProc) {
+  public compileProc(proc: Proc) {
     if (this.compiledProcs.has(proc.name))
       return;
 
@@ -350,7 +401,7 @@ export class FasmCompiler {
     this.out.push("");
     this.out.push(
       "segment readable writeable",
-      `mem rb ${this.program.memorySize}`
+      `mem rb ${this.memorySize}`
     );
 
     for (let i = 0; i < this.strings.length; i++) {

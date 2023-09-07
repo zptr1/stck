@@ -1,370 +1,442 @@
-import { IRExpr, IRProc, IRProgram, IRWordKind, IRType, IRConst, IRMemory } from "./ir";
-import { AstType, Expr, IConst, IMemory, IProc, IProgram, IPush, IWord } from "./ast";
-import { INTRINSICS, formatLoc, DataType, Location } from "../shared";
-import { Context, TypeChecker, createContext } from "../compiler";
-import { reportError, reportErrorWithStack } from "../errors";
+import { DataType, DataTypeArray, INTRINSICS, Location, formatLoc, tokenToDataType } from "../shared";
+import { Context, createContext, handleSignature, validateContextStack } from "../compiler";
+import { AstKind, Const, IProc, IProgram } from ".";
+import { Lexer, Token, Tokens } from "../lexer";
+import { reportError } from "../errors";
+import { ROOT_DIR } from "../const";
+import { existsSync } from "fs";
 import chalk from "chalk";
+import plib from "path";
 
-/**
- * Converts the program to IR. Also expands macros and evaluates compile-time expressions
- */
+const tokenFmt = chalk.yellow.bold;
+
 export class Preprocessor {
-  public readonly procs = new Map<string, IRProc>();
-  public readonly consts = new Map<string, IRConst>();
-  public readonly memories = new Map<string, IRMemory>();
-  public readonly typechecker: TypeChecker;
+  public readonly tokens: Token[] = [];
+  public readonly macros: Map<string, Token[]> = new Map();
+  public readonly program: IProgram;
 
-  private memorySize: number = 0;
+  private includedFiles = new Set<string>();
+  private includeDepth: number = 0;
 
-  constructor (
-    public readonly program: IProgram
-  ) {
-    this.typechecker = new TypeChecker(this);
+  private lastToken: Token | undefined = undefined;
+
+  constructor(tokens: Token[]) {
+    this.tokens = tokens.reverse();
+
+    const file = this.tokens[0].loc.file;
+    this.includedFiles.add(file.path);
+    this.program = {
+      file,
+      procs: new Map(),
+      consts: new Map(),
+      memories: new Map()
+    }
   }
 
-  private expandMacro(expr: IWord, stack: IWord[]): IRExpr[] {
-    const macro = this.program.macros.get(expr.value)!;
+  private next(): Token {
+    return (
+      this.lastToken = this.tokens.pop()!
+    );
+  }
 
-    if (stack.find((x) => x.value == macro.name)) {
-      reportErrorWithStack(
-        "recursive macro expansion", expr.loc, stack, [
-          `macro ${chalk.bold(expr.value)} expanded again at ${chalk.gray.bold(formatLoc(expr.loc))}`
-        ]
+  private peek(): Token | undefined {
+    return this.tokens.at(-1);
+  }
+
+  private isEnd(): boolean {
+    return this.tokens.length == 0;
+  }
+
+  private nextOf(kind: Tokens): Token {
+    if (this.isEnd()) reportError(
+      `Expected ${tokenFmt(kind)} but got ${tokenFmt("EOF")}`,
+      this.lastToken!.loc
+    );
+
+    const token = this.next();
+    if (token.kind != kind) reportError(
+      `Expected ${tokenFmt(kind)} but got ${tokenFmt(token.kind)}`,
+      token.loc
+    );
+
+    return token;
+  }
+
+  private checkUniqueDefinition(name: string, loc: Location) {
+    if (this.program.procs.has(name)) {
+      const proc = this.program.procs.get(name)!;
+      reportError(
+        "A procedure with the same name is already defined", loc,
+        [`originally defined here ${chalk.bold(formatLoc(proc.loc))}`]
+      );
+    } else if (this.program.consts.has(name)) {
+      const constant = this.program.consts.get(name)!;
+      reportError(
+        "A constant with the same name is already defined", loc,
+        [`originally defined here ${chalk.bold(formatLoc(constant.loc))}`]
+      );
+    } else if (INTRINSICS.has(name)) {
+      reportError(
+        "An intrinsic with the same name already exists",
+        loc
       );
     }
-
-    stack.push(expr);
-    const body = this.parseBody(macro.body, stack);
-    stack.pop();
-
-    return body;
   }
 
-  private evaluateCompileTimeExpr(exprs: Expr[], loc: Location, ctx: Context = createContext()): IPush {
-    const stackValues: any[] = [];
+  private evaluateIntrinsic(name: string, loc: Location, ctx: Context, stack: any[]) {
+    if (name == "add") {
+      stack.push(stack.pop() + stack.pop());
+    } else if (name == "mul") {
+      stack.push(stack.pop() * stack.pop());
+    } else if (name == "sub") {
+      const rhs = stack.pop(), lhs = stack.pop();
+      stack.push(lhs - rhs);
+    } else if (name == "divmod") {
+      const rhs = stack.pop(), lhs = stack.pop();
+      stack.push(lhs / rhs);
+      stack.push(lhs % rhs);
+    } else if (name == "lt") {
+      const rhs = stack.pop(), lhs = stack.pop();
+      stack.push(BigInt(lhs > rhs));
+    } else if (name == "gt") {
+      const rhs = stack.pop(), lhs = stack.pop();
+      stack.push(BigInt(lhs < rhs));
+    } else if (name == "eq") {
+      stack.push(BigInt(stack.pop() == stack.pop()));
+    } else if (name == "shl") {
+      const rhs = stack.pop(), lhs = stack.pop();
+      stack.push(lhs << rhs);
+    } else if (name == "shr") {
+      const rhs = stack.pop(), lhs = stack.pop();
+      stack.push(lhs >> rhs);
+    } else if (name == "not") {
+      stack.push(~stack.pop());
+    } else if (name == "or") {
+      const rhs = stack.pop(), lhs = stack.pop();
+      stack.push(lhs | rhs);
+    } else if (name == "and") {
+      const rhs = stack.pop(), lhs = stack.pop();
+      stack.push(lhs & rhs);
+    } else if (name == "xor") {
+      const rhs = stack.pop(), lhs = stack.pop();
+      stack.push(lhs ^ rhs);
+    } else if (name == "dup") {
+      const a = stack.pop();
+      stack.push(a, a);
+    } else if (name == "drop") {
+      stack.pop();
+    } else if (name == "swap") {
+      stack.push(stack.pop(), stack.pop());
+    } else if (name == "2swap") {
+      stack.push(
+        stack.pop(), stack.pop(),
+        stack.pop(), stack.pop(),
+      );
+    } else if (name == "rot") {
+      const a = stack.pop(), b = stack.pop(), c = stack.pop();
+      stack.push(b, a, c);
+    } else if (name == "over") {
+      const a = stack.pop(), b = stack.pop();
+      stack.push(b, a, b);
+    } else if (name == "2dup") {
+      const a = stack.pop(), b = stack.pop();
+      stack.push(b, a, b, a);
+    } else if (name == "<dump-stack>") {
+      console.log(
+        chalk.blueBright.bold("debug:"),
+        "Current values on the stack"
+      );
 
-    for (const expr of exprs) {
-      if (expr.type == AstType.Word) {
-        if (INTRINSICS.has(expr.value)) {
-          this.typechecker.handleSignature(INTRINSICS.get(expr.value)!, ctx, expr.loc);
+      for (let i = 0; i < stack.length; i++) {
+        const loc = ctx.stackLocations[i];
+        const type = ctx.stack[i];
+        const val = stack[i];
 
-          if (expr.value == "add") {
-            const rhs = stackValues.pop(), lhs = stackValues.pop();
-            stackValues.push(lhs + rhs);
-          } else if (expr.value == "sub") {
-            const rhs = stackValues.pop(), lhs = stackValues.pop();
-            stackValues.push(lhs - rhs);
-          } else if (expr.value == "mul") {
-            const rhs = stackValues.pop(), lhs = stackValues.pop();
-            stackValues.push(lhs * rhs);
-          } else if (expr.value == "divmod") {
-            const rhs = stackValues.pop(), lhs = stackValues.pop();
-            stackValues.push(lhs / rhs);
-            stackValues.push(lhs % rhs);
-          } else if (expr.value == "lt") {
-            const rhs = stackValues.pop(), lhs = stackValues.pop();
-            stackValues.push(lhs < rhs);
-          } else if (expr.value == "eq") {
-            const rhs = stackValues.pop(), lhs = stackValues.pop();
-            stackValues.push(lhs == rhs);
-          } else if (expr.value == "gt") {
-            const rhs = stackValues.pop(), lhs = stackValues.pop()!;
-            stackValues.push(lhs > rhs);
-          } else if (expr.value == "shl") {
-            const rhs = stackValues.pop(), lhs = stackValues.pop()!;
-            stackValues.push(lhs << rhs);
-          } else if (expr.value == "shr") {
-            const rhs = stackValues.pop(), lhs = stackValues.pop()!;
-            stackValues.push(lhs >> rhs);
-          } else if (expr.value == "not") {
-            stackValues.push(~stackValues.pop()!);
-          } else if (expr.value == "or") {
-            const rhs = stackValues.pop(), lhs = stackValues.pop()!;
-            stackValues.push(lhs | rhs);
-          } else if (expr.value == "and") {
-            const rhs = stackValues.pop(), lhs = stackValues.pop()!;
-            stackValues.push(lhs & rhs);
-          } else if (expr.value == "xor") {
-            const rhs = stackValues.pop(), lhs = stackValues.pop()!;
-            stackValues.push(lhs ^ rhs);
-          } else if (expr.value == "lor") {
-            const rhs = stackValues.pop(), lhs = stackValues.pop()!;
-            stackValues.push(lhs || rhs);
-          } else if (expr.value == "land") {
-            const rhs = stackValues.pop(), lhs = stackValues.pop()!;
-            stackValues.push(lhs && rhs);
-          } else if (expr.value == "lnot") {
-            stackValues.push(!stackValues.pop());
-          } else if (expr.value == "dup") {
-            const a = stackValues.pop();
-            stackValues.push(a, a);
-          } else if (expr.value == "drop") {
-            stackValues.pop();
-          } else if (expr.value == "swap") {
-            stackValues.push(stackValues.pop(), stackValues.pop());
-          } else if (expr.value == "swap2") {
-            stackValues.push(
-              stackValues.pop(), stackValues.pop(), stackValues.pop(), stackValues.pop()
-            );
-          } else if (expr.value == "dup2") {
-            const a = stackValues.pop()!, b = stackValues.pop()!;
-            stackValues.push(b, a, b, a);
-          } else if (expr.value == "over") {
-            stackValues.push(stackValues.at(-2)!);
-          } else if (expr.value == "rot") {
-            const a = stackValues.pop()!,
-                  b = stackValues.pop()!,
-                  c = stackValues.pop()!;
-            stackValues.push(b, a, c);
-          } else {
-            reportError("Cannot use this intrinsic in compile-time expression", expr.loc);
-          }
-        } else if (this.consts.has(expr.value)) {
-          const constant = this.consts.get(expr.value)!;
-          stackValues.push(constant.body.value);
-          ctx.stack.push(constant.body.datatype);
-          ctx.stackLocations.push(expr.loc);
-        } else if (this.program.consts.has(expr.value)) {
-          reportError("That constant is not defined yet", expr.loc);
-        } else if (this.program.procs.has(expr.value)) {
-          reportError("Cannot use procedures in compile-time expressions", expr.loc);
-        } else if (this.program.macros.has(expr.value)) {
-          reportError("Cannot use macros in compile-time expressions", expr.loc);
-        } else if (this.program.memories.has(expr.value)) {
-          reportError("Cannot use memories in compile-time expressions", expr.loc);
-        } else {
-          reportError("Unknown word", expr.loc);
+        console.debug(
+          chalk.blueBright.bold("debug:"),
+          "-", `${
+            chalk.bold(
+              typeof type == "string"
+                ? "Any"
+                : DataType[type]
+            )
+          }(${
+            typeof val == "string"
+              ? chalk.yellow(JSON.stringify(val))
+              : chalk.cyan(val)
+          })`, "@", chalk.bold(formatLoc(loc))
+        );
+      }
+    } else {
+      reportError(
+        "This intrinsic cannot be used in compile-time expressions",
+        loc
+      );
+    }
+  }
+
+  private evaluateConstant(name: string, start: Location): Const {
+    const ctx = createContext();
+    const stack: any[] = [];
+
+    while (!this.isEnd()) {
+      const token = this.next();
+
+      if (token.kind == Tokens.Word) {
+        if (INTRINSICS.has(token.value)) {
+          const intrinsic = INTRINSICS.get(token.value)!;
+
+          validateContextStack(token.loc, ctx, intrinsic.ins, false, "for the intrinsic call");
+          handleSignature(intrinsic, ctx, token.loc);
+          this.evaluateIntrinsic(token.value, token.loc, ctx, stack);
+        } else if (this.program.consts.has(token.value)) {
+          const constant = this.program.consts.get(token.value)!;
+          stack.push(constant.value);
+          ctx.stack.push(constant.type);
+          ctx.stackLocations.push(token.loc);
         }
-      } else if (expr.type == AstType.Push) {
-        if (expr.datatype == DataType.AsmBlock) {
-          reportError("Cannot use assembly blocks in compile-time expressions", expr.loc);
-        }
-
-        if (typeof expr.value == "number") {
-          stackValues.push(BigInt(expr.value));
-        } else {
-          stackValues.push(expr.value);
-        }
-
-        ctx.stack.push(expr.datatype);
-        ctx.stackLocations.push(expr.loc);
+      } else if (
+        token.kind == Tokens.Int
+        || token.kind == Tokens.Boolean
+        || token.kind == Tokens.Str
+        || token.kind == Tokens.CStr
+      ) {
+        stack.push(token.value);
+        ctx.stack.push(tokenToDataType(token.kind));
+        ctx.stackLocations.push(token.loc);
+      } else if (token.kind == Tokens.End) {
+        validateContextStack(token.loc, ctx, ["any"], true, "for the constant");
+        break;
       } else {
         reportError(
-          `${chalk.yellow.bold(AstType[expr.type])} is not supported in compile-time expressions`,
-          expr.loc
+          `${tokenFmt(token.kind)} cannot be used in compile-time expressions`,
+          token.loc
         );
       }
     }
 
-    if (stackValues.length < 0) {
-      this.typechecker.reportErrorWithStackData(
-        "Compile time expression resulted in nothing",
-        loc, ctx, ["Any"]
-      );
-    } else if (stackValues.length > 1) {
-      this.typechecker.reportErrorWithStackData(
-        "Compile time expression resulted in multiple values on the stack",
-        loc, ctx, ["Any"]
-      );
+    const type = ctx.stack.pop()!;
+    const value = stack.pop()!;
+
+    if (typeof type == "string") {
+      throw new Error(`Compile time expression resulted in an invalid output`);
     }
 
     return {
-      type: AstType.Push,
-      datatype: ctx.stack.pop()!,
-      value: stackValues.pop()!,
-      loc: ctx.stackLocations.pop()!
+      kind: AstKind.Const,
+      name, type, value,
+      loc: start
     }
   }
 
-  private parseBody(exprs: Expr[], macroExpansionStack: IWord[] = []): IRExpr[] {
-    const out: IRExpr[] = [];
-    for (const expr of exprs) {
-      if (expr.type == AstType.Word) {
-        if (this.program.macros.has(expr.value)) {
-          const body = this.expandMacro(expr, macroExpansionStack);
-          for (const expr of body)
-            out.push(expr);
+  public readBody(isMacro: boolean = false): Token[] {
+    const depth: Token[] = [this.lastToken!];
+    const body: Token[] = [];
 
-          continue;
-        } else if (this.consts.has(expr.value)) {
-          const constant = this.consts.get(expr.value)!;
-          if (constant.body.datatype == DataType.Str) {
-            out.push({
-              type: AstType.Push,
-              datatype: DataType.Int,
-              value: constant.body.value.length,
-              loc: expr.loc
-            });
+    while (!this.isEnd()) {
+      const token = this.next();
 
-            out.push({
-              type: AstType.Push,
-              datatype: DataType.Ptr,
-              value: constant.body.value,
-              loc: expr.loc
-            });
-          } else if (constant.body.datatype == DataType.CStr) {
-            out.push({
-              type: AstType.Push,
-              datatype: DataType.Ptr,
-              value: constant.body.value + "\x00",
-              loc: expr.loc
-            });
-          } else {
-            out.push({
-              type: AstType.Push,
-              datatype: constant.body.datatype,
-              value: constant.body.value,
-              loc: expr.loc
-            });
-          }
-        } else if (this.memories.has(expr.value)) {
-          out.push({
-            type: IRType.Word,
-            kind: IRWordKind.Memory,
-            name: expr.value,
-            loc: expr.loc
-          });
-        } else if (this.program.procs.has(expr.value)) {
-          out.push({
-            type: IRType.Word,
-            kind: IRWordKind.Proc,
-            name: expr.value,
-            loc: expr.loc
-          });
-        } else if (INTRINSICS.has(expr.value)) {
-          out.push({
-            type: IRType.Word,
-            kind: IRWordKind.Intrinsic,
-            name: expr.value,
-            loc: expr.loc
-          });
+      if (token.kind == Tokens.Word) {
+        if (isMacro && token.value == "\\") {
+          body.push(this.next());
+        } else if (this.macros.has(token.value)) {
+          const tokens = this.macros.get(token.value)!.slice().reverse();
+          for (const token of tokens)
+            this.tokens.push(token);
         } else {
-          reportErrorWithStack(
-            "Unknown word", expr.loc, macroExpansionStack
-          );
+          body.push(token);
         }
-      } else if (expr.type == AstType.While) {
-        out.push({
-          type: IRType.While,
-          condition: this.parseBody(expr.condition, macroExpansionStack),
-          body: this.parseBody(expr.body, macroExpansionStack),
-          loc: expr.loc
-        });
-      } else if (expr.type == AstType.If) {
-        out.push({
-          type: IRType.If,
-          body: this.parseBody(expr.body, macroExpansionStack),
-          else: this.parseBody(expr.else, macroExpansionStack),
-          loc: expr.loc
-        });
-      } else if (expr.type == AstType.Push) {
-        if (expr.datatype == DataType.Str) {
-          out.push({
-            type: AstType.Push,
-            datatype: DataType.Int,
-            value: expr.value.length,
-            loc: expr.loc
-          });
-
-          out.push({
-            type: AstType.Push,
-            datatype: DataType.Ptr,
-            value: expr.value,
-            loc: expr.loc
-          });
-        } else if (expr.datatype == DataType.CStr) {
-          out.push({
-            type: AstType.Push,
-            datatype: DataType.Ptr,
-            value: expr.value + "\x00",
-            loc: expr.loc
-          });
+      } else if (
+        token.kind == Tokens.While
+        || token.kind == Tokens.If
+      ) {
+        body.push(token);
+        depth.push(token);
+      } else if (
+        token.kind == Tokens.Do
+        || token.kind == Tokens.Else
+        || token.kind == Tokens.ChainedIf
+      ) {
+        // for better error reporting
+        depth.pop();
+        depth.push(token);
+        body.push(token);
+      } else if (token.kind == Tokens.End) {
+        if (depth.length > 1) {
+          body.push(token);
+          depth.pop();
         } else {
-          out.push(expr);
+          return body;
         }
       } else {
-        throw new Error(`Preprocessing is not implemented for ${AstType[(expr as Expr).type]}`);
+        body.push(token);
       }
     }
 
-    return out;
+    reportError("Unclosed block", depth.at(-1)!.loc);
   }
 
-  private parseConst(constant: IConst): IRConst {
-    if (this.consts.has(constant.name)) {
-      return this.consts.get(constant.name)!;
-    }
+  public readProcSignature(end: Tokens[]): [DataTypeArray, Tokens] {
+    const types: DataTypeArray = [];
 
-    const irconst: IRConst = {
-      type: IRType.Const,
-      name: constant.name,
-      loc: constant.loc,
-      body: this.evaluateCompileTimeExpr(constant.body, constant.loc)
+    while (true) {
+      const token = this.next();
+      if (end.includes(token.kind)) {
+        return [types, token.kind];
+      } else if (token.kind == Tokens.Word) {
+        if (token.value == "int") {
+          types.push(DataType.Int);
+        } else if (token.value == "ptr") {
+          types.push(DataType.Ptr);
+        } else if (token.value == "bool") {
+          types.push(DataType.Bool);
+        } else if (token.value.length == 1) { // template
+          types.push(token.value);
+        } else {
+          reportError("Unknown type", token.loc);
+        }
+      } else {
+        reportError(
+          `Unexpected ${tokenFmt(token.kind)} in the procedure signature`,
+          token.loc
+        );
+      }
     }
-
-    this.consts.set(constant.name, irconst);
-    return irconst;
   }
 
-  private parseMemory(memory: IMemory): IRMemory {
-    if (this.memories.has(memory.name)) {
-      return this.memories.get(memory.name)!;
+  public readProc(inline: boolean, unsafe: boolean): IProc {
+    const name = this.nextOf(Tokens.Word);
+    this.checkUniqueDefinition(name.value, name.loc);
+
+    const proc: IProc = {
+      kind: AstKind.Proc,
+      name: name.value,
+      inline, unsafe,
+      loc: name.loc,
+      body: []
     }
 
-    const body = this.evaluateCompileTimeExpr(memory.body, memory.loc);
-    if (body.datatype != DataType.Int) {
-      reportError(
-        "Memory sizes must be integers", memory.loc, [
-          `Expected Int but got ${
-            typeof body.datatype == "string" ? "Any" : DataType[body.datatype]
-          }`
-        ]
-      );
-    }
+    if (this.peek()?.kind == Tokens.SigIns) {
+      this.next();
+      const [ins, end] = this.readProcSignature([Tokens.Do, Tokens.SigOuts]);
 
-    const irmemory: IRMemory = {
-      type: IRType.Memory,
-      name: memory.name,
-      size: body.value,
-      offset: this.memorySize,
-      loc: memory.loc
-    }
+      proc.signature = { ins: [], outs: [] };
+      proc.signature.ins = ins;
 
-    this.memorySize += Number(body.value);
-    this.memories.set(memory.name, irmemory);
+      if (end == Tokens.SigOuts) {
+        proc.signature.outs = this.readProcSignature([Tokens.Do])[0];
+      }
+    } else if (this.peek()?.kind == Tokens.SigOuts) {
+      this.next();
+      proc.signature = { ins: [], outs: [] };
+      proc.signature.outs = this.readProcSignature([Tokens.Do])[0];
+    } else if (this.peek()?.kind == Tokens.Do) this.next();
 
-    return irmemory;
+    proc.body = this.readBody();
+
+    return proc;
   }
 
-  private parseProc(proc: IProc): IRProc {
-    if (this.procs.has(proc.name)) {
-      return this.procs.get(proc.name)!;
+  public preprocess(): IProgram {
+    let inlineProc = false;
+    let unsafeProc = false;
+
+    while (!this.isEnd()) {
+      const token = this.next();
+
+      if (
+        (inlineProc || unsafeProc)
+        && token.kind != Tokens.Proc
+        && token.kind != Tokens.Unsafe
+        && token.kind != Tokens.Inline
+      ) {
+        reportError(
+          `Expected ${tokenFmt("proc")} but got ${tokenFmt(token.kind)}`,
+          token.loc
+        );
+      }
+
+      if (token.kind == Tokens.Include) {
+        const tok = this.nextOf(Tokens.Str);
+
+        const paths = tok.value.startsWith(".") ? [
+          plib.join(plib.dirname(token.loc.file.path), tok.value + ".stck")
+        ] : [
+          plib.join(ROOT_DIR, "lib", tok.value + ".stck"),
+          plib.join(process.cwd(), "lib", tok.value + ".stck"),
+        ];
+
+        const found = paths.find((x) => existsSync(x));
+        if (!found) reportError(
+          "Unresolved import", tok.loc
+        );
+
+        const path = plib.resolve(found);
+        if (!this.includedFiles.has(path)) {
+          this.includedFiles.add(path);
+
+          const file = token.loc.file.child(path);
+          const tokens = new Lexer(file).collect().reverse();
+
+          this.includeDepth++;
+          for (const tok of tokens)
+            this.tokens.push(tok);
+        }
+      } else if (token.kind == Tokens.Macro) {
+        const name = this.nextOf(Tokens.Word);
+        const body = this.readBody(true);
+
+        this.macros.set(name.value, body);
+      } else if (token.kind == Tokens.Proc) {
+        const proc = this.readProc(inlineProc, unsafeProc);
+        inlineProc = false;
+        unsafeProc = false;
+
+        this.program.procs.set(proc.name, proc);
+      } else if (token.kind == Tokens.Unsafe) {
+        unsafeProc = true;
+      } else if (token.kind == Tokens.Inline) {
+        inlineProc = true;
+      } else if (token.kind == Tokens.Const) {
+        const name = this.nextOf(Tokens.Word);
+        this.checkUniqueDefinition(name.value, name.loc);
+
+        this.program.consts.set(
+          name.value, this.evaluateConstant(name.value, token.loc)
+        );
+      } else if (token.kind == Tokens.Memory) {
+        const name = this.nextOf(Tokens.Word);
+        this.checkUniqueDefinition(name.value, name.loc);
+
+        const memory = this.evaluateConstant(name.value, token.loc);
+        if (memory.type != DataType.Int) {
+          reportError(
+            "Memory sizes msut be integers", token.loc
+          );
+        }
+
+        this.program.memories.set(name.value, memory);
+      } else if (token.kind == Tokens.EOF) {
+        if (unsafeProc || inlineProc) {
+          reportError(
+            `Expected ${tokenFmt("proc")} but got ${tokenFmt("EOF")}`,
+            this.lastToken!.loc
+          );
+        }
+
+        if (this.includeDepth) {
+          this.includeDepth--;
+        } else {
+          break;
+        }
+      } else {
+        reportError(
+          `Unexpected token ${tokenFmt(token.kind)} at top level`,
+          token.loc
+        )
+      }
     }
 
-    const irproc: IRProc = {
-      type: IRType.Proc,
-      signature: proc.signature,
-      name: proc.name,
-      loc: proc.loc,
-      inline: proc.inline,
-      unsafe: proc.unsafe,
-      body: this.parseBody(proc.body)
-    };
-
-    this.procs.set(proc.name, irproc);
-    return irproc;
-  }
-
-  public parse(): IRProgram {
-    this.program.consts.forEach((constant) => this.parseConst(constant));
-    this.program.memories.forEach((memory) => this.parseMemory(memory));
-    this.program.procs.forEach((proc) => this.parseProc(proc));
-
-    return {
-      file: this.program.file,
-      procs: this.procs,
-      memories: this.memories,
-      memorySize: this.memorySize
-    };
+    return this.program;
   }
 }

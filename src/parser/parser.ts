@@ -1,107 +1,57 @@
-import { AstType, Expr, ICondition, IConst, IMacro, IMemory, IProc, IProgram, IWhile, TopLevelAst } from "./ast";
+import { AstKind, Condition, Expr, IProc, IProgram, Proc, Program, While, WordType } from "./ast";
 import { DataType, tokenToDataType, Location, formatLoc, INTRINSICS, DataTypeArray } from "../shared";
-import { Lexer, Token, Tokens } from "../lexer";
+import { Token, Tokens } from "../lexer";
 import { reportError } from "../errors";
-import { ROOT_DIR } from "../const";
-import { existsSync } from "fs";
 import chalk from "chalk";
-import plib from "path";
 
 const tokenFmt = chalk.yellowBright.bold;
 
 export class Parser {
-  public readonly tokens: Token[] = [];
-  private readonly includeCache = new Set<string>();
-  private includeDepth: number = 0;
-  private lastToken: Token | undefined = undefined;
+  public readonly program: Program;
+  private readonly procs: Map<string, IProc>;
 
-  public readonly program: IProgram;
+  private tokens: Token[] = [];
+  private cursor: number = 0;
 
-  constructor(tokens: Token[]) {
-    this.tokens = tokens.reverse();
-
-    const file = this.tokens[0].loc.file;
-    this.includeCache.add(file.path);
-
+  constructor(program: IProgram) {
+    this.procs = program.procs;
     this.program = {
-      file: file,
-      procs: new Map(),
-      macros: new Map(),
-      consts: new Map(),
-      memories: new Map()
-    }
+      file: program.file,
+      consts: program.consts,
+      memories: program.memories,
+      procs: new Map()
+    };
   }
 
   private next(): Token {
-    return (
-      this.lastToken = this.tokens.pop()!
-    );
+    return this.tokens[this.cursor++];
   }
 
-  private peek(): Token | undefined {
-    return this.tokens.at(-1);
-  }
-
-  private isEnd(): boolean {
-    return this.tokens.length == 0;
-  }
-
-  private nextOf(kind: Tokens): Token {
-    if (this.isEnd()) {
-      reportError(
-        `Expected ${tokenFmt(kind)} but got ${tokenFmt("EOF")}`,
-        this.lastToken!.loc
-      );
-    }
-
-    const token = this.next();
-
-    if (token.kind != kind) {
-      reportError(
-        `Expected ${tokenFmt(kind)} but got ${tokenFmt(token.kind)}`,
-        token.loc
-      );
-    }
-
-    return token;
-  }
-
-  private checkUniqueDefinition(name: string, loc: Location) {
-    if (this.program.procs.has(name)) {
-      const proc = this.program.procs.get(name)!;
-      reportError(
-        "A procedure with the same name is already defined", loc,
-        [`originally defined here ${chalk.bold(formatLoc(proc.loc))}`]
-      );
-    } else if (this.program.consts.has(name)) {
-      const constant = this.program.consts.get(name)!;
-      reportError(
-        "A constant with the same name is already defined", loc,
-        [`originally defined here ${chalk.bold(formatLoc(constant.loc))}`]
-      );
-    } else if (this.program.macros.has(name)) {
-      const macro = this.program.macros.get(name)!;
-      reportError(
-        "A macro with the same name is already defined", loc,
-        [`originally defined here ${chalk.bold(formatLoc(macro.loc))}`]
-      );
-    } else if (INTRINSICS.has(name)) {
-      reportError(
-        "An intrinsic with the same name already exists",
-        loc
-      );
-    }
-  }
-
-  private readExpr(token: Token, start: Token): Expr;
-  private readExpr(token: Token, start?: Token): Expr | undefined {
+  private parseExpr(token: Token, loc: Location): Expr;
+  private parseExpr(token: Token, loc?: Location): Expr | undefined {
     if (token.kind == Tokens.If) {
-      return this.readIfBlock(token);
+      return this.parseConditionBlock(token.loc);
     } else if (token.kind == Tokens.While) {
-      return this.readWhileBlock(token);
+      return this.parseWhileBlock(token.loc);
     } else if (token.kind == Tokens.Word) {
+      const type = (
+        INTRINSICS.has(token.value)
+          ? WordType.Intrinsic
+        : this.procs.has(token.value)
+          ? WordType.Proc
+        : this.program.consts.has(token.value)
+          ? WordType.Constant
+        : this.program.memories.has(token.value)
+          ? WordType.Memory
+        : null
+      );
+
+      if (type == null) {
+        reportError("Invalid or unknown word", token.loc);
+      }
+
       return {
-        type: AstType.Word,
+        kind: AstKind.Word, type,
         value: token.value,
         loc: token.loc
       };
@@ -113,237 +63,96 @@ export class Parser {
       || token.kind == Tokens.AsmBlock
     ) {
       return {
-        type: AstType.Push,
-        datatype: tokenToDataType(token.kind),
+        kind: AstKind.Push,
+        type: tokenToDataType(token.kind),
         value: token.value,
         loc: token.loc
       };
-    } else if (start) {
+    } else if (loc) {
       reportError(
-        `Unexpected ${tokenFmt(token.kind)} in the ${chalk.bold.whiteBright(start.kind)}`, token.loc,
-        [`block starts at ${chalk.bold(formatLoc(start.loc))}`]
+        `Unexpected ${tokenFmt(token.kind)}`, token.loc,
+        [`block starts at ${chalk.bold(formatLoc(loc))}`]
       );
     }
   }
 
-  private readIfBlock(start: Token): ICondition {
-    const condition: ICondition = {
-      type: AstType.If,
-      body: [],
-      else: [],
-      loc: start.loc
+  private parseConditionBlock(loc: Location): Condition {
+    const condition: Condition = {
+      kind: AstKind.If, loc,
+      body: [], else: [],
     }
 
     while (true) {
       const token = this.next();
-
       if (token.kind == Tokens.End) return condition;
       else if (token.kind == Tokens.Else) break;
-      else condition.body.push(this.readExpr(token, start));
+      else condition.body.push(this.parseExpr(token, loc));
     }
 
     while (true) {
       const token = this.next();
       if (token.kind == Tokens.End) break;
       else if (token.kind == Tokens.ChainedIf) {
-        condition.else.push(this.readIfBlock(token));
+        condition.else.push(this.parseConditionBlock(token.loc));
         break;
-      } else condition.else.push(this.readExpr(token, start));
+      } else condition.else.push(this.parseExpr(token, loc));
     }
 
     return condition;
   }
 
-  private readWhileBlock(start: Token): IWhile {
-    const loop: IWhile = {
-      type: AstType.While,
+  private parseWhileBlock(loc: Location): While {
+    const loop: While = {
+      kind: AstKind.While, loc,
       condition: [],
       body: [],
-      loc: start.loc
     }
 
     while (true) {
       const token = this.next();
       if (token.kind == Tokens.Do) break;
-      else loop.condition.push(this.readExpr(token, start));
+      else loop.condition.push(this.parseExpr(token, loc));
     }
 
-    loop.body = this.readBlock(start);
+    loop.body = this.parseBody(loc);
     return loop;
   }
 
-  private readBlock(start: Token): Expr[] {
+  private parseBody(loc: Location): Expr[] {
     const body: Expr[] = [];
 
     while (true) {
       const token = this.next();
 
-      if (token.kind == Tokens.End) break;
-      else body.push(this.readExpr(token, start));
+      if (token && token.kind != Tokens.End) {
+        body.push(this.parseExpr(token, loc));
+      } else break;
     }
 
     return body;
   }
 
-  private readTopLevelBlock<T extends TopLevelAst>(type: AstType, start: Token): T {
-    const name = this.nextOf(Tokens.Word);
-    this.checkUniqueDefinition(name.value, name.loc);
+  public parseProc(proc: IProc): Proc {
+    this.tokens = proc.body;
+    this.cursor = 0;
+
+    const body = this.parseBody(proc.loc);
 
     return {
-      type,
-      name: name.value,
-      loc: start.loc,
-      body: this.readBlock(start)
-    } as T;
-  }
-
-  private readProcSignature(end: Tokens[]): [DataTypeArray, Token] {
-    const signature: DataTypeArray = [];
-
-    while (true) {
-      const token = this.next();
-      if (end.includes(token.kind)) {
-        return [signature, token];
-      } else if (token.kind == Tokens.Word) {
-        if (token.value == "int") {
-          signature.push(DataType.Int);
-        } else if (token.value == "ptr") {
-          signature.push(DataType.Ptr);
-        } else if (token.value == "bool") {
-          signature.push(DataType.Bool);
-        } else if (token.value.length == 1) { // template
-          signature.push(token.value);
-        } else {
-          reportError("Unknown type", token.loc);
-        }
-      } else {
-        reportError(
-          `Unexpected ${tokenFmt(token.kind)} in the procedure signature`,
-          token.loc
-        );
-      }
+      kind: AstKind.Proc,
+      name: proc.name,
+      signature: proc.signature,
+      loc: proc.loc,
+      unsafe: proc.unsafe,
+      inline: proc.inline,
+      body
     }
   }
 
-  private readProc(start: Token) {
-    const name = this.nextOf(Tokens.Word);
-    this.checkUniqueDefinition(name.value, name.loc);
-
-    const proc: IProc = {
-      type: AstType.Proc,
-      name: name.value,
-      loc: start.loc,
-      body: [],
-      inline: false,
-      unsafe: false
-    }
-
-    if (this.peek()?.kind == Tokens.SigIns) {
-      this.next();
-      const [ins, end] = this.readProcSignature([Tokens.Do, Tokens.SigOuts]);
-
-      proc.signature = { ins: [], outs: [] };
-      proc.signature.ins = ins;
-
-      if (end.kind == Tokens.SigOuts) {
-        const [outs, end] = this.readProcSignature([Tokens.Do]);
-
-        proc.signature.outs = outs;
-        proc.body = this.readBlock(end);
-      } else {
-        proc.body = this.readBlock(end);
-      }
-    } else if (this.peek()?.kind == Tokens.SigOuts) {
-      this.next();
-      const [outs, end] = this.readProcSignature([Tokens.Do]);
-
-      proc.signature = { ins: [], outs: [] };
-      proc.signature.outs = outs;
-
-      proc.body = this.readBlock(end);
-    } else if (this.peek()?.kind == Tokens.Do) {
-      proc.body = this.readBlock(this.next());
-    } else {
-      proc.body = this.readBlock(start);
-    }
-
-    this.program.procs.set(proc.name, proc);
-    return proc;
-  }
-
-  public parse(): IProgram {
-    while (!this.isEnd()) {
-      const token = this.next();
-      if (token.kind == Tokens.Include) {
-        const tok = this.nextOf(Tokens.Str);
-
-        const paths = tok.value.startsWith(".") ? [
-          plib.join(plib.dirname(token.loc.file.path), tok.value + ".stck")
-        ] : [
-          plib.join(ROOT_DIR, "lib", tok.value + ".stck"),
-          plib.join(process.cwd(), "lib", tok.value + ".stck"),
-        ];
-
-        const found = paths.find((x) => existsSync(x));
-        if (!found) {
-          reportError("Unresolved import", tok.loc);
-        } else if (found == token.loc.file.path) {
-          reportError("Self import", tok.loc);
-        }
-
-        const path = plib.resolve(found);
-        if (!this.includeCache.has(path)) {
-          this.includeCache.add(path);
-
-          const file = token.loc.file.child(path);
-          const tokens = new Lexer(file).collect().reverse();
-
-          this.includeDepth++;
-          for (const tok of tokens)
-            this.tokens.push(tok);
-        }
-      } else if (token.kind == Tokens.Proc) {
-        this.readProc(token);
-      } else if (token.kind == Tokens.Inline) {
-        const proc = this.readProc(this.nextOf(Tokens.Proc));
-        proc.inline = true;
-      } else if (token.kind == Tokens.Unsafe) {
-        const tok = this.next();
-        if (tok.kind == Tokens.Inline) {
-          const proc = this.readProc(this.nextOf(Tokens.Proc));
-          proc.unsafe = true;
-          proc.inline = true;
-        } else if (tok.kind == Tokens.Proc) {
-          const proc = this.readProc(tok);
-          proc.unsafe = true;
-        } else {
-          reportError(
-            `Expected ${tokenFmt("inline")} or ${tokenFmt("proc")} but got ${tokenFmt(tok.kind)}`,
-            token.loc
-          );
-        }
-      } else if (token.kind == Tokens.Macro) {
-        const macro = this.readTopLevelBlock<IMacro>(AstType.Macro, token);
-        this.program.macros.set(macro.name, macro);
-      } else if (token.kind == Tokens.Const) {
-        const constant = this.readTopLevelBlock<IConst>(AstType.Const, token);
-        this.program.consts.set(constant.name, constant);
-      } else if (token.kind == Tokens.Memory) {
-        const memory = this.readTopLevelBlock<IMemory>(AstType.Memory, token);
-        this.program.memories.set(memory.name, memory);
-      } else if (token.kind == Tokens.EOF) {
-        if (this.includeDepth) {
-          this.includeDepth--;
-        } else {
-          break;
-        }
-      } else {
-        reportError(
-          `Unexpected ${tokenFmt(token.kind)} at the top level`,
-          token.loc
-        );
-      }
-    }
+  public parse(): Program {
+    this.procs.forEach((proc) => {
+      this.program.procs.set(proc.name, this.parseProc(proc));
+    });
 
     return this.program;
   }
