@@ -72,32 +72,6 @@ macro @16 read16 end
 macro @32 read32 end
 macro @64 read64 end
 
-proc write(int) :: int ptr do
-  swap sizeof(int) while dup 0 gt do
-    1 sub
-    // ptr int (inc=3..0) ((int >> 8*inc) & 255)
-    2dup 3 swap sub 8 mul shr 255 and
-    // int ptr (inc=3..0) ((int >> 8*inc) & 255) (ptr+inc)
-    rot 2swap 2dup ptr+ swap 2swap rot write8
-    // ptr int (inc=3..0)
-    rot swap
-  end drop drop drop
-end
-
-proc read(int) :: ptr -> int do
-  // ptr int inc
-  0 0 while dup sizeof(int) lt do
-    // int inc ptr (read(inc+ptr))
-    rot 2dup ptr+ read8
-    // int ptr inc (read(inc+ptr)<<(3-inc)*8)
-    rot dup 3 swap sub 8 mul rot swap shl
-    // ptr inc (int|read(inc+ptr)<<(3-inc)*8)
-    swap rot 2swap swap or
-    // ptr int inc
-    swap 1 add
-  end drop swap drop
-end
-
 /// Syscalls
 unsafe inline proc syscall0 :: int -> int do
   asm
@@ -175,4 +149,54 @@ unsafe inline proc syscall6 :: a b c d e f int -> int do
     syscall
     push rax
   end
+end
+
+///
+
+// TODO: Local memories for procedures
+memory _putu_buffer 32 end
+
+proc putu :: int do
+  dup 0 eq if
+    "0" puts drop
+  else
+    31 swap while dup 0 gt do
+      10 divmod '0' add
+      rot _putu_buffer over ptr+
+      rot swap write8
+      1 sub
+      swap
+    end
+    drop
+    _putu_buffer over ptr+
+    swap 32 swap sub
+    swap puts
+
+    // TODO: Local memories for procedures
+    0 while dup 32 lt do
+      0 over _putu_buffer ptr+ write64
+      8 add
+    end drop
+  end
+end
+
+proc puti :: int do
+  dup 0 lt if
+    "-" puts
+    not 1 add putu
+  else putu end
+end
+
+// TODO: Does not parse negative integers
+proc parse-int :: int ptr -> int do
+  // ptr out len inc
+  swap 0 swap 0 while 2dup gt do
+    // len out ptr inc ptr+inc
+    swap 2swap rot 2dup ptr+
+    // len inc ptr out+char
+    read8 '0' sub swap 2swap rot add 10 mul
+    // ptr out len inc
+    swap 2swap swap 1 add
+  end
+  drop drop swap drop 10 div
 end
