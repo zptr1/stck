@@ -1,3 +1,4 @@
 export * from "./typechecker";
-export * from "./compiler";
+export * from "./bytecode";
 export * from "./encoder";
+export * from "./fasm";
