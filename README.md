@@ -46,7 +46,7 @@ $ ./stck.ts hello_world.stck -t bytecode
 Hello, World!
 ```
 
-You can specify the `--buld` (`-b`) parameter to compile the program without running it.
+You can specify the `--build` (`-b`) parameter to compile the program without running it.
 
 ```bash
 $ ./stck.ts --build hello_world.stck
@@ -56,7 +56,7 @@ Hello, World!
 
 ## More examples
 
-WIP
+Check the [`examples`](examples) folder for more examples!
 
 # Guide
 
