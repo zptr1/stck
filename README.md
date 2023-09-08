@@ -9,8 +9,9 @@
 - [x] Type Inference
 - [x] Compiler into own bytecode
 - [x] Virtual Machine
-- [ ] **Compiler into native** (in progress)
+- [x] Compiler into native
 - [ ] **More Examples and Documentation** (in progress)
+- [ ] Cross Platform
 - [ ] Package Manager
 - [ ] Bootstrapped
 
@@ -37,11 +38,11 @@ Hello, World!
 
 ## Building
 
-The stck compiler currently supports two targets: its own bytecode and Linux FASM.
-The bytecode is used by default, but you can provide the target using the `--target` (`-t`) parameter.
+The stck compiler currently supports two targets: its own bytecode and FASM.
+FASM is used by default, but you can provide the target using the `--target` (`-t`) parameter.
 
 ```bash
-$ ./stck.ts hello_world.stck -t fasm
+$ ./stck.ts hello_world.stck -t bytecode
 Hello, World!
 ```
 
@@ -49,10 +50,6 @@ You can specify the `--buld` (`-b`) parameter to compile the program without run
 
 ```bash
 $ ./stck.ts --build hello_world.stck
-$ ./stck.ts hello_world.stbin
-Hello, World!
-$ # or, you can compile to a native executable using fasm!
-$ ./stck.ts hello_world.stck -bt fasm
 $ ./hello_world
 Hello, World!
 ```
