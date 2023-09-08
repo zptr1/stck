@@ -26,7 +26,7 @@ The `let` block will take elements from the stack and bind them to words, allowi
 ```
 proc main
   34 35
-  with a b do
+  let a b do
     a b add print // prints 69
     a print       // prints 34
     b print       // prints 35
