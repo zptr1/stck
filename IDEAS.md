@@ -16,13 +16,13 @@ proc main
   a read64 print
 end
 ```
-Local memory regions will be allocated using the `mmap2(2)`/`munmap(3p)` syscalls, and the address will be temporarily stored in the callstack. (or somewhere else, will see)
+Small local memory regions will be allocated on the callstack, but large memory regions will be allocated using syscalls instead.
 
-## `with`
+## `let` bindings
 
 Since this language is stack-based, doing complex tasks could get really hard if you have a lot of data on the stack, and you'll likely end up thinking about operating with the stack much more than actually solving the problem. Doing a lot of operations with the stack also ruins readability, and doing small changes could result in you needing to rewrite the entire thing. Also, there's no way to access the 5th or more elements from the stack.
 
-The `with` block will take elements from the stack and bind them to words, allowing you to access the elements from the stack by just using the word.
+The `let` block will take elements from the stack and bind them to words, allowing you to access the elements from the stack by just using the word.
 ```
 proc main
   34 35
@@ -33,7 +33,7 @@ proc main
   end
 end
 ```
-The values from the stack will be moved to the call stack, and removed once the `with` block closes or the procedure stops executing.
+The values from the stack will be moved to the call stack, and removed once the `let` block closes or the procedure stops executing.
 
 ## `offset`/`reset` (idea stolen from Porth)
 
