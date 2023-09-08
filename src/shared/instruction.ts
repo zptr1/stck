@@ -11,6 +11,8 @@ export enum Instr {
   Sub,
   Mul,
   DivMod,
+  IMul,
+  IDivMod,
 
   // Comprasion
   Lt,

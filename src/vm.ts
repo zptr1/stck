@@ -50,10 +50,10 @@ export class VM {
       } else if (type == Instr.Sub) {
         const rhs = stack.pop()!, lhs = stack.pop()!;
         stack.push(lhs - rhs);
-      } else if (type == Instr.Mul) {
+      } else if (type == Instr.Mul || type == Instr.IMul) {
         const rhs = stack.pop()!, lhs = stack.pop()!;
         stack.push(lhs * rhs);
-      } else if (type == Instr.DivMod) {
+      } else if (type == Instr.DivMod || type == Instr.IDivMod) {
         const rhs = stack.pop()!, lhs = stack.pop()!;
         stack.push(lhs / rhs, lhs % rhs);
       } else if (type == Instr.Shl) {

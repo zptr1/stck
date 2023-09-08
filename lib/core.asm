@@ -56,6 +56,20 @@ _intrinsics:
     push rdx
   }
 
+  macro intrinsic_imul {
+    pop rbx
+    pop rax
+    imul rbx
+    push rax
+  }
+
+  macro intrinsic_idivmod {
+    pop rbx
+    pop rax
+    idiv rbx
+    push rax
+  }
+
   macro intrinsic_or {
     pop rbx
     pop rax

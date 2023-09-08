@@ -23,6 +23,9 @@ addIntrinsic("sub",    Instr.Sub,    [DataType.Int, DataType.Int], [DataType.Int
 addIntrinsic("mul",    Instr.Mul,    [DataType.Int, DataType.Int], [DataType.Int]);
 addIntrinsic("divmod", Instr.DivMod, [DataType.Int, DataType.Int], [DataType.Int, DataType.Int]);
 
+addIntrinsic("imul",    Instr.IMul,    [DataType.Int, DataType.Int], [DataType.Int]);
+addIntrinsic("idivmod", Instr.IDivMod, [DataType.Int, DataType.Int], [DataType.Int, DataType.Int]);
+
 // Comprasion
 addIntrinsic("lt", Instr.Lt, [DataType.Int, DataType.Int], [DataType.Bool]);
 addIntrinsic("eq", Instr.Eq, [DataType.Int, DataType.Int], [DataType.Bool]);
