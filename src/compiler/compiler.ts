@@ -1,6 +1,6 @@
+import { StackElement, reportError, reportErrorWithStack, reportErrorWithoutLoc } from "../errors";
 import { ByteCode, Instr, Instruction, MarkedInstr, DataType, INTRINSICS } from "../shared";
 import { AstKind, Expr, Proc, Program, WordType } from "../parser";
-import { StackElement, reportError, reportErrorWithStack, reportErrorWithoutLoc } from "../errors";
 import { ROOT_DIR } from "../const";
 import plib from "path";
 

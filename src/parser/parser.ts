@@ -1,5 +1,5 @@
 import { AstKind, Condition, Expr, IProc, IProgram, Proc, Program, While, WordType } from "./ast";
-import { DataType, tokenToDataType, Location, formatLoc, INTRINSICS, DataTypeArray } from "../shared";
+import { tokenToDataType, Location, formatLoc, INTRINSICS } from "../shared";
 import { Token, Tokens } from "../lexer";
 import { reportError } from "../errors";
 import chalk from "chalk";

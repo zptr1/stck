@@ -1,7 +1,5 @@
 import { ByteCode, Instr, Instruction } from "./shared/instruction";
 
-// TODO: Temporary virtual machine; will be rewritten in Rust
-
 export class VM {
   public readonly memory: Buffer;
 

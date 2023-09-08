@@ -1,6 +1,6 @@
 import { DataType, DataTypeArray, TemplateMap, compareDataTypeArrays, Location, formatLoc, INTRINSICS } from "../shared";
-import { StackElement, reportError, reportErrorWithStack } from "../errors";
 import { AstKind, Const, Expr, Proc, Program, Signature, Word } from "../parser/ast";
+import { StackElement, reportError, reportErrorWithStack } from "../errors";
 import chalk from "chalk";
 
 export interface Context {

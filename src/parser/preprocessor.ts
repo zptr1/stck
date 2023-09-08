@@ -1,8 +1,8 @@
 import { DataType, DataTypeArray, INTRINSICS, Location, formatLoc, tokenToDataType } from "../shared";
 import { Context, createContext, handleSignature, validateContextStack } from "../compiler";
+import { StackElement, reportError, reportErrorWithStack } from "../errors";
 import { AstKind, Const, IProc, IProgram } from ".";
 import { Lexer, Token, Tokens } from "../lexer";
-import { reportError } from "../errors";
 import { ROOT_DIR } from "../const";
 import { existsSync } from "fs";
 import chalk from "chalk";
@@ -230,6 +230,7 @@ export class Preprocessor {
   }
 
   public readBody(isMacro: boolean = false): Token[] {
+    const macroExpansionStack: StackElement[] = [];
     const depth: Token[] = [this.lastToken!];
     const body: Token[] = [];
 
@@ -241,6 +242,24 @@ export class Preprocessor {
           body.push(this.next());
         } else if (this.macros.has(token.value)) {
           const tokens = this.macros.get(token.value)!.slice().reverse();
+
+          if (macroExpansionStack.find((x) => x.name == token.value)) {
+            reportErrorWithStack(
+              "Recursive macro expansion",
+              token.loc, macroExpansionStack
+            );
+          }
+
+          this.tokens.push({
+            kind: Tokens.EOF,
+            loc: token.loc
+          });
+
+          macroExpansionStack.push({
+            name: token.value,
+            loc: token.loc
+          });
+
           for (const token of tokens)
             this.tokens.push(token);
         } else {
@@ -268,6 +287,8 @@ export class Preprocessor {
         } else {
           return body;
         }
+      } else if (token.kind == Tokens.EOF && macroExpansionStack.length) {
+        macroExpansionStack.pop();
       } else {
         body.push(token);
       }
