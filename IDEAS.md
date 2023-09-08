@@ -16,11 +16,11 @@ proc main
   a read64 print
 end
 ```
-Local memory regions will be allocated using the `mmap2(2)`/`munmap(3p)` syscalls, and the address will be temporarily stored in the r15 register. (or somewhere else, will see)
+Local memory regions will be allocated using the `mmap2(2)`/`munmap(3p)` syscalls, and the address will be temporarily stored in the callstack. (or somewhere else, will see)
 
 ## `with`
 
-Since this language is stack-based, doing complex tasks could get really hard if you have a lot of data on the stack, and you'll likely end up thinking about operating with the stack more than actually solving the problem. That also ruins the readability, and doing small changes could result in you needing to rewrite the entire thing. Also, there's no way to access the 5th or more elements from the stack.
+Since this language is stack-based, doing complex tasks could get really hard if you have a lot of data on the stack, and you'll likely end up thinking about operating with the stack much more than actually solving the problem. Doing a lot of operations with the stack also ruins readability, and doing small changes could result in you needing to rewrite the entire thing. Also, there's no way to access the 5th or more elements from the stack.
 
 The `with` block will take elements from the stack and bind them to words, allowing you to access the elements from the stack by just using the word.
 ```
@@ -45,9 +45,9 @@ const MONDAY    1 offset end  // 0
 const TUESDAY   1 offset end  // 1
 const WEDNESDAY 1 offset end  // 2
 ...
-const DAYS_COUNT reset end  // 7
+const COUNT_DAYS reset end  // 7
 ```
-This might also be useful for defining structures
+This might also be used to define custom "structures", like that:
 ```
 const Str.len     sizeof(int) offset end  // 0
 const Str.data    sizeof(ptr) offset end  // 8
@@ -95,7 +95,7 @@ Quotes would be defined by surrounding the code with square brackets (`[` and `]
 ```
 [ "Hello, World!\n" puts ]
 ```
-The code inside of quotes would not get executed immediately, but an address of the quote will be pushed on top of the stack instead, which then can be used for the `call` intrinsic to execute the quote. For example,
+The code inside of quotes would not get executed immediately, but an address of the quote will be pushed on top of the stack instead, which can then be used with the `call` intrinsic to run the code inside of the quote. For example,
 ```
 [ 123 print ]
 dup call
@@ -106,7 +106,8 @@ will output the number 123 three times
 
 Quotes would also accept or return specific values to the stack, and the needed types will get automatically inferred by the typechecker. Procedures could also accept an address to a specific quote, although they would need to explicitly provide the needed signature. The type of the quote will be specified by providing the quote's signature in the square brackets. Example:
 ```
-// this procedure accepts an address to the quote which accepts a pointer and returns a boolean, and returns the pointer.
+// this procedure accepts an address to the quote, which accepts a pointer and returns a boolean,
+// and returns a pointer.
 proc find-where :: [ ptr -> bool ] -> ptr do
   // ...
 end
@@ -116,7 +117,7 @@ This feature would indeed be useful for a lot of cases, but implementing it requ
 
 ## Compile-Time Statements
 
-Compile-time statmeents would let you to make various operations at compile-time, such as including or excluding code during compilation depending on certain conditions or not letting the program compile at all if the certain condition failed.
+Compile-time statements would let you to make various operations at compile-time, such as including or excluding code during compilation depending on certain conditions or states of the constants or not letting the program compile at all if the certain condition failed.
 
 Compile-time conditions
 ```
@@ -142,7 +143,7 @@ For example, the compiler could introduce a global `PLATFORM` constant that woul
 %elseif PLATFORM "windows" eq do
   include "./syscalls/windows"
 %else
-  assert "This platform is not supported" false end
+  assert "This platform is not supported, sorry..." false end
 %endif
 ```
 
@@ -152,7 +153,7 @@ This should not be too hard to implement, since I already have compile-time eval
 
 Unsafe procedures can use the `asm` block to insert assembly code directly, allowing them to do tasks without the language's limitations, and sometimes even achieving much greater performance. And while this feature makes the language much more unsafe, the restrictions surrounding this feature should make it clear that it's up to the programmer to make sure their code is safe.
 
-Top-level assembly blocks would get embedded before the instructions, which allows you to do even more stuff - such as defining another `.data` section and allocating own stuff here. But while this allows for even more extensibility and I would want to implement this, this breaks the compatibility even more, and there are no proper restrictions around it. I'm not really sure if this feature should be implemented though, at least not in the way I planned.
+Top-level assembly blocks would get embedded before the instructions, which allows you to do even more stuff - such as defining another `.data` section and allocating own stuff here. But while this allows for even more extensibility and I would want to implement this, this breaks the compatibility even more, and there are no proper restrictions around it, making the language even more unsafe. I'm not really sure if this feature should be implemented though, at least not in the way I planned.
 
 ## FFI/Linking
 
@@ -164,10 +165,11 @@ Here's an example:
 extern puts
 
 // will automatically create 7 procedures - 'puts()', 'puts(1)', 'puts(2)', ...
-// these procedures can be used to call the external function using the provided amount of arguments (no arguments for `puts()`, one argument for `puts(1)` and so on)
+// these procedures could then be used to call the included external function using the provided amount of arguments
+// (no arguments for `puts()`, one argument for `puts(1)` and so on)
 
 proc main
   c"Hello, World\n" puts(1) drop
 end
 ```
-(TODO: haven't though about including custom external functions yet)
+(**TODO:** haven't thought about how would including custom external functions work yet)
