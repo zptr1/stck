@@ -24,7 +24,7 @@ function printHelp() {
   console.log(chalk.gray("options:"));
 
   const options = [
-    ["--target", "<target>", `specify the compilation target (${TARGET_OPTIONS.join("/")})`],
+    ["--target", "<target>", `specify the compilation target (${TARGET_OPTIONS.join("/")}; default fasm)`],
     ["--build",  "[output]", "build the program"],
     ["--verbose", "",        "more verbose output"]
   ];
@@ -53,7 +53,7 @@ function main() {
   const args = minimist(process.argv.slice(2));
 
   const path = args._[0];
-  const target: string = args.target || args.t || "bytecode";
+  const target: string = args.target || args.t || "fasm";
   const build = args.build ?? args.b ?? false;
   const unsafe = args.unsafe ?? args.u ?? false;
 
@@ -85,10 +85,6 @@ function main() {
   const tokens = new Lexer(file).collect();
   const iprogram = new Preprocessor(tokens).preprocess();
   const program = new Parser(iprogram).parse();
-
-  // const ast = new Parser(tokens).parse();
-  // const preprocessor = new Preprocessor(ast);
-  // const program = preprocessor.parse();
 
   if (unsafe) {
     log.end();
