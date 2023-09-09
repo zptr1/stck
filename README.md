@@ -10,6 +10,7 @@
 - [x] Compiler into own bytecode
 - [x] Virtual Machine
 - [x] Compiler into native
+- [ ] **More Features** (in progress)
 - [ ] **More Examples and Documentation** (in progress)
 - [ ] Cross Platform
 - [ ] Package Manager
