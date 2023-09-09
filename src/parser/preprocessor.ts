@@ -283,6 +283,22 @@ export class Preprocessor {
         } else {
           body.push(token);
         }
+      } else if (token.kind == Tokens.Assert) {
+        const message = this.nextOf(Tokens.Str);
+        const expr = this.evaluateConstant("assert", token.loc);
+        if (expr.type != DataType.Bool) {
+          reportError(
+            `assert expression must result in a boolean (got ${DataType[expr.type]} instead)`,
+            token.loc
+          );
+        }
+
+        if (!expr.value) {
+          reportError(
+            message.value,
+            token.loc
+          );
+        }
       } else if (
         token.kind == Tokens.While
         || token.kind == Tokens.If
@@ -450,11 +466,28 @@ export class Preprocessor {
         const memory = this.evaluateConstant(name.value, token.loc);
         if (memory.type != DataType.Int) {
           reportError(
-            "Memory sizes msut be integers", token.loc
+            `Memory sizes must be integers (got ${DataType[memory.type]} instead)`,
+            token.loc
           );
         }
 
         this.program.memories.set(name.value, memory);
+      } else if (token.kind == Tokens.Assert) {
+        const message = this.nextOf(Tokens.Str);
+        const expr = this.evaluateConstant("assert", token.loc);
+        if (expr.type != DataType.Bool) {
+          reportError(
+            `assert expression must result in a boolean (got ${DataType[expr.type]} instead)`,
+            token.loc
+          );
+        }
+
+        if (!expr.value) {
+          reportError(
+            message.value,
+            token.loc
+          );
+        }
       } else if (token.kind == Tokens.EOF) {
         if (unsafeProc || inlineProc) {
           reportError(
