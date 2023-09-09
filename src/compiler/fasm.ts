@@ -6,8 +6,8 @@ import plib from "path";
 
 const MAX_I32 = 2 ** 31 - 1;
 const MIN_I32 = ~MAX_I32;
-const MAX_I64 = 2n ** 63n - 1n;
-const MIN_I64 = ~MAX_I64;
+const MAX_U64 = 2n ** 64n - 1n;
+const MIN_U64 = ~MAX_U64;
 
 export class FasmCompiler {
   public readonly out: string[] = [];
@@ -40,7 +40,7 @@ export class FasmCompiler {
   private getMemoryOffset(memory: string): number {
     if (!this.memoryOffsets.has(memory)) {
       this.memoryOffsets.set(memory, this.memorySize);
-      this.memorySize += this.program.memories.get(memory)!.value;
+      this.memorySize += Number(this.program.memories.get(memory)!.value);
     }
 
     return this.memoryOffsets.get(memory)!;
@@ -80,17 +80,19 @@ export class FasmCompiler {
               )
             }
 
+            this.push(`;; begin inline proc \`${proc.name}\``);
             this.compileBody(proc.body, inlineExpandStack.concat({
               name: proc.name,
               loc: expr.loc
             }));
+            this.push(`;; end inline proc`);
           } else {
             const id = this.getProcId(proc.name);
             if (!this.compiledProcs.has(proc.name)) {
               this.procQueue.push(proc.name);
             }
 
-            this.push(`call_proc ${id}`);
+            this.push(`call_proc ${id} ;; ${proc.name}`);
           }
         } else if (expr.type == WordType.Constant) {
           const constant = this.program.consts.get(expr.value)!;
@@ -168,7 +170,7 @@ export class FasmCompiler {
     } else {
       const val = BigInt(value);
       if (val > MAX_I32 || val < MIN_I32) {
-        if (val > MAX_I64 || val < MIN_I64) {
+        if (val > MAX_U64 || val < MIN_U64) {
           reportError(
             "The integer is too big", loc, [
               "must be in range (-i64..i64)"
