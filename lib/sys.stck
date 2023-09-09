@@ -1,0 +1,80 @@
+// TODO: Compile-time conditions for better cross platform support
+
+include "./linux/main"
+
+unsafe inline proc syscall0 :: int -> int do
+  asm
+    pop rax
+    syscall
+    push rax
+  end
+end
+
+unsafe inline proc syscall1 :: a int -> int do
+  asm
+    pop rax
+    pop rdi
+    syscall
+    push rax
+  end
+end
+
+unsafe inline proc syscall2 :: a b int -> int do
+  asm
+    pop rax
+    pop rdi
+    pop rsi
+    syscall
+    push rax
+  end
+end
+
+unsafe inline proc syscall3 :: a b c int -> int do
+  asm
+    pop rax
+    pop rdi
+    pop rsi
+    pop rdx
+    syscall
+    push rax
+  end
+end
+
+unsafe inline proc syscall4 :: a b c d int -> int do
+  asm
+    pop rax
+    pop rdi
+    pop rsi
+    pop rdx
+    pop r10
+    syscall
+    push rax
+  end
+end
+
+unsafe inline proc syscall5 :: a b c d e int -> int do
+  asm
+    pop rax
+    pop rdi
+    pop rsi
+    pop rdx
+    pop r10
+    pop r8
+    syscall
+    push rax
+  end
+end
+
+unsafe inline proc syscall6 :: a b c d e f int -> int do
+  asm
+    pop rax
+    pop rdi
+    pop rsi
+    pop rdx
+    pop r10
+    pop r8
+    pop r9
+    syscall
+    push rax
+  end
+end

@@ -1,4 +1,4 @@
-include "linux"
+include "sys"
 
 memory input 1 end
 

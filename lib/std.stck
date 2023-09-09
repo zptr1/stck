@@ -17,36 +17,13 @@ inline proc ptr+ :: ptr int -> ptr do cast(ptr) add end
 inline proc ptr- :: ptr int -> ptr do cast(ptr) add end
 
 /// Mathematical operations
-macro +  cast(int) swap cast(int)      add    end
-macro -  cast(int) swap cast(int) swap sub    end
-macro *  cast(int) swap cast(int)      mul    end
-macro /% cast(int) swap cast(int) swap divmod end
-macro /  /%      drop end
-macro %  /% swap drop end
-
 macro div divmod      drop end
 macro mod divmod swap drop end
 
 macro idiv idivmod      drop end
 macro imod idivmod swap drop end
 
-/// Bitwise operations
-macro << cast(int) swap cast(int) swap shl end
-macro >> cast(int) swap cast(int) swap shr end
-macro &  cast(int) swap cast(int) swap and end
-macro |  cast(int) swap cast(int) swap or  end
-macro ^  cast(int) swap cast(int) swap xor end
-macro ~  cast(int)                     not end
-
 /// Logical operations
-macro > cast(int) swap cast(int) lt end
-macro < cast(int) swap cast(int) gt end
-macro = cast(int) swap cast(int) eq end
-
-macro && cast(bool) swap cast(bool) land end
-macro || cast(bool) swap cast(bool) lor  end
-macro !  cast(bool)                 lnot end
-
 inline proc lnot :: bool -> bool do
   cast(int) 1 swap sub cast(bool)
 end
@@ -63,8 +40,25 @@ inline proc lxor :: bool bool -> bool do
   2dup land lnot rot rot lor land
 end
 
-/// Memory
+/// Random
 
+// Using the https://en.wikipedia.org/wiki/Linear_congruential_generator algorithm
+memory lcg_mod sizeof(int) end
+const LCG_MULTIPLIER 6364136223846793005 end
+const LCG_INCREMENT  1442695040888963407 end
+
+proc lcg -> int do
+  lcg_mod read64
+  LCG_MULTIPLIER mul LCG_INCREMENT add
+  dup lcg_init
+end
+
+inline proc lcg_init :: int do
+  lcg_mod write64
+end
+// TODO: Add more algorithms and random-related functions
+
+/// Memory
 macro !8  write8  end
 macro !16 write16 end
 macro !32 write32 end
@@ -75,85 +69,8 @@ macro @16 read16 end
 macro @32 read32 end
 macro @64 read64 end
 
-/// Syscalls
-unsafe inline proc syscall0 :: int -> int do
-  asm
-    pop rax
-    syscall
-    push rax
-  end
-end
-
-unsafe inline proc syscall1 :: a int -> int do
-  asm
-    pop rax
-    pop rdi
-    syscall
-    push rax
-  end
-end
-
-unsafe inline proc syscall2 :: a b int -> int do
-  asm
-    pop rax
-    pop rdi
-    pop rsi
-    syscall
-    push rax
-  end
-end
-
-unsafe inline proc syscall3 :: a b c int -> int do
-  asm
-    pop rax
-    pop rdi
-    pop rsi
-    pop rdx
-    syscall
-    push rax
-  end
-end
-
-unsafe inline proc syscall4 :: a b c d int -> int do
-  asm
-    pop rax
-    pop rdi
-    pop rsi
-    pop rdx
-    pop r10
-    syscall
-    push rax
-  end
-end
-
-unsafe inline proc syscall5 :: a b c d e int -> int do
-  asm
-    pop rax
-    pop rdi
-    pop rsi
-    pop rdx
-    pop r10
-    pop r8
-    syscall
-    push rax
-  end
-end
-
-unsafe inline proc syscall6 :: a b c d e f int -> int do
-  asm
-    pop rax
-    pop rdi
-    pop rsi
-    pop rdx
-    pop r10
-    pop r8
-    pop r9
-    syscall
-    push rax
-  end
-end
-
 /// stdio
+// TODO: Move to a separate stdio library?
 
 // TODO: Local memories for procedures
 memory _putu_buffer 32 end
@@ -188,6 +105,8 @@ proc puti :: int do
     not 1 add putu
   else putu end
 end
+
+/// String operations
 
 proc is-digit :: int -> bool do
   dup  1 add '0' gt

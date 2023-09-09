@@ -1,6 +1,5 @@
-include "linux"
-include "rand"
 include "std"
+include "sys"
 
 memory input_buf 64 end
 
