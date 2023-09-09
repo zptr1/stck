@@ -1,17 +1,14 @@
 include "linux"
 include "std"
 
-memory input 64 end
+memory input_buf 64 end
 
 proc main
   "n = " puts
-  64 input stdin read
 
-  input over ptr+ 1 ptr- read8 '\n' eq if
-    1 sub
-  end
+  64 input_buf stdin read
+  input_buf parse-int
 
-  input parse-int
   0 while 2dup gt do
     1 add dup print
   end drop drop
