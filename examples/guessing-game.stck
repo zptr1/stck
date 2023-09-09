@@ -1,0 +1,28 @@
+include "linux"
+include "rand"
+include "std"
+
+memory input_buf 64 end
+
+proc main
+  gettime_ms lcg_init
+  lcg 100 mod
+
+  0 while 2dup eq lnot do
+    "Your guess: " puts
+
+    drop
+    64 input_buf stdin read
+    input_buf parse-int
+
+    dup 99 gt if
+      "The guess must be from 0 to 99.\n" puts
+    else 2dup eq if*
+      "You won!\n" puts
+    else 2dup lt if*
+      "Wrong, the actual number is less than your guess.\n" puts
+    else 2dup gt if*
+      "Wrong, the actual number is greater than your guess.\n" puts
+    end
+  end drop drop
+end
