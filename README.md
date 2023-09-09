@@ -32,27 +32,30 @@ end
 ## Running
 
 ```bash
-$ ./stck.ts hello_world.stck
+$ ./stck.ts run hello_world.stck
 Hello, World!
 ```
 
 ## Building
 
+```bash
+$ ./stck.ts build hello_world.stck
+[INFO] Compiled to hello_world
+$ ./hello_world
+Hello, World!
+```
+
 The stck compiler currently supports two targets: its own bytecode and FASM.
 FASM is used by default, but you can provide the target using the `--target` (`-t`) parameter.
 
 ```bash
-$ ./stck.ts hello_world.stck -t bytecode
+$ ./stck.ts build hello_world.stck --target bytecode
+[INFO] Compiled to hello_world.stbin
+$ ./stck.ts run hello_world.stbin
 Hello, World!
 ```
 
-You can specify the `--build` (`-b`) parameter to compile the program without running it.
-
-```bash
-$ ./stck.ts --build hello_world.stck
-$ ./hello_world
-Hello, World!
-```
+You can also use the `--target` parameter in the `run` subcommand.
 
 ## More examples
 

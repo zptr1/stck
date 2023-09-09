@@ -5,11 +5,21 @@ import { existsSync, readFileSync, statSync, unlinkSync, writeFileSync } from "f
 import { Parser, Preprocessor } from "./src/parser";
 import { Lexer } from "./src/lexer";
 import { File } from "./src/shared";
-import { log } from "./src/util";
 import { VM } from "./src/vm";
 import minimist from "minimist";
 import chalk from "chalk";
 import plib from "path";
+import { tmpdir } from "os";
+
+const INFO = chalk.bold.green("[INFO]");
+const CMD  = chalk.bold.white("[CMD]");
+
+function trace(...msg: any[]) {
+  process.stdout.moveCursor(0, -1);
+  process.stdout.cursorTo(0);
+  process.stdout.clearLine(0);
+  console.log(...msg);
+}
 
 const TARGET_OPTIONS = ["bytecode", "fasm"];
 
@@ -18,140 +28,130 @@ function panic(...data: any[]): never {
   process.exit(1);
 }
 
-function printHelp() {
+function printHelp(): never {
   console.log(chalk.bold("stck v0.0.2"));
-  console.log(chalk.red("usage:"), "stck <file>");
+  console.log(chalk.red("usage:"));
+  console.log("", chalk.bold("stck run"), chalk.yellow.bold("<file>"));
+  console.log(" ", "Run a program");
+  console.log("", chalk.bold("stck build"), chalk.yellow.bold("<file>"), chalk.yellow.dim("[output]"));
+  console.log(" ", "Build a program");
+  console.log();
   console.log(chalk.gray("options:"));
+  console.log("", chalk.bold("--target, -t"), chalk.yellow.bold("<target>"));
+  console.log(" ", "Change the compilation target");
+  console.log(" ", "Available targets:", chalk.bold(TARGET_OPTIONS.join(", ")));
+  console.log("", chalk.bold("--unsafe"));
+  console.log(" ", "Disable typechecking");
+  console.log();
+  process.exit(1);
+}
 
-  const options = [
-    ["--target", "<target>", `specify the compilation target (${TARGET_OPTIONS.join("/")}; default fasm)`],
-    ["--build",  "[output]", "build the program"],
-    ["--verbose", "",        "more verbose output"]
-  ];
+function cmd(command: string[]) {
+  trace(CMD, command.join(" "));
+  const cmd = Bun.spawnSync({ cmd: command });
 
-  const namePadding = Math.max(...options.map((x) => x[0].length));
-  const argsPadding = Math.max(...options.map((x) => x[1].length));
+  if (cmd.exitCode != 0) {
+    console.error(chalk.red.bold("[ERROR]"), chalk.bold("Command failed"));
 
-  for (const option of options) {
-    console.log(
-      "",
-      chalk.white(
-        option[0].slice(0, 2)
-        + chalk.bold.whiteBright(option[0][2])
-        + option[0].slice(3)
-        + " ".repeat(namePadding - option[0].length)
-      ),
-      chalk.gray.bold(
-        option[1].padEnd(argsPadding, " ")
-      ),
-      option[2]
-    );
+    const lines = cmd.stderr.toString().trim().split("\n");
+    for (const line of lines) {
+      console.error(chalk.red("[ERROR]"), line);
+    }
+
+    process.exit(1);
   }
 }
 
 function main() {
   const args = minimist(process.argv.slice(2));
 
-  const path = args._[0];
-  const target: string = args.target || args.t || "fasm";
-  const build = args.build ?? args.b ?? false;
-  const unsafe = args.unsafe ?? args.u ?? false;
-
-  log.verbose = !!(args.verbose ?? args.v ?? false);
-
-  if (!path) {
+  const action = args._[0] as ("build" | "run");
+  if (action != "build" && action != "run")
     printHelp();
-    process.exit(1);
-  } else if (!TARGET_OPTIONS.includes(target)) {
+
+  const path = args._[1];
+  if (!path) printHelp();
+  else if (!existsSync(path) || !statSync(path).isFile())
+    panic("File not found:", path);
+
+  // TODO: Providing a custom file extension will still append .stbin or .asm
+  const outPath = args._[2] || path.replace(/(\.stck)?$/, "");
+  if (!outPath) printHelp();
+  else if (!existsSync(plib.dirname(outPath)))
+    panic("Directory not found:", outPath);
+
+  const target = args.target || args.t || "fasm";
+  if (!TARGET_OPTIONS.includes(target))
     panic("Available targets:", TARGET_OPTIONS.join(", "));
-  } else if (!existsSync(path) || !statSync(path).isFile()) {
-    panic(`Unknown file - ${path}`);
-  }
 
   const source = readFileSync(path);
-  if (isBytecode(source) && !build) {
-    log.info(`Running ${plib.resolve(path)}`);
+
+  // `trace` moves the cursor to one line above, so an empty line should be printed before it
+  console.log();
+
+  if (action == "run" && isBytecode(source)) {
+    trace(INFO, "Running");
     new VM(decodeBytecode(source));
     return;
   }
 
-  const file = new File(plib.resolve(path), source.toString("utf-8"));
-  const out = typeof build == "string"
-    ? build
-    : file.path.replace(/(\.stck)?$/, build ? "" : "_temp");
+  const file = new File(
+    plib.resolve(path),
+    source.toString("utf-8")
+  );
 
-  log.timeit("Parsing");
+  trace(INFO, "Parsing");
 
   const tokens = new Lexer(file).collect();
-  const iprogram = new Preprocessor(tokens).preprocess();
-  const program = new Parser(iprogram).parse();
+  const preprocessed = new Preprocessor(tokens).preprocess();
+  const program = new Parser(preprocessed).parse();
 
-  if (unsafe) {
-    log.end();
-    console.warn(chalk.yellow.bold("[WARN]"), "Typechecking is disabled");
+  if (args.unsafe) {
+    trace(chalk.yellow.bold("[WARN]"), "Skipping typechecking\n");
   } else {
-    log.timeit("Typechecking");
+    trace(INFO, "Typechecking");
     new TypeChecker(program).typecheck();
   }
 
+  trace(INFO, "Compiling");
   if (target == "bytecode") {
-    log.timeit("Compiling");
-    const bytecode = new BytecodeCompiler(program).compile();
-    log.end();
+    const out = new BytecodeCompiler(program).compile();
 
-    if (build) {
-      writeFileSync(out + ".stbin", encodeBytecode(bytecode));
-      log.info(`Compiled to ${out}.stbin`);
+    if (action == "build") {
+      writeFileSync(outPath + ".stbin", encodeBytecode(out));
+      trace(INFO, "Compiled to", chalk.bold(outPath + ".stbin"));
     } else {
-      log.info(`Running ${file.path}`);
-      new VM(bytecode);
+      trace(INFO, "Running");
+      new VM(out);
     }
   } else if (target == "fasm") {
-    log.timeit("Compiling");
+    const out = new FasmCompiler(program).compile();
 
-    const asm = new FasmCompiler(program).compile();
-    writeFileSync(out + ".asm", asm.join("\n"));
+    if (action == "build") {
+      writeFileSync(outPath + ".asm", out.join("\n"));
+      cmd(["fasm", outPath + ".asm"]);
 
-    try {
-      const cmd = Bun.spawnSync({
-        cmd: ["fasm", out + ".asm", out]
-      });
+      trace(INFO, "Compiled to", chalk.bold(plib.resolve(outPath)));
+    } else if (action == "run") {
+      const path = plib.join(tmpdir(), "stck-temp");
 
-      log.end();
+      writeFileSync(path + ".asm", out.join("\n"));
+      cmd(["fasm", path + ".asm"]);
 
-      if (cmd.exitCode != 0) {
-        console.error("Compilation failed");
-        console.error(cmd.stderr.toString());
-        build || unlinkSync(out + ".asm");
-        process.exit(1);
-      }
-    } catch (err) {
-      console.error();
-      console.error("Compilation failed");
-      console.error("Do you have fasm installed?");
-      build || unlinkSync(out + ".asm");
-      process.exit(1);
-    }
+      trace(INFO, "Running");
 
-    if (build) {
-      log.info(`Compiled to ${out}`);
-    } else {
-      log.info("Running");
-      Bun.spawn({
-        cmd: [out],
+      Bun.spawnSync({
         stdio: ["inherit", "inherit", "inherit"],
+        cmd: [path],
         onExit(_, code, sig) {
           if (typeof sig == "string" && sig == "SIGSEGV") {
             console.error("Segmentation fault");
             process.exit(1);
+          } else {
+            process.exit(code || 0);
           }
-
-          process.exit(code ?? 0);
-        },
+        }
       });
-
-      unlinkSync(out);
-      unlinkSync(out + ".asm");
     }
   } else {
     throw new Error("unreachable");

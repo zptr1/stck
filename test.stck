@@ -1,19 +1,5 @@
 include "std"
 
-const MONDAY     1 offset end
-const TUESDAY    1 offset end
-const WEDNESDAY  1 offset end
-const THURSDAY   1 offset end
-const FRIDAY     1 offset end
-const SATURDAY   1 offset end
-const SUNDAY     1 offset end
-const DAYS_COUNT reset end
-
-assert "There must be seven days in a week." DAYS_COUNT 7 eq end
-
 proc main
-  MONDAY print
-  WEDNESDAY print
-  SUNDAY print
-  DAYS_COUNT print
+  "Hello, world!\n" puts
 end
