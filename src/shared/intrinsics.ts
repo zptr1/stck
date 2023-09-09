@@ -18,8 +18,8 @@ function addIntrinsic(name: string, instr: Instr, ins: DataTypeArray, outs: Data
 }
 
 // Math
-addIntrinsic("add",    Instr.Add,    [DataType.Int, DataType.Int], [DataType.Int]);
-addIntrinsic("sub",    Instr.Sub,    [DataType.Int, DataType.Int], [DataType.Int]);
+addIntrinsic("add",    Instr.Add,    ["a", "a"], ["a"]);
+addIntrinsic("sub",    Instr.Sub,    ["a", "a"], ["a"]);
 addIntrinsic("mul",    Instr.Mul,    [DataType.Int, DataType.Int], [DataType.Int]);
 addIntrinsic("divmod", Instr.DivMod, [DataType.Int, DataType.Int], [DataType.Int, DataType.Int]);
 
