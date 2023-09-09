@@ -37,6 +37,8 @@ The values from the stack will be moved to the call stack, and removed once the 
 
 ## `offset`/`reset` (idea stolen from Porth)
 
+#### ✅ Implemented.
+
 These compile-time procedures could provide a neat way to do enums or structures using constants
 
 `offset` will accept an integer, return the global increment and increment it by the provided integer, and `reset` will return the global increment and reset it to zero.
@@ -85,6 +87,8 @@ However, the procedures for reading or writing the value of the field won't be d
 
 ## Make the builtin mathematical operations accept any types
 
+#### ✅ Implemented.
+
 That's a small idea but I'm putting it in this list since I'm not sure should I do this or not. Currently, the mathematical intrinsics (such as `add` or `sub`) accept only integers and return only integers. While this makes typechecking more strict and might somewhat be useful(?), casting pointers to integers and back every time you need to offset a pointer gets kinda annoying.
 
 The signature of these intrinsics could be changed to either `a b -> a`, accepting two values of any types and returning a value with the first type (so, adding an integer to a pointer would result in a pointer), or to `a a -> a`, accepting two values of the same type and returning a value with the same type. The former sounds the best imo.
@@ -119,7 +123,7 @@ This feature would indeed be useful for a lot of cases, but implementing it requ
 
 Compile-time statements would let you to make various operations at compile-time, such as including or excluding code during compilation depending on certain conditions or states of the constants or not letting the program compile at all if the certain condition failed.
 
-Compile-time conditions
+#### Compile-time conditions
 ```
 %if <condition> do
   ...
@@ -131,7 +135,7 @@ Compile-time conditions
 ```
 (i'm not sure about the prefix yet - either `%`, `#`, `@` or something else)
 
-Compile-time assertion
+#### Compile-time assertion (implemented)
 ```
 assert "message" <condition> end
 ```
