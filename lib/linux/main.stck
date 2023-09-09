@@ -42,3 +42,28 @@ const S_IXOTH   00001 end
 const S_ISUID 0004000 end
 const S_ISGID 0002000 end
 const S_ISVTX 0001000 end
+
+// Time
+const timespec.tv_sec  sizeof(int) offset end
+const timespec.tv_nsec sizeof(u64) offset end
+const sizeof(timespec) reset end
+
+memory _gettime_buf sizeof(timespec) end
+
+proc gettime_s -> int do
+  _gettime_buf 0 sys_clock_gettime syscall2 drop
+  _gettime_buf timespec.tv_sec ptr+ read64
+end
+
+proc gettime_ms -> int do
+  _gettime_buf 0 sys_clock_gettime syscall2 drop
+  _gettime_buf timespec.tv_sec  ptr+ read64 1000    mul
+  _gettime_buf timespec.tv_nsec ptr+ read64 1000000 div
+  add
+end
+
+proc gettime_ns -> int do
+  _gettime_buf 0 sys_clock_gettime syscall2 drop
+  _gettime_buf timespec.tv_sec  ptr+ read64 1000000000 mul
+  _gettime_buf timespec.tv_nsec ptr+ read64 add
+end

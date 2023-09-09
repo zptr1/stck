@@ -13,8 +13,8 @@ const sizeof(bool) sizeof(u8)  end
 const sizeof(str)  sizeof(int) sizeof(ptr) add end
 
 /// Pointer operations
-macro ptr+ + cast(ptr) end
-macro ptr- - cast(ptr) end
+inline proc ptr+ :: ptr int -> ptr do cast(ptr) add end
+inline proc ptr- :: ptr int -> ptr do cast(ptr) add end
 
 /// Mathematical operations
 macro +  cast(int) swap cast(int)      add    end
@@ -109,7 +109,6 @@ unsafe inline proc syscall3 :: a b c int -> int do
     pop rdi
     pop rsi
     pop rdx
-    pop r10
     syscall
     push rax
   end
@@ -154,7 +153,7 @@ unsafe inline proc syscall6 :: a b c d e f int -> int do
   end
 end
 
-///
+/// stdio
 
 // TODO: Local memories for procedures
 memory _putu_buffer 32 end
@@ -177,7 +176,7 @@ proc putu :: int do
 
     // TODO: Local memories for procedures
     0 while dup 32 lt do
-      0 over _putu_buffer ptr+ write64
+      0 over _putu_buffer swap ptr+ write64
       8 add
     end drop
   end
@@ -190,6 +189,12 @@ proc puti :: int do
   else putu end
 end
 
+proc is-digit :: int -> bool do
+  dup  1 add '0' gt
+  over 1 sub '9' lt
+  land swap drop
+end
+
 // TODO: Does not parse negative integers
 proc parse-int :: int ptr -> int do
   // ptr out len inc
@@ -197,7 +202,13 @@ proc parse-int :: int ptr -> int do
     // len out ptr inc ptr+inc
     swap 2swap rot 2dup ptr+
     // len inc ptr out+char
-    read8 '0' sub swap 2swap rot add 10 mul
+    read8
+    dup is-digit if
+      '0' sub swap 2swap rot add 10 mul
+    else
+      // len inc ptr out
+      drop swap rot
+    end
     // ptr out len inc
     swap 2swap swap 1 add
   end
