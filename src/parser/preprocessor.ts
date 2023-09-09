@@ -175,6 +175,8 @@ export class Preprocessor {
     }
   }
 
+  private constOffset: number = 0;
+
   private evaluateConstant(name: string, start: Location): Const {
     const ctx = createContext();
     const stack: any[] = [];
@@ -194,6 +196,22 @@ export class Preprocessor {
           stack.push(constant.value);
           ctx.stack.push(constant.type);
           ctx.stackLocations.push(token.loc);
+        } else if (token.value == "offset") {
+          validateContextStack(token.loc, ctx, [DataType.Int], false, "for `offset`");
+
+          const offset = this.constOffset;
+          this.constOffset += stack.pop()!;
+          stack.push(offset);
+
+          ctx.stackLocations.pop();
+          ctx.stackLocations.push(token.loc);
+        } else if (token.value == "reset") {
+          stack.push(this.constOffset);
+          ctx.stack.push(DataType.Int);
+          ctx.stackLocations.push(token.loc);
+          this.constOffset = 0;
+        } else {
+          reportError("Unknown word in the compile-time expression", token.loc);
         }
       } else if (
         token.kind == Tokens.Int

@@ -1,13 +1,17 @@
 include "std"
 
-// More advanced macros!
-
-macro repeat
-  1 add 0 \ while 1 add 2dup gt
-end
+const MONDAY     1 offset end
+const TUESDAY    1 offset end
+const WEDNESDAY  1 offset end
+const THURSDAY   1 offset end
+const FRIDAY     1 offset end
+const SATURDAY   1 offset end
+const SUNDAY     1 offset end
+const DAYS_COUNT reset end
 
 proc main
-  10 repeat do
-    dup print
-  end drop drop
+  MONDAY print
+  WEDNESDAY print
+  SUNDAY print
+  DAYS_COUNT print
 end
