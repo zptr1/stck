@@ -334,6 +334,10 @@ export class TypeChecker {
               outs.push(type);
             }
           }
+        } else if (this.memories.has(expr.value)) {
+          outs.push(DataType.Int);
+        } else if (this.consts.has(expr.value)) {
+          outs.push(this.consts.get(expr.value)!.type);
         }
       } else if (expr.kind == AstKind.While) {
         this.inferSignature(expr.condition, callstack, ins, outs);
