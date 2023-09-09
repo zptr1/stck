@@ -352,8 +352,14 @@ export class TypeChecker {
           this.inferSignature(expr.body, callstack, ins, outs);
         }
       } else if (expr.kind == AstKind.Push) {
-        if (expr.type != DataType.AsmBlock) {
-          outs.push(expr.type);
+        if (expr.type == DataType.Str) {
+          outs.push(DataType.Int, DataType.Ptr);
+        } else if (expr.type == DataType.CStr) {
+          outs.push(DataType.Ptr);
+        } else if (expr.type == DataType.Int) {
+          outs.push(DataType.Int);
+        } else if (expr.type == DataType.Bool) {
+          outs.push(DataType.Bool);
         }
       } else {
         throw new Error(`Typechecking is not implemented for ${AstKind[(expr as Expr).kind]}`);
