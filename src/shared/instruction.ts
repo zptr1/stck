@@ -52,7 +52,7 @@ export enum Instr {
   Halt
 }
 
-export type MarkedInstr = [Instr, ...(number | bigint | string)[]];
+export type LabeledInstr = [Instr, ...(number | bigint | string)[]];
 export type Instruction = [Instr, ...(number | bigint)[]];
 
 export interface ByteCode {

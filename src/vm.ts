@@ -45,14 +45,12 @@ export class VM {
       } else if (type == Instr.JmpIfNot) {
         if (!stack.pop()) ip = instr[1] as number;
       } else if (type == Instr.Add) {
-        const rhs = stack.pop()!, lhs = stack.pop()!;
-        stack.push(lhs + rhs);
+        stack.push(stack.pop()! + stack.pop()!);
       } else if (type == Instr.Sub) {
         const rhs = stack.pop()!, lhs = stack.pop()!;
         stack.push(lhs - rhs);
       } else if (type == Instr.Mul || type == Instr.IMul) {
-        const rhs = stack.pop()!, lhs = stack.pop()!;
-        stack.push(lhs * rhs);
+        stack.push(stack.pop()! * stack.pop()!);
       } else if (type == Instr.DivMod || type == Instr.IDivMod) {
         const rhs = stack.pop()!, lhs = stack.pop()!;
         stack.push(lhs / rhs, lhs % rhs);
@@ -77,8 +75,7 @@ export class VM {
         const rhs = stack.pop()!, lhs = stack.pop()!;
         stack.push(BigInt(lhs < rhs));
       } else if (type == Instr.Eq) {
-        const rhs = stack.pop()!, lhs = stack.pop()!;
-        stack.push(BigInt(lhs == rhs));
+        stack.push(BigInt(stack.pop()! == stack.pop()!));
       } else if (type == Instr.Gt) {
         const rhs = stack.pop()!, lhs = stack.pop()!;
         stack.push(BigInt(lhs > rhs));

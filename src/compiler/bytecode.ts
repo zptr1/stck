@@ -1,12 +1,12 @@
 import { StackElement, reportError, reportErrorWithStack, reportErrorWithoutLoc } from "../errors";
-import { ByteCode, Instr, Instruction, MarkedInstr, DataType, INTRINSICS } from "../shared";
+import { ByteCode, Instr, Instruction, LabeledInstr, DataType, INTRINSICS } from "../shared";
 import { AstKind, Expr, Proc, Program, WordType } from "../parser";
 
 export class BytecodeCompiler {
-  public readonly instr: MarkedInstr[] = [];
+  public readonly instr: LabeledInstr[] = [];
 
   private readonly text: Map<string, number> = new Map();
-  private readonly markers: Map<string, number> = new Map();
+  private readonly labels: Map<string, number> = new Map();
   private readonly memoryOffsets: Map<string, number> = new Map();
 
   private readonly compiledProcs: Set<string> = new Set();
@@ -33,12 +33,12 @@ export class BytecodeCompiler {
   private calcMemoryOffsets() {
     this.program.memories.forEach((memory) => {
       this.memoryOffsets.set(memory.name, this.progMemSize);
-      this.progMemSize += memory.value;
+      this.progMemSize += Number(memory.value);
     });
   }
 
-  private marker(id: string = `marker-${this.markers.size}`): string {
-    this.markers.set(id, this.instr.length);
+  private label(id: string = `label-${this.labels.size}`): string {
+    this.labels.set(id, this.instr.length);
     return id;
   }
 
@@ -90,8 +90,8 @@ export class BytecodeCompiler {
           this.instr.push([Instr.Push, this.memoryOffsets.get(expr.value)!]);
         }
       } else if (expr.kind == AstKind.While) {
-        const start = this.marker();
-        const end = this.marker();
+        const start = this.label();
+        const end = this.label();
 
         this.compileBody(expr.condition, inlineExpandStack);
         this.instr.push([Instr.JmpIfNot, end]);
@@ -99,25 +99,25 @@ export class BytecodeCompiler {
         this.compileBody(expr.body, inlineExpandStack);
         this.instr.push([Instr.Jmp, start]);
 
-        this.marker(end);
+        this.label(end);
       } else if (expr.kind == AstKind.If) {
         if (expr.else.length > 0) {
-          const end = this.marker();
-          const els = this.marker();
+          const end = this.label();
+          const els = this.label();
 
           this.instr.push([Instr.JmpIfNot, els]);
           this.compileBody(expr.body, inlineExpandStack);
           this.instr.push([Instr.Jmp, end]);
 
-          this.marker(els);
+          this.label(els);
           this.compileBody(expr.else, inlineExpandStack);
-          this.marker(end);
+          this.label(end);
         } else {
-          const end = this.marker();
+          const end = this.label();
 
           this.instr.push([Instr.JmpIfNot, end]);
           this.compileBody(expr.body, inlineExpandStack);
-          this.marker(end);
+          this.label(end);
         }
       } else if (expr.kind == AstKind.Push) {
         if (expr.type == DataType.AsmBlock) {
@@ -140,7 +140,7 @@ export class BytecodeCompiler {
   }
 
   public compileProc(proc: Proc) {
-    this.marker(`proc-${proc.name}`);
+    this.label(`proc-${proc.name}`);
     this.compiledProcs.add(proc.name);
     this.compileBody(proc.body);
     this.instr.push([Instr.Ret]);
@@ -171,12 +171,12 @@ export class BytecodeCompiler {
       instr: this.instr.map(
         (x) => x.map((y) => {
           if (typeof y == "string") {
-            const marker = this.markers.get(y);
-            if (typeof marker == "undefined") {
-              throw new Error(`Marker not found: ${marker}`);
+            const label = this.labels.get(y);
+            if (typeof label == "undefined") {
+              throw new Error(`Unknown label \`${y}\``);
             }
 
-            return marker;
+            return label;
           } else {
             return y;
           }
