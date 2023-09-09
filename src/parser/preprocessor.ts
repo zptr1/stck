@@ -200,13 +200,13 @@ export class Preprocessor {
           validateContextStack(token.loc, ctx, [DataType.Int], false, "for `offset`");
 
           const offset = this.constOffset;
-          this.constOffset += stack.pop()!;
-          stack.push(offset);
+          this.constOffset += Number(stack.pop()!);
+          stack.push(BigInt(offset));
 
           ctx.stackLocations.pop();
           ctx.stackLocations.push(token.loc);
         } else if (token.value == "reset") {
-          stack.push(this.constOffset);
+          stack.push(BigInt(this.constOffset));
           ctx.stack.push(DataType.Int);
           ctx.stackLocations.push(token.loc);
           this.constOffset = 0;
@@ -219,7 +219,12 @@ export class Preprocessor {
         || token.kind == Tokens.Str
         || token.kind == Tokens.CStr
       ) {
-        stack.push(token.value);
+        if (token.kind == Tokens.Int) {
+          stack.push(BigInt(token.value));
+        } else {
+          stack.push(token.value);
+        }
+
         ctx.stack.push(tokenToDataType(token.kind));
         ctx.stackLocations.push(token.loc);
       } else if (token.kind == Tokens.End) {

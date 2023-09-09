@@ -1,8 +1,13 @@
 import { AstKind, Expr, Proc, Program, WordType } from "../parser";
-import { StackElement, reportErrorWithStack } from "../errors";
-import { Instr, DataType, INTRINSICS } from "../shared";
+import { StackElement, reportError, reportErrorWithStack } from "../errors";
+import { Instr, DataType, INTRINSICS, Location } from "../shared";
 import { ROOT_DIR } from "../const";
 import plib from "path";
+
+const MAX_I32 = 2 ** 31 - 1;
+const MIN_I32 = ~MAX_I32;
+const MAX_I64 = 2n ** 63n - 1n;
+const MIN_I64 = ~MAX_I64;
 
 export class FasmCompiler {
   public readonly out: string[] = [];
@@ -54,7 +59,7 @@ export class FasmCompiler {
     }
   }
 
-  public compileBody(exprs: Expr[], inlineExpandStack: StackElement[] = []) {
+  private compileBody(exprs: Expr[], inlineExpandStack: StackElement[] = []) {
     this.ident += 2;
 
     for (const expr of exprs) {
@@ -89,18 +94,7 @@ export class FasmCompiler {
           }
         } else if (expr.type == WordType.Constant) {
           const constant = this.program.consts.get(expr.value)!;
-          if (constant.type == DataType.Str) {
-            this.push(
-              `push ${constant.value.length}`,
-              `push str${this.getStrId(constant.value)}`
-            );
-          } else if (constant.type == DataType.CStr) {
-            this.push(`push str${
-              this.getStrId(constant.value + "\x00")
-            }`);
-          } else {
-            this.push(`push ${BigInt(constant.value)}`);
-          }
+          this.compilePush(constant.type as DataType, constant.value, constant.loc);
         } else if (expr.type == WordType.Memory) {
           this.push(
             `push mem+${this.getMemoryOffset(expr.value)}`
@@ -149,28 +143,47 @@ export class FasmCompiler {
           this.push(`${lb}:`);
         }
       } else if (expr.kind == AstKind.Push) {
-        if (expr.type == DataType.AsmBlock) {
-          this.push(`;; begin asm block`);
-          this.push(...expr.value.trim().split("\n"));
-          this.push(`;; end asm block`);
-        } else if (expr.type == DataType.Str) {
-          this.push(
-            `push ${expr.value.length}`,
-            `push str${this.getStrId(expr.value)}`
-          );
-        } else if (expr.type == DataType.CStr) {
-          this.push(`push str${
-            this.getStrId(expr.value + "\x00")
-          }`);
-        } else {
-          this.push(`push ${BigInt(expr.value)}`);
-        }
+        this.compilePush(expr.type as DataType, expr.value, expr.loc);
       } else {
         throw new Error(`Compilation of ${AstKind[(expr as Expr).kind]} to NASM is not implemented`);
       }
     }
 
     this.ident -= 2;
+  }
+
+  private compilePush(type: DataType, value: any, loc: Location) {
+    if (type == DataType.AsmBlock) {
+      this.push(";; begin asm block");
+      for (const line of value.trim().split("\n"))
+        this.push(line);
+      this.push(";; end asm block");
+    } else if (type == DataType.Str) {
+      this.push(`push ${value.length}`);
+      this.push(`push str${this.getStrId(value)}`);
+    } else if (type == DataType.CStr) {
+      this.push(`push str${
+        this.getStrId(value + "\x00")
+      }`);
+    } else {
+      const val = BigInt(value);
+      if (val > MAX_I32 || val < MIN_I32) {
+        if (val > MAX_I64 || val < MIN_I64) {
+          reportError(
+            "The integer is too big", loc, [
+              "must be in range (-i64..i64)"
+            ]
+          );
+        }
+
+        this.push(
+          `mov rax, ${val}`,
+          "push rax"
+        );
+      } else {
+        this.push(`push ${val}`);
+      }
+    }
   }
 
   public compileProc(proc: Proc) {
