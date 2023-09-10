@@ -145,7 +145,30 @@ export class TypeChecker {
           }
 
           validateContextStack(expr.loc, ctx, proc.signature!.ins, false, "for the procedure call");
-          handleSignature(proc.signature!, ctx, expr.loc);
+          // TODO: okay well thats definitely weird...
+          // fuck it i think i'll rewrite the typechecker :/
+
+          const templates = new Map<string, DataType | string>();
+
+          for (const type of proc.signature!.ins) {
+            ctx.stackLocations.pop();
+            if (typeof type == "string") {
+              templates.set(type, ctx.stack.pop()!);
+            } else {
+              ctx.stack.pop();
+            }
+          }
+
+          for (const type of proc.signature!.outs) {
+            ctx.stackLocations.push(expr.loc);
+            if (typeof type == "string") {
+              ctx.stack.push(templates.get(type)!);
+            } else {
+              ctx.stack.push(type);
+            }
+          }
+          // let i = proc.signature!.outs.length - 1; i >= 0; i--
+          // handleSignature(proc.signature!, ctx, expr.loc);
         } else if (this.consts.has(expr.value)) {
           const constant = this.consts.get(expr.value)!;
           if (constant.type == DataType.Str) {
@@ -318,7 +341,7 @@ export class TypeChecker {
               }
             } else if (outs.length) {
               const e = outs.pop();
-              if (typeof e == "string" && !templates.has(e)) {
+              if (typeof e == "string") {
                 templates.set(e, type);
               }
             } else {
@@ -337,7 +360,15 @@ export class TypeChecker {
         } else if (this.memories.has(expr.value)) {
           outs.push(DataType.Int);
         } else if (this.consts.has(expr.value)) {
-          outs.push(this.consts.get(expr.value)!.type);
+          const type = this.consts.get(expr.value)!.type;
+
+          if (type == DataType.Str) {
+            outs.push(DataType.Int, DataType.Ptr);
+          } else if (type == DataType.CStr) {
+            outs.push(DataType.Ptr);
+          } else {
+            outs.push(type);
+          }
         }
       } else if (expr.kind == AstKind.While) {
         this.inferSignature(expr.condition, callstack, ins, outs);
@@ -399,10 +430,6 @@ export class TypeChecker {
   public typecheck() {
     this.procs.forEach((proc) => {
       if (proc.unsafe) {
-        if (proc.name == "main") {
-          console.warn(chalk.yellow("warn:"), "Unsafe main procedure");
-        }
-
         return;
       }
 
