@@ -111,6 +111,10 @@ function main() {
   } else {
     trace(INFO, "Typechecking");
     new TypeChecker(program).typecheck();
+
+    if (program.procs.get("main")?.unsafe) {
+      trace(chalk.yellow.bold("[WARN]"), "Unsafe main procedure\n");
+    }
   }
 
   trace(INFO, "Compiling");
