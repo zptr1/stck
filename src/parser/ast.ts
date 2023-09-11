@@ -13,6 +13,7 @@ export enum AstKind {
   Word,
   If,
   While,
+  Let
 }
 
 export interface Ast<T extends AstKind> {
@@ -53,12 +54,13 @@ export type Program = Omit<IProgram, 'procs'> & {
   procs: Map<string, Proc>;
 }
 
-export type Expr = Word | Push | Condition | While;
+export type Expr = Word | Push | Condition | While | Let;
 export enum WordType {
   Intrinsic,
   Proc,
   Memory,
-  Constant
+  Constant,
+  Binding
 }
 
 export interface Word extends Ast<AstKind.Word> {
@@ -78,5 +80,10 @@ export interface Condition extends Ast<AstKind.If> {
 
 export interface While extends Ast<AstKind.While> {
   condition: Expr[];
+  body: Expr[];
+}
+
+export interface Let extends Ast<AstKind.Let> {
+  bindings: string[];
   body: Expr[];
 }

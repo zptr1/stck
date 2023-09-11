@@ -1,5 +1,15 @@
 include "std"
 
 proc main
-  "Hello, world!\n" puts
+  34 35
+  let a b do
+    "a = " puts a print
+    "b = " puts b print
+
+    "a + b = " puts a b add print
+    "a - b = " puts a b sub print
+    "a * b = " puts a b mul print
+    "a / b = " puts a b div print
+    "a % b = " puts a b mod print
+  end
 end

@@ -3,7 +3,7 @@ import { Location } from "../shared";
 export const KEYWORDS = new Set([
   "proc", "unsafe", "inline", "macro", "const", "memory",
   "include", "end", "if", "if*", "else", "while", "do",
-  "assert", "::", "->"
+  "assert", "let", "::", "->"
 ]);
 
 export enum Tokens {
@@ -28,6 +28,7 @@ export enum Tokens {
   While = "while",
   Do = "do",
   Assert = "assert",
+  Let = "let",
   SigIns = "::",
   SigOuts = "->",
 

@@ -35,6 +35,9 @@ export enum Instr {
   Over,
   Dup2,
   Swap2,
+  Bind,
+  PushBind,
+  Unbind,
 
   // Memory
   Write8,

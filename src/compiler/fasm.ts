@@ -3,6 +3,7 @@ import { StackElement, reportError, reportErrorWithStack } from "../errors";
 import { Instr, DataType, INTRINSICS, Location } from "../shared";
 import { ROOT_DIR } from "../const";
 import plib from "path";
+import { CompilerContext } from ".";
 
 const MAX_I32 = 2 ** 31 - 1;
 const MIN_I32 = ~MAX_I32;
@@ -59,7 +60,7 @@ export class FasmCompiler {
     }
   }
 
-  private compileBody(exprs: Expr[], inlineExpandStack: StackElement[] = []) {
+  private compileBody(exprs: Expr[], ctx: CompilerContext) {
     this.ident += 2;
 
     for (const expr of exprs) {
@@ -73,18 +74,23 @@ export class FasmCompiler {
         } else if (expr.type == WordType.Proc) {
           const proc = this.program.procs.get(expr.value)!;
           if (proc.inline) {
-            if (inlineExpandStack.find((x) => x.name == proc.name)) {
+            if (ctx.inlineExpansionStack.find((x) => x.name == proc.name)) {
               reportErrorWithStack(
                 "Recursion is not allowed for inline procedures",
-                expr.loc, inlineExpandStack
+                expr.loc, ctx.inlineExpansionStack
               )
             }
 
             this.push(`;; begin inline proc \`${proc.name}\``);
-            this.compileBody(proc.body, inlineExpandStack.concat({
+
+            ctx.inlineExpansionStack.push({
               name: proc.name,
               loc: expr.loc
-            }));
+            });
+
+            this.compileBody(proc.body, ctx);
+            ctx.inlineExpansionStack.pop();
+
             this.push(`;; end inline proc`);
           } else {
             const id = this.getProcId(proc.name);
@@ -97,6 +103,14 @@ export class FasmCompiler {
         } else if (expr.type == WordType.Constant) {
           const constant = this.program.consts.get(expr.value)!;
           this.compilePush(constant.type as DataType, constant.value, constant.loc);
+        } else if (expr.type == WordType.Binding) {
+          this.push(
+            "mov rax, rbp",
+            `add rax, ${(
+              ctx.bindings.size - ctx.bindings.get(expr.value)! - 1
+            ) * 8}`,
+            "push QWORD [rax]"
+          );
         } else if (expr.type == WordType.Memory) {
           this.push(
             `push mem+${this.getMemoryOffset(expr.value)}`
@@ -107,13 +121,13 @@ export class FasmCompiler {
         const endLb   = this.label(".end");
 
         this.push(`${whileLb}:`);
-        this.compileBody(expr.condition, inlineExpandStack);
+        this.compileBody(expr.condition, ctx);
         this.push(
           "pop rax",
           "test rax, rax",
           `jz ${endLb}`
         );
-        this.compileBody(expr.body, inlineExpandStack);
+        this.compileBody(expr.body, ctx);
         this.push(
           `jmp ${whileLb}`,
           `${endLb}:`
@@ -128,22 +142,41 @@ export class FasmCompiler {
           const elseLb = this.label(".else");
           const endLb  = this.label(".endif");
           this.push(`jz ${elseLb}`);
-          this.compileBody(expr.body, inlineExpandStack);
+          this.compileBody(expr.body, ctx);
           this.push(`jmp ${endLb}`);
           this.push(`${elseLb}:`);
-          this.compileBody(expr.else, inlineExpandStack);
+          this.compileBody(expr.else, ctx);
           this.push(`${endLb}:`);
         } else if (expr.body.length > 0) {
           const lb = this.label(".endif");
           this.push(`jz ${lb}`);
-          this.compileBody(expr.body, inlineExpandStack);
+          this.compileBody(expr.body, ctx);
           this.push(`${lb}:`);
         } else if (expr.else.length > 0) {
           const lb = this.label(".endif");
           this.push(`jnz ${lb}`);
-          this.compileBody(expr.else, inlineExpandStack);
+          this.compileBody(expr.else, ctx);
           this.push(`${lb}:`);
         }
+      } else if (expr.kind == AstKind.Let) {
+        this.push(";; begin let binding");
+        this.push(`sub rbp, ${8 * expr.bindings.length}`);
+
+        for (let i = expr.bindings.length - 1; i >= 0; i--) {
+          ctx.bindings.set(expr.bindings[i], ctx.bindings.size);
+          this.push(
+            "pop rax",
+            `mov [rbp+${i * 8}], rax`
+          );
+        }
+
+        this.compileBody(expr.body, ctx);
+
+        this.push(`add rbp, ${8 * expr.bindings.length}`);
+        this.push(";; end let binding");
+
+        for (const binding of expr.bindings)
+          ctx.bindings.delete(binding);
       } else if (expr.kind == AstKind.Push) {
         this.compilePush(expr.type as DataType, expr.value, expr.loc);
       } else {
@@ -200,7 +233,10 @@ export class FasmCompiler {
       "swap_stack_pointers"
     );
 
-    this.compileBody(proc.body);
+    this.compileBody(proc.body, {
+      inlineExpansionStack: [],
+      bindings: new Map()
+    });
 
     this.out.push(
       "swap_stack_pointers",

@@ -1,8 +1,9 @@
-import { AstKind, Condition, Expr, IProc, IProgram, Proc, Program, While, WordType } from "./ast";
+import { AstKind, Condition, Expr, IProc, IProgram, Let, Proc, Program, While, WordType } from "./ast";
 import { tokenToDataType, Location, formatLoc, INTRINSICS } from "../shared";
 import { Token, Tokens } from "../lexer";
 import { reportError } from "../errors";
 import chalk from "chalk";
+import { checkUniqueDefinition } from ".";
 
 const tokenFmt = chalk.yellowBright.bold;
 
@@ -27,12 +28,13 @@ export class Parser {
     return this.tokens[this.cursor++];
   }
 
-  private parseExpr(token: Token, loc: Location): Expr;
-  private parseExpr(token: Token, loc?: Location): Expr | undefined {
+  private parseExpr(token: Token, loc: Location, bindings: Set<string>): Expr {
     if (token.kind == Tokens.If) {
-      return this.parseConditionBlock(token.loc);
+      return this.parseConditionBlock(token.loc, bindings);
     } else if (token.kind == Tokens.While) {
-      return this.parseWhileBlock(token.loc);
+      return this.parseWhileBlock(token.loc, bindings);
+    } else if (token.kind == Tokens.Let) {
+      return this.parseLetBlock(token.loc, bindings);
     } else if (token.kind == Tokens.Word) {
       const type = (
         INTRINSICS.has(token.value)
@@ -43,6 +45,8 @@ export class Parser {
           ? WordType.Constant
         : this.program.memories.has(token.value)
           ? WordType.Memory
+        : bindings.has(token.value)
+          ? WordType.Binding
         : null
       );
 
@@ -68,7 +72,7 @@ export class Parser {
         value: token.value,
         loc: token.loc
       };
-    } else if (loc) {
+    } else {
       reportError(
         `Unexpected ${tokenFmt(token.kind)}`, token.loc,
         [`block starts at ${chalk.bold(formatLoc(loc))}`]
@@ -76,7 +80,7 @@ export class Parser {
     }
   }
 
-  private parseConditionBlock(loc: Location): Condition {
+  private parseConditionBlock(loc: Location, bindings: Set<string>): Condition {
     const condition: Condition = {
       kind: AstKind.If, loc,
       body: [], else: [],
@@ -86,22 +90,22 @@ export class Parser {
       const token = this.next();
       if (token.kind == Tokens.End) return condition;
       else if (token.kind == Tokens.Else) break;
-      else condition.body.push(this.parseExpr(token, loc));
+      else condition.body.push(this.parseExpr(token, loc, bindings));
     }
 
     while (true) {
       const token = this.next();
       if (token.kind == Tokens.End) break;
       else if (token.kind == Tokens.ChainedIf) {
-        condition.else.push(this.parseConditionBlock(token.loc));
+        condition.else.push(this.parseConditionBlock(token.loc, bindings));
         break;
-      } else condition.else.push(this.parseExpr(token, loc));
+      } else condition.else.push(this.parseExpr(token, loc, bindings));
     }
 
     return condition;
   }
 
-  private parseWhileBlock(loc: Location): While {
+  private parseWhileBlock(loc: Location, bindings: Set<string>): While {
     const loop: While = {
       kind: AstKind.While, loc,
       condition: [],
@@ -111,21 +115,59 @@ export class Parser {
     while (true) {
       const token = this.next();
       if (token.kind == Tokens.Do) break;
-      else loop.condition.push(this.parseExpr(token, loc));
+      else loop.condition.push(this.parseExpr(token, loc, bindings));
     }
 
-    loop.body = this.parseBody(loc);
+    loop.body = this.parseBody(loc, bindings);
     return loop;
   }
 
-  private parseBody(loc: Location): Expr[] {
+  private parseLetBlock(loc: Location, bindings: Set<string>): Let {
+    const binding: Let = {
+      kind: AstKind.Let, loc,
+      bindings: [],
+      body: []
+    }
+
+    while (true) {
+      const token = this.next();
+      if (token.kind == Tokens.Word) {
+        checkUniqueDefinition(
+          token.value,
+          this.procs,
+          this.program.consts,
+          this.program.memories,
+          bindings, token.loc
+        );
+
+        binding.bindings.push(token.value);
+        bindings.add(token.value);
+      } else if (token.kind == Tokens.Do) {
+        break;
+      } else {
+        reportError(
+          `Expected ${tokenFmt("<word>")} or ${tokenFmt("do")} but got ${tokenFmt(token.kind)}`,
+          token.loc
+        );
+      }
+    }
+
+    binding.body = this.parseBody(loc, bindings);
+
+    for (const b of binding.bindings)
+      bindings.delete(b);
+
+    return binding;
+  }
+
+  private parseBody(loc: Location, bindings: Set<string>): Expr[] {
     const body: Expr[] = [];
 
     while (true) {
       const token = this.next();
 
       if (token && token.kind != Tokens.End) {
-        body.push(this.parseExpr(token, loc));
+        body.push(this.parseExpr(token, loc, bindings));
       } else break;
     }
 
@@ -136,7 +178,7 @@ export class Parser {
     this.tokens = proc.body;
     this.cursor = 0;
 
-    const body = this.parseBody(proc.loc);
+    const body = this.parseBody(proc.loc, new Set());
 
     return {
       kind: AstKind.Proc,

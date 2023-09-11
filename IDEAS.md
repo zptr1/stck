@@ -20,6 +20,8 @@ Small local memory regions will be allocated on the callstack, but large memory 
 
 ## `let` bindings
 
+#### ✅ Implemented.
+
 Since this language is stack-based, doing complex tasks could get really hard if you have a lot of data on the stack, and you'll likely end up thinking about operating with the stack much more than actually solving the problem. Doing a lot of operations with the stack also ruins readability, and doing small changes could result in you needing to rewrite the entire thing. Also, there's no way to access the 5th or more elements from the stack.
 
 The `let` block will take elements from the stack and bind them to words, allowing you to access the elements from the stack by just using the word.

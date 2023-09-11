@@ -1,7 +1,7 @@
 import { DataType, DataTypeArray, INTRINSICS, Location, formatLoc, tokenToDataType } from "../shared";
 import { Context, createContext, handleSignature, validateContextStack } from "../compiler";
 import { StackElement, reportError, reportErrorWithStack } from "../errors";
-import { AstKind, Const, IProc, IProgram } from ".";
+import { AstKind, Const, IProc, IProgram, Proc } from ".";
 import { Lexer, Token, Tokens } from "../lexer";
 import { ROOT_DIR } from "../const";
 import { existsSync } from "fs";
@@ -9,6 +9,42 @@ import chalk from "chalk";
 import plib from "path";
 
 const tokenFmt = chalk.yellow.bold;
+
+export function checkUniqueDefinition(
+  name: string,
+  procs: Map<string, IProc | Proc>,
+  consts: Map<string, Const>,
+  memories: Map<string, Const>,
+  bindings: Set<string>,
+  loc: Location
+) {
+  if (procs.has(name)) {
+    const proc = procs.get(name)!;
+    reportError(
+      "A procedure with the same name is already defined", loc,
+      [`originally defined here ${chalk.bold(formatLoc(proc.loc))}`]
+    );
+  } else if (consts.has(name)) {
+    const constant = consts.get(name)!;
+    reportError(
+      "A constant with the same name is already defined", loc,
+      [`originally defined here ${chalk.bold(formatLoc(constant.loc))}`]
+    );
+  } else if (memories.has(name)) {
+    const memory = memories.get(name)!;
+    reportError(
+      "A memory region with the same name is already defined", loc,
+      [`originally defined here ${chalk.bold(formatLoc(memory.loc))}`]
+    );
+  } else if (bindings.has(name)) {
+    reportError("A binding with the same name is already defined", loc);
+  } else if (INTRINSICS.has(name)) {
+    reportError(
+      "An intrinsic with the same name already exists",
+      loc
+    );
+  }
+}
 
 export class Preprocessor {
   public readonly tokens: Token[] = [];
@@ -63,24 +99,14 @@ export class Preprocessor {
   }
 
   private checkUniqueDefinition(name: string, loc: Location) {
-    if (this.program.procs.has(name)) {
-      const proc = this.program.procs.get(name)!;
-      reportError(
-        "A procedure with the same name is already defined", loc,
-        [`originally defined here ${chalk.bold(formatLoc(proc.loc))}`]
-      );
-    } else if (this.program.consts.has(name)) {
-      const constant = this.program.consts.get(name)!;
-      reportError(
-        "A constant with the same name is already defined", loc,
-        [`originally defined here ${chalk.bold(formatLoc(constant.loc))}`]
-      );
-    } else if (INTRINSICS.has(name)) {
-      reportError(
-        "An intrinsic with the same name already exists",
-        loc
-      );
-    }
+    checkUniqueDefinition(
+      name,
+      this.program.procs,
+      this.program.consts,
+      this.program.memories,
+      new Set(),
+      loc
+    );
   }
 
   private evaluateIntrinsic(name: string, loc: Location, ctx: Context, stack: any[]) {
@@ -307,6 +333,7 @@ export class Preprocessor {
       } else if (
         token.kind == Tokens.While
         || token.kind == Tokens.If
+        || token.kind == Tokens.Let
       ) {
         body.push(token);
         depth.push(token);

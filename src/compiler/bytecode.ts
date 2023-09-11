@@ -1,6 +1,7 @@
 import { StackElement, reportError, reportErrorWithStack, reportErrorWithoutLoc } from "../errors";
 import { ByteCode, Instr, Instruction, LabeledInstr, DataType, INTRINSICS } from "../shared";
 import { AstKind, Expr, Proc, Program, WordType } from "../parser";
+import { CompilerContext } from ".";
 
 export class BytecodeCompiler {
   public readonly instr: LabeledInstr[] = [];
@@ -42,7 +43,7 @@ export class BytecodeCompiler {
     return id;
   }
 
-  private compileBody(exprs: Expr[], inlineExpandStack: StackElement[] = []) {
+  private compileBody(exprs: Expr[], ctx: CompilerContext) {
     for (const expr of exprs) {
       if (expr.kind == AstKind.Word) {
         if (expr.type == WordType.Intrinsic) {
@@ -55,17 +56,20 @@ export class BytecodeCompiler {
           const proc = this.program.procs.get(expr.value)!;
 
           if (proc.inline) {
-            if (inlineExpandStack.find((x) => x.name == proc.name)) {
+            if (ctx.inlineExpansionStack.find((x) => x.name == proc.name)) {
               reportErrorWithStack(
                 "Recursion is not allowed for inline procedures",
-                expr.loc, inlineExpandStack
+                expr.loc, ctx.inlineExpansionStack
               );
             }
 
-            this.compileBody(proc.body, inlineExpandStack.concat({
+            ctx.inlineExpansionStack.push({
               name: proc.name,
               loc: expr.loc
-            }));
+            });
+
+            this.compileBody(proc.body, ctx);
+            ctx.inlineExpansionStack.pop();
           } else {
             if (!this.compiledProcs.has(expr.value)) {
               this.procQueue.push(expr.value);
@@ -86,6 +90,10 @@ export class BytecodeCompiler {
           } else {
             this.instr.push([Instr.Push, BigInt(constant.value) ?? 0n]);
           }
+        } else if (expr.type == WordType.Binding) {
+          this.instr.push([
+            Instr.PushBind, ctx.bindings.size - ctx.bindings.get(expr.value)! - 1
+          ])
         } else if (expr.type == WordType.Memory) {
           this.instr.push([Instr.Push, this.memoryOffsets.get(expr.value)!]);
         }
@@ -93,10 +101,10 @@ export class BytecodeCompiler {
         const start = this.label();
         const end = this.label();
 
-        this.compileBody(expr.condition, inlineExpandStack);
+        this.compileBody(expr.condition, ctx);
         this.instr.push([Instr.JmpIfNot, end]);
 
-        this.compileBody(expr.body, inlineExpandStack);
+        this.compileBody(expr.body, ctx);
         this.instr.push([Instr.Jmp, start]);
 
         this.label(end);
@@ -106,18 +114,30 @@ export class BytecodeCompiler {
           const els = this.label();
 
           this.instr.push([Instr.JmpIfNot, els]);
-          this.compileBody(expr.body, inlineExpandStack);
+          this.compileBody(expr.body, ctx);
           this.instr.push([Instr.Jmp, end]);
 
           this.label(els);
-          this.compileBody(expr.else, inlineExpandStack);
+          this.compileBody(expr.else, ctx);
           this.label(end);
         } else {
           const end = this.label();
 
           this.instr.push([Instr.JmpIfNot, end]);
-          this.compileBody(expr.body, inlineExpandStack);
+          this.compileBody(expr.body, ctx);
           this.label(end);
+        }
+      } else if (expr.kind == AstKind.Let) {
+        this.instr.push([Instr.Bind, expr.bindings.length]);
+        for (const binding of expr.bindings) {
+          ctx.bindings.set(binding, ctx.bindings.size);
+        }
+
+        this.compileBody(expr.body, ctx);
+
+        this.instr.push([Instr.Unbind, expr.bindings.length]);
+        for (const binding of expr.bindings) {
+          ctx.bindings.delete(binding);
         }
       } else if (expr.kind == AstKind.Push) {
         if (expr.type == DataType.AsmBlock) {
@@ -142,7 +162,10 @@ export class BytecodeCompiler {
   public compileProc(proc: Proc) {
     this.label(`proc-${proc.name}`);
     this.compiledProcs.add(proc.name);
-    this.compileBody(proc.body);
+    this.compileBody(proc.body, {
+      inlineExpansionStack: [],
+      bindings: new Map(),
+    });
     this.instr.push([Instr.Ret]);
   }
 

@@ -1,20 +1,24 @@
 import { DataType, DataTypeArray, TemplateMap, compareDataTypeArrays, Location, formatLoc, INTRINSICS } from "../shared";
-import { AstKind, Const, Expr, Proc, Program, Signature, Word } from "../parser/ast";
+import { AstKind, Const, Expr, Proc, Program, Signature, WordType } from "../parser/ast";
 import { StackElement, reportError, reportErrorWithStack } from "../errors";
 import chalk from "chalk";
 
 export interface Context {
   stack: DataTypeArray;
   stackLocations: Location[];
-  macroExpansionStack: Word[];
+  bindings: Map<string, DataType | string>;
   // ...
 }
 
-export function createContext(stack: DataTypeArray = [], stackLocations: Location[] = []): Context {
+export function createContext(
+  stack: DataTypeArray = [],
+  stackLocations: Location[] = [],
+  bindings: Map<string, DataType | string> = new Map()
+): Context {
   return {
     stack,
     stackLocations,
-    macroExpansionStack: []
+    bindings
   }
 }
 
@@ -43,7 +47,7 @@ export function reportErrorWithStackData(
     }
   }
 
-  reportErrorWithStack(message, loc, ctx.macroExpansionStack, notes);
+  reportError(message, loc, notes);
 }
 
 export function validateContextStack(
@@ -126,7 +130,7 @@ export class TypeChecker {
               "@", chalk.bold(formatLoc(ctx.stackLocations[i]))
             );
           }
-        } else if (this.procs.has(expr.value)) {
+        } else if (expr.type == WordType.Proc) {
           const proc = this.procs.get(expr.value)!;
 
           if (!proc.signature) {
@@ -169,7 +173,7 @@ export class TypeChecker {
           }
           // let i = proc.signature!.outs.length - 1; i >= 0; i--
           // handleSignature(proc.signature!, ctx, expr.loc);
-        } else if (this.consts.has(expr.value)) {
+        } else if (expr.type == WordType.Constant) {
           const constant = this.consts.get(expr.value)!;
           if (constant.type == DataType.Str) {
             ctx.stack.push(DataType.Int, DataType.Ptr);
@@ -181,10 +185,13 @@ export class TypeChecker {
             ctx.stack.push(constant.type);
             ctx.stackLocations.push(expr.loc);
           }
-        } else if (this.memories.has(expr.value)) {
+        } else if (expr.type == WordType.Memory) {
           ctx.stack.push(DataType.Ptr);
           ctx.stackLocations.push(expr.loc);
-        } else if (INTRINSICS.has(expr.value)) {
+        } else if (expr.type == WordType.Binding) {
+          ctx.stack.push(ctx.bindings.get(expr.value)!);
+          ctx.stackLocations.push(expr.loc);
+        } else if (expr.type == WordType.Intrinsic) {
           const intrinsic = INTRINSICS.get(expr.value)!;
 
           validateContextStack(expr.loc, ctx, intrinsic.ins, false, "for the intrinsic call");
@@ -210,13 +217,13 @@ export class TypeChecker {
         const branches = [];
 
         if (expr.body.length > 0) {
-          const clone = createContext(structuredClone(ctx.stack), ctx.stackLocations.slice());
+          const clone = createContext(structuredClone(ctx.stack), ctx.stackLocations.slice(), ctx.bindings);
           this.typecheckBody(expr.body, clone);
           branches.push(clone);
         }
 
         if (expr.else.length > 0) {
-          const clone = createContext(structuredClone(ctx.stack), ctx.stackLocations.slice());
+          const clone = createContext(structuredClone(ctx.stack), ctx.stackLocations.slice(), ctx.bindings);
           this.typecheckBody(expr.else, clone);
           branches.push(clone);
         }
@@ -235,6 +242,23 @@ export class TypeChecker {
           ctx.stack = branches[0].stack;
           ctx.stackLocations = branches[0].stackLocations;
         }
+      } else if (expr.kind == AstKind.Let) {
+        if (ctx.stack.length < expr.bindings.length) {
+          reportErrorWithStackData(
+            "Not enough data on the stack for the binding", expr.loc, ctx, [
+              `Expected at least ${expr.bindings.length} values`
+            ]
+          );
+        }
+
+        for (let i = expr.bindings.length - 1; i >= 0; i--) {
+          ctx.bindings.set(expr.bindings[i], ctx.stack.pop()!);
+        }
+
+        this.typecheckBody(expr.body, ctx);
+
+        for (const binding of expr.bindings)
+          ctx.bindings.delete(binding);
       } else if (expr.kind == AstKind.Push) {
         if (expr.type == DataType.AsmBlock) {
           reportError(
@@ -280,7 +304,8 @@ export class TypeChecker {
     callstack: StackElement[] = [],
     ins: DataTypeArray = [],
     outs: DataTypeArray = [],
-    templates: TemplateMap = new Map()
+    templates: TemplateMap = new Map(),
+    bindings: Map<string, DataType | string> = new Map()
   ): Signature & {
     templates: TemplateMap
   } {
@@ -382,6 +407,21 @@ export class TypeChecker {
         if (expr.body.length > 0) {
           this.inferSignature(expr.body, callstack, ins, outs);
         }
+      } else if (expr.kind == AstKind.Let) {
+        // console.warn(chalk.yellow.bold("[WARN]"), "Type inference does not work properly for `let` bindings\n");
+        for (let i = expr.bindings.length - 1; i >= 0; i--) {
+          if (outs.length) {
+            bindings.set(expr.bindings[i], outs.pop()!);
+          } else {
+            bindings.set(expr.bindings[i], expr.bindings[i]);
+            ins.push(expr.bindings[i]);
+          }
+        }
+
+        this.inferSignature(expr.body, callstack, ins, outs, templates, bindings);
+
+        for (const binding of expr.bindings)
+          bindings.delete(binding);
       } else if (expr.kind == AstKind.Push) {
         if (expr.type == DataType.Str) {
           outs.push(DataType.Int, DataType.Ptr);
@@ -393,7 +433,7 @@ export class TypeChecker {
           outs.push(DataType.Bool);
         }
       } else {
-        throw new Error(`Typechecking is not implemented for ${AstKind[(expr as Expr).kind]}`);
+        throw new Error(`Type inference is not implemented for ${AstKind[(expr as Expr).kind]}`);
       }
     }
 

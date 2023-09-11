@@ -34,6 +34,12 @@ export function encodeBytecode(bytecode: ByteCode): Buffer {
       || instr[0] == Instr.JmpIfNot
     ) {
       writer.u32(instr[1] as number);
+    } else if (
+      instr[0] == Instr.Bind
+      || instr[0] == Instr.PushBind
+      || instr[0] == Instr.Unbind
+    ) {
+      writer.u8(instr[1] as number);
     } else if (instr[0] == Instr.Halt) {
       writer.i8(instr[1] as number);
     }
@@ -85,6 +91,12 @@ export function decodeBytecode(buffer: Buffer): ByteCode {
       || typ == Instr.JmpIfNot
     ) {
       instr.push(reader.u32());
+    } else if (
+      typ == Instr.Bind
+      || typ == Instr.PushBind
+      || typ == Instr.Unbind
+    ) {
+      instr.push(reader.u8());
     } else if (typ == Instr.Halt) {
       instr.push(reader.i8());
     }

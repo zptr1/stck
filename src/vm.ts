@@ -22,7 +22,7 @@ export class VM {
 
     let ip = 0;
     const stack: bigint[] = [];
-    const returnStack: number[] = [];
+    const returnStack: (bigint | number)[] = [];
 
     while (true) {
       const instr = instructions[ip++];
@@ -39,7 +39,7 @@ export class VM {
           process.exit(1);
         }
       } else if (type == Instr.Ret) {
-        ip = returnStack.pop()!;
+        ip = returnStack.pop()! as number;
       } else if (type == Instr.Jmp) {
         ip = instr[1] as number;
       } else if (type == Instr.JmpIfNot) {
@@ -96,6 +96,18 @@ export class VM {
         stack.push(stack.at(-2)!);
       } else if (type == Instr.Swap2) {
         stack.push(stack.pop()!, stack.pop()!, stack.pop()!, stack.pop()!);
+      } else if (type == Instr.Bind) {
+        for (let i = 0; i < instr[1]; i++)
+          returnStack.push(stack.pop()!);
+      } else if (type == Instr.PushBind) {
+        stack.push(
+          returnStack.at(
+            -(instr[1] as number)
+          ) as bigint
+        );
+      } else if (type == Instr.Unbind) {
+        for (let i = 0; i < instr[1]; i++)
+          returnStack.pop();
       } else if (type == Instr.Write8) {
         this.memory[Number(stack.pop()!)] = Number(stack.pop()!);
       } else if (type == Instr.Read8) {
