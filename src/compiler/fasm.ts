@@ -68,7 +68,7 @@ export class FasmCompiler {
         if (expr.type == WordType.Intrinsic) {
           const intrinsic = INTRINSICS.get(expr.value)!;
           if (intrinsic.instr != Instr.Nop) {
-            // Calls a macro included from lib/core.asm
+            // Calls a macro included from lib/prelude.asm
             this.push(`intrinsic_${expr.value}`);
           }
         } else if (expr.type == WordType.Proc) {
@@ -251,7 +251,7 @@ export class FasmCompiler {
     this.out.push(
       ";; Compiled with stck v0.0.2\n",
       "format ELF64 executable 3",
-      `include "${plib.join(ROOT_DIR, "lib/core.asm")}"`,
+      `include "${plib.join(ROOT_DIR, "lib/prelude.asm")}"`,
     );
 
     this.out.push("");
