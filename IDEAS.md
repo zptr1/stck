@@ -157,11 +157,20 @@ This should not be too hard to implement, since I already have compile-time eval
 
 ## Top-Level Assembly Blocks
 
+### ❌ Cancelled
+
 Unsafe procedures can use the `asm` block to insert assembly code directly, allowing them to do tasks without the language's limitations, and sometimes even achieving much greater performance. And while this feature makes the language much more unsafe, the restrictions surrounding this feature should make it clear that it's up to the programmer to make sure their code is safe.
 
 Top-level assembly blocks would get embedded before the instructions, which allows you to do even more stuff - such as defining another `.data` section and allocating own stuff here. But while this allows for even more extensibility and I would want to implement this, this breaks the compatibility even more, and there are no proper restrictions around it, making the language even more unsafe.
 
 I'm not really sure if this feature should even be implemented, at least not in the way I planned.
+
+## Assembly Imports
+
+Importing files with an `.asm` extension would include them in the compiled `.asm` source.
+```
+include "./example.asm"
+```
 
 ## FFI/Linking
 
