@@ -92,43 +92,39 @@ _intrinsics:
   }
 
   macro intrinsic_lt {
-    mov rcx, 0
-    mov rdx, 1
     pop rbx
     pop rax
     cmp rax, rbx
-    cmovl rcx, rdx
-    push rcx
+    setl al
+    movzx rax, al
+    push rax
   }
 
   macro intrinsic_eq {
-    mov rcx, 0
-    mov rdx, 1
     pop rbx
     pop rax
     cmp rax, rbx
-    cmove rcx, rdx
-    push rcx
+    sete al
+    movzx rax, al
+    push rax
   }
 
   macro intrinsic_neq {
-    mov rcx, 0
-    mov rdx, 1
     pop rbx
     pop rax
     cmp rax, rbx
-    cmovne rcx, rdx
-    push rcx
+    setne al
+    movzx rax, al
+    push rax
   }
 
   macro intrinsic_gt {
-    mov rcx, 0
-    mov rdx, 1
     pop rbx
     pop rax
     cmp rax, rbx
-    cmovg rcx, rdx
-    push rcx
+    setg al
+    movzx rax, al
+    push rax
   }
 
   macro intrinsic_shl {
