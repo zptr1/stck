@@ -496,5 +496,10 @@ export class TypeChecker {
 
       this.typecheckProc(proc, ctx);
     });
+
+    if (!this.procs.has("main")) {
+      console.error(chalk.red.bold("[ERROR]"), "No main procedure.");
+      process.exit(1);
+    }
   }
 }
