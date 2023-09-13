@@ -10,8 +10,6 @@ const sizeof(int)  sizeof(u64) end
 const sizeof(ptr)  sizeof(u64) end
 const sizeof(bool) sizeof(u8)  end
 
-const sizeof(str)  sizeof(int) sizeof(ptr) add end
-
 /// Pointer operations
 inline proc ptr+ :: ptr int -> ptr do cast(ptr) add end
 inline proc ptr- :: ptr int -> ptr do cast(ptr) add end
@@ -40,7 +38,58 @@ inline proc lxor :: bool bool -> bool do
   2dup land lnot rot rot lor land
 end
 
+/// Memory
+macro !8  write8  end
+macro !16 write16 end
+macro !32 write32 end
+macro !64 write64 end
+
+macro @8  read8  end
+macro @16 read16 end
+macro @32 read32 end
+macro @64 read64 end
+
+macro !int write64 end
+macro !ptr write64 end
+
+macro @int read64  end
+macro @ptr read64  end
+
+/// Strings
+
+const Str.len     sizeof(int) offset end
+const Str.data    sizeof(ptr) offset end
+const sizeof(Str) reset end
+
+proc is-digit :: int -> bool do
+  dup  1 add '0' gt
+  over 1 sub '9' lt
+  land swap drop
+end
+
+proc parse-uint :: int ptr -> int do
+  let len data do
+    0 0 // out inc
+    while dup len lt do
+      dup cast(ptr) data add read8
+      dup is-digit if
+        '0' sub rot 10 mul add swap
+      else drop end
+
+      1 add
+    end drop
+  end
+end
+
+proc parse-int :: int ptr -> int do
+  dup read8 '-' eq if
+    1 ptr+ swap 1 sub swap
+    parse-uint not 1 add
+  else parse-uint end
+end
+
 /// Random
+// TODO: Move to a separate library
 
 // Using the https://en.wikipedia.org/wiki/Linear_congruential_generator algorithm
 memory lcg_mod sizeof(int) end
@@ -58,19 +107,8 @@ inline proc lcg_init :: int do
 end
 // TODO: Add more algorithms and random-related functions
 
-/// Memory
-macro !8  write8  end
-macro !16 write16 end
-macro !32 write32 end
-macro !64 write64 end
-
-macro @8  read8  end
-macro @16 read16 end
-macro @32 read32 end
-macro @64 read64 end
-
 /// stdio
-// TODO: Move to a separate stdio library?
+// TODO: Move to a separate library
 
 // TODO: Local memories for procedures
 memory _putu_buffer 32 end
@@ -104,32 +142,4 @@ proc puti :: int do
     "-" puts
     not 1 add putu
   else putu end
-end
-
-/// String operations
-
-proc is-digit :: int -> bool do
-  dup  1 add '0' gt
-  over 1 sub '9' lt
-  land swap drop
-end
-
-// TODO: Does not parse negative integers
-proc parse-int :: int ptr -> int do
-  // ptr out len inc
-  swap 0 swap 0 while 2dup gt do
-    // len out ptr inc ptr+inc
-    swap 2swap rot 2dup ptr+
-    // len inc ptr out+char
-    read8
-    dup is-digit if
-      '0' sub swap 2swap rot add 10 mul
-    else
-      // len inc ptr out
-      drop swap rot
-    end
-    // ptr out len inc
-    swap 2swap swap 1 add
-  end
-  drop drop swap drop 10 div
 end
