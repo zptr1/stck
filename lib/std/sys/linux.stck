@@ -1,6 +1,66 @@
-// List of all linux syscalls.
-// Copypasted from https://filippo.io/linux-syscall-table/
+// "Wrappers" for common syscalls
+inline proc write  :: int ptr int -> int do sys_write  syscall3 end
+inline proc read   :: int ptr int -> int do sys_read   syscall3 end
+inline proc fstat  :: ptr int     -> int do sys_fstat  syscall2 end
+inline proc close  :: int         -> int do sys_close  syscall1 end
+inline proc openat :: int int ptr -> int do
+  -100 // AT_FDCWD (relative to the current directory)
+  sys_openat syscall4
+end
 
+inline proc exit :: int do sys_exit syscall1 drop end
+
+// Time
+const timespec.tv_sec  sizeof(int) offset end
+const timespec.tv_nsec sizeof(u64) offset end
+const sizeof(timespec) reset end
+
+memory _gettime_buf sizeof(timespec) end
+
+proc gettime_s -> int do
+  _gettime_buf 0 sys_clock_gettime syscall2 drop
+  _gettime_buf timespec.tv_sec ptr+ read64
+end
+
+proc gettime_ms -> int do
+  _gettime_buf 0 sys_clock_gettime syscall2 drop
+  _gettime_buf timespec.tv_sec  ptr+ read64 1000    mul
+  _gettime_buf timespec.tv_nsec ptr+ read64 1000000 div
+  add
+end
+
+proc gettime_ns -> int do
+  _gettime_buf 0 sys_clock_gettime syscall2 drop
+  _gettime_buf timespec.tv_sec  ptr+ read64 1000000000 mul
+  _gettime_buf timespec.tv_nsec ptr+ read64 add
+end
+
+/// Flags for `openat`
+const O_RDONLY      0 end
+const O_WRONLY      1 end
+const O_RDWR        2 end
+const O_CREAT      64 end
+const O_TRUNC     512 end
+const O_NONBLOCK 2048 end
+
+/// Modes for `openat`
+const S_IRWXU   00700 end
+const S_IRUSR   00400 end
+const S_IWUSR   00200 end
+const S_IXUSR   00100 end
+const S_IRWXG   00070 end
+const S_IRGRP   00040 end
+const S_IWGRP   00020 end
+const S_IXGRP   00010 end
+const S_IRWXO   00007 end
+const S_IROTH   00004 end
+const S_IWOTH   00002 end
+const S_IXOTH   00001 end
+const S_ISUID 0004000 end
+const S_ISGID 0002000 end
+const S_ISVTX 0001000 end
+
+/// List of all Linux syscalls.
 const sys_read           0 end
 const sys_write          1 end
 const sys_open           2 end

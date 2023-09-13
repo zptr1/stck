@@ -1,6 +1,7 @@
 // TODO: Compile-time conditions for better cross platform support
 
-include "./linux/main"
+include "./sys/linux"
+include "./core"
 
 unsafe inline proc syscall0 :: int -> int do
   asm

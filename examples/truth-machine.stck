@@ -1,4 +1,4 @@
-include "sys"
+include "std"
 
 memory input 1 end
 

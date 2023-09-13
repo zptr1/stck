@@ -1,0 +1,38 @@
+include "./core"
+
+const Str.len     sizeof(int) offset end
+const Str.data    sizeof(ptr) offset end
+const sizeof(Str) reset end
+
+proc is-digit :: int -> bool do
+  dup  1 add '0' gt
+  over 1 sub '9' lt
+  land swap drop
+end
+
+proc parse-uint :: int ptr -> int do
+  let len data do
+    0 0 // out inc
+    while dup len lt do
+      dup cast(ptr) data add read8
+      dup is-digit if
+        '0' sub rot 10 mul add swap
+      else drop end
+
+      1 add
+    end drop
+  end
+end
+
+proc parse-int :: int ptr -> int do
+  dup read8 '-' eq if
+    1 ptr+ swap 1 sub swap
+    parse-uint not 1 add
+  else parse-uint end
+end
+
+proc cstr-to-str :: ptr -> int ptr do
+  0 while 2dup ptr+ read8 0 neq do
+    1 add
+  end swap
+end

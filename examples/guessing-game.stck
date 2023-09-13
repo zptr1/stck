@@ -1,11 +1,10 @@
 include "std"
-include "sys"
 
 memory input_buf 64 end
 
 proc main
-  gettime_ms lcg_init
-  lcg 100 mod
+  gettime_ms randseed
+  rand 100 mod
 
   0 while 2dup eq lnot do
     "Your guess: " puts

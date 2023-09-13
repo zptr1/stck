@@ -1,0 +1,58 @@
+// The standard library
+
+/// Types
+const sizeof(u8)  1 end
+const sizeof(u16) 2 end
+const sizeof(u32) 4 end
+const sizeof(u64) 8 end
+
+const sizeof(int)  sizeof(u64) end
+const sizeof(ptr)  sizeof(u64) end
+const sizeof(bool) sizeof(u8)  end
+
+/// Pointer operations
+inline proc ptr+ :: ptr int -> ptr do cast(ptr) add end
+inline proc ptr- :: ptr int -> ptr do cast(ptr) add end
+
+/// Mathematical operations
+macro div divmod      drop end
+macro mod divmod swap drop end
+
+macro idiv idivmod      drop end
+macro imod idivmod swap drop end
+
+/// Logical operations
+inline proc lnot :: bool -> bool do
+  cast(int) 1 swap sub cast(bool)
+end
+
+inline proc land :: bool bool -> bool do
+  cast(int) swap cast(int) and cast(bool)
+end
+
+inline proc lor :: bool bool -> bool do
+  cast(int) swap cast(int) or cast(bool)
+end
+
+inline proc lxor :: bool bool -> bool do
+  2dup land lnot rot rot lor land
+end
+
+/// Memory
+inline proc !8  :: int ptr do write8  end
+inline proc !16 :: int ptr do write16 end
+inline proc !32 :: int ptr do write32 end
+inline proc !64 :: int ptr do write64 end
+
+inline proc @8  :: ptr -> int do read8  end
+inline proc @16 :: ptr -> int do read16 end
+inline proc @32 :: ptr -> int do read32 end
+inline proc @64 :: ptr -> int do read64 end
+
+inline proc !int  :: int  ptr do swap cast(int) swap write64 end
+inline proc !ptr  :: ptr  ptr do swap cast(int) swap write64 end
+inline proc !bool :: bool ptr do swap cast(int) swap write8  end
+
+inline proc @int  :: ptr -> int  do read64 cast(int)  end
+inline proc @ptr  :: ptr -> ptr  do read64 cast(ptr)  end
+inline proc @bool :: ptr -> bool do read64 cast(bool) end

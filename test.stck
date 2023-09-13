@@ -1,3 +1,6 @@
+include "std"
+
 proc main
-  123 123 neq cast(int) print
+  gettime_ns randseed
+  0 10 randrange print
 end

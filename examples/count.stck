@@ -1,4 +1,3 @@
-include "sys"
 include "std"
 
 memory input_buf 64 end
