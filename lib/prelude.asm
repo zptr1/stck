@@ -111,6 +111,16 @@ _intrinsics:
     push rcx
   }
 
+  macro intrinsic_neq {
+    mov rcx, 0
+    mov rdx, 1
+    pop rbx
+    pop rax
+    cmp rax, rbx
+    cmovne rcx, rdx
+    push rcx
+  }
+
   macro intrinsic_gt {
     mov rcx, 0
     mov rdx, 1

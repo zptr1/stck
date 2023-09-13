@@ -76,6 +76,8 @@ export class VM {
         stack.push(BigInt(lhs < rhs));
       } else if (type == Instr.Eq) {
         stack.push(BigInt(stack.pop()! == stack.pop()!));
+      } else if (type == Instr.Neq) {
+        stack.push(BigInt(stack.pop()! != stack.pop()!));
       } else if (type == Instr.Gt) {
         const rhs = stack.pop()!, lhs = stack.pop()!;
         stack.push(BigInt(lhs > rhs));

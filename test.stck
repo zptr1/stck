@@ -1,6 +1,3 @@
-include "std"
-
 proc main
-  "69420" parse-int print
-  "-123"  parse-int print
+  123 123 neq cast(int) print
 end

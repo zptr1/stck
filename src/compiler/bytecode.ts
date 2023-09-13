@@ -1,5 +1,5 @@
-import { StackElement, reportError, reportErrorWithStack, reportErrorWithoutLoc } from "../errors";
 import { ByteCode, Instr, Instruction, LabeledInstr, DataType, INTRINSICS } from "../shared";
+import { reportError, reportErrorWithStack, reportErrorWithoutLoc } from "../errors";
 import { AstKind, Expr, Proc, Program, WordType } from "../parser";
 import { CompilerContext } from ".";
 

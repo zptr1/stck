@@ -1,9 +1,9 @@
-import { AstKind, Expr, Proc, Program, WordType } from "../parser";
 import { StackElement, reportError, reportErrorWithStack } from "../errors";
+import { AstKind, Expr, Proc, Program, WordType } from "../parser";
 import { Instr, DataType, INTRINSICS, Location } from "../shared";
+import { CompilerContext } from ".";
 import { ROOT_DIR } from "../const";
 import plib from "path";
-import { CompilerContext } from ".";
 
 const MAX_I32 = 2 ** 31 - 1;
 const MIN_I32 = ~MAX_I32;

@@ -27,9 +27,10 @@ addIntrinsic("imul",    Instr.IMul,    [DataType.Int, DataType.Int], [DataType.I
 addIntrinsic("idivmod", Instr.IDivMod, [DataType.Int, DataType.Int], [DataType.Int, DataType.Int]);
 
 // Comprasion
-addIntrinsic("lt", Instr.Lt, [DataType.Int, DataType.Int], [DataType.Bool]);
-addIntrinsic("eq", Instr.Eq, [DataType.Int, DataType.Int], [DataType.Bool]);
-addIntrinsic("gt", Instr.Gt, [DataType.Int, DataType.Int], [DataType.Bool]);
+addIntrinsic("lt",  Instr.Lt,  [DataType.Int, DataType.Int], [DataType.Bool]);
+addIntrinsic("eq",  Instr.Eq,  [DataType.Int, DataType.Int], [DataType.Bool]);
+addIntrinsic("neq", Instr.Neq, [DataType.Int, DataType.Int], [DataType.Bool]);
+addIntrinsic("gt",  Instr.Gt,  [DataType.Int, DataType.Int], [DataType.Bool]);
 
 // Bitwise Operations
 addIntrinsic("shl", Instr.Shl, [DataType.Int,  DataType.Int], [DataType.Int]);

@@ -17,6 +17,7 @@ export enum Instr {
   // Comprasion
   Lt,
   Eq,
+  Neq,
   Gt,
 
   // Bitwise Operations
