@@ -1,6 +1,6 @@
-import { DataType, DataTypeArray, INTRINSICS, Location, formatLoc, tokenToDataType } from "../shared";
+import { DataType, DataTypeArray, File, INTRINSICS, Location, formatLoc, tokenToDataType } from "../shared";
 import { Context, createContext, handleSignature, validateContextStack } from "../compiler";
-import { StackElement, reportError, reportErrorWithStack } from "../errors";
+import { StackElement, reportError, reportErrorWithStack, reportErrorWithoutLoc } from "../errors";
 import { AstKind, Const, IProc, IProgram, Proc } from ".";
 import { Lexer, Token, Tokens } from "../lexer";
 import { ROOT_DIR } from "../const";
@@ -59,8 +59,14 @@ export class Preprocessor {
   constructor(tokens: Token[]) {
     this.tokens = tokens.reverse();
 
+    if (tokens.length == 0) {
+      reportErrorWithoutLoc("The file is empty");
+    }
+
     const file = this.tokens[0].loc.file;
     this.includedFiles.add(file.path);
+    this.include(plib.join(ROOT_DIR, "lib/prelude.stck"), file);
+
     this.program = {
       file,
       procs: new Map(),
@@ -424,6 +430,18 @@ export class Preprocessor {
     return proc;
   }
 
+  public include(path: string, parent: File) {
+    if (this.includedFiles.has(path)) return;
+    this.includedFiles.add(path);
+
+    const file = parent.child(path);
+    const tokens = new Lexer(file).collect().reverse();
+
+    this.includeDepth++;
+    for (const tok of tokens)
+      this.tokens.push(tok);
+  }
+
   public preprocess(): IProgram {
     let inlineProc = false;
     let unsafeProc = false;
@@ -453,22 +471,12 @@ export class Preprocessor {
           plib.join(process.cwd(), "lib", tok.value + ".stck"),
         ];
 
-        const found = paths.find((x) => existsSync(x));
-        if (!found) reportError(
+        const path = paths.find((x) => existsSync(x));
+        if (!path) reportError(
           "Unresolved import", tok.loc
         );
 
-        const path = plib.resolve(found);
-        if (!this.includedFiles.has(path)) {
-          this.includedFiles.add(path);
-
-          const file = token.loc.file.child(path);
-          const tokens = new Lexer(file).collect().reverse();
-
-          this.includeDepth++;
-          for (const tok of tokens)
-            this.tokens.push(tok);
-        }
+        this.include(plib.resolve(path), token.loc.file);
       } else if (token.kind == Tokens.Macro) {
         const name = this.nextOf(Tokens.Word);
         const body = this.readBody(true);
