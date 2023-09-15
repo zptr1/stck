@@ -3,15 +3,16 @@
 import { BytecodeCompiler, FasmCompiler, TypeChecker, decodeBytecode, encodeBytecode, isBytecode } from "./src/compiler";
 import { existsSync, readFileSync, statSync, unlinkSync, writeFileSync } from "fs";
 import { Parser, Preprocessor } from "./src/parser";
+import { tmpdir, platform } from "os";
 import { Lexer } from "./src/lexer";
 import { File } from "./src/shared";
 import { VM } from "./src/vm";
 import minimist from "minimist";
 import chalk from "chalk";
 import plib from "path";
-import { tmpdir } from "os";
 
 const INFO = chalk.bold.green("[INFO]");
+const WARN = chalk.yellow.bold("[WARN]");
 const CMD  = chalk.bold.white("[CMD]");
 
 function trace(...msg: any[]) {
@@ -107,13 +108,13 @@ function main() {
   const program = new Parser(preprocessed).parse();
 
   if (args.unsafe) {
-    trace(chalk.yellow.bold("[WARN]"), "Skipping typechecking\n");
+    trace(WARN, "Skipping typechecking\n");
   } else {
     trace(INFO, "Typechecking");
     new TypeChecker(program).typecheck();
 
     if (program.procs.get("main")?.unsafe) {
-      trace(chalk.yellow.bold("[WARN]"), "Unsafe main procedure\n");
+      trace(WARN, "Unsafe main procedure\n");
     }
   }
 
@@ -130,6 +131,9 @@ function main() {
     }
   } else if (target == "fasm") {
     const out = new FasmCompiler(program).compile();
+
+    if (process.arch != "x64") trace(WARN, `This architecture (${process.arch}) might not be supported\n`);
+    if (platform() != "linux") trace(WARN, `This platform (${platform()}) might not be supported\n`);
 
     if (action == "build") {
       writeFileSync(outPath + ".asm", out.join("\n"));
