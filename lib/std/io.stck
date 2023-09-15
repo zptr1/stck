@@ -1,4 +1,3 @@
-include "./core"
 include "./sys"
 
 const stdin  0 end

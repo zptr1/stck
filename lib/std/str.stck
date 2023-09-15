@@ -1,5 +1,3 @@
-include "./core"
-
 const Str.len     sizeof(int) offset end
 const Str.data    sizeof(ptr) offset end
 const sizeof(Str) reset end

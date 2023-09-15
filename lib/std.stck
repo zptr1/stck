@@ -1,4 +1,3 @@
-include "./std/core"
 include "./std/str"
 include "./std/sys"
 include "./std/rand"

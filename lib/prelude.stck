@@ -15,11 +15,11 @@ inline proc ptr+ :: ptr int -> ptr do cast(ptr) add end
 inline proc ptr- :: ptr int -> ptr do cast(ptr) add end
 
 /// Mathematical operations
-macro div divmod      drop end
-macro mod divmod swap drop end
+inline proc div  :: int int -> int do divmod      drop end
+inline proc mod  :: int int -> int do divmod swap drop end
 
-macro idiv idivmod      drop end
-macro imod idivmod swap drop end
+inline proc idiv :: int int -> int do idivmod      drop end
+inline proc imod :: int int -> int do idivmod swap drop end
 
 /// Logical operations
 inline proc lnot :: bool -> bool do
