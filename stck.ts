@@ -15,10 +15,14 @@ const INFO = chalk.bold.green("[INFO]");
 const WARN = chalk.yellow.bold("[WARN]");
 const CMD  = chalk.bold.white("[CMD]");
 
+let verbose = false;
 function trace(...msg: any[]) {
-  process.stdout.moveCursor(0, -1);
-  process.stdout.cursorTo(0);
-  process.stdout.clearLine(0);
+  if (!verbose) {
+    process.stdout.moveCursor(0, -1);
+    process.stdout.cursorTo(0);
+    process.stdout.clearLine(0);
+  }
+
   console.log(...msg);
 }
 
@@ -41,6 +45,8 @@ function printHelp(): never {
   console.log("", chalk.bold("--target, -t"), chalk.yellow.bold("<target>"));
   console.log(" ", "Change the compilation target");
   console.log(" ", "Available targets:", chalk.bold(TARGET_OPTIONS.join(", ")));
+  console.log("", chalk.bold("--verbose, -v"));
+  console.log(" ", "More verbose logs");
   console.log("", chalk.bold("--unsafe"));
   console.log(" ", "Disable typechecking");
   console.log();
@@ -87,8 +93,12 @@ function main() {
 
   const source = readFileSync(path);
 
-  // `trace` moves the cursor to one line above, so an empty line should be printed before it
-  console.log();
+  verbose = args.verbose || args.v || verbose;
+  if (!verbose) {
+    // `trace` moves the cursor to one line above to edit it
+    // so an empty line should be printed before using it
+    console.log();
+  }
 
   if (action == "run" && isBytecode(source)) {
     trace(INFO, "Running");
