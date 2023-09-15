@@ -209,12 +209,12 @@ Unsafe procedures can also be inline.
 
 Name | Signature | Description
 -----|-----------|-------------
-`add`     | `a a -> a`           | Takes two values from the top of the stack, adds them and pushes the result into the stack
-`sub`     | `a a -> a`           | Subtracts two values
-`mul`     | `int int -> int`     | Multiplies two unsigned integers
-`divmod`  | `int int -> int int` | Performs [Euclidean division](https://en.wikipedia.org/wiki/Euclidean_division) on two unsigned integers
-`imul`    | `int int -> int`     | Multiplies two signed integers
-`idivmod` | `int int -> int int` | Performs Euclidean division on two signed integers
+`add`     | `[a] [b] -> [a + b]`           | Takes two values from the top of the stack, adds them and pushes the result into the stack
+`sub`     | `[a] [b] -> [a - b]`           | Subtracts two values
+`mul`     | `[a: int] [b: int] -> [a * b: int]`     | Multiplies two unsigned integers
+`divmod`  | `[a: int] [b: int] -> [a / b: int] [a % b: int]` | Performs [Euclidean division](https://en.wikipedia.org/wiki/Euclidean_division) on two unsigned integers
+`imul`    | `[a: int] [b: int] -> [a * b: int]`     | Multiplies two signed integers
+`idivmod` | `[a: int] [b: int] -> [a / b: int] [a % b: int]` | Performs Euclidean division on two signed integers
 
 `add` and `sub` intrinsics accept any type, but the type of two values must be the same - e. g. you can add a pointer to a pointer, or an integer to an integer, but can't add a pointer to an integer. Note: You can use the `cast(int)`, `cast(ptr)` or `cast(bool)` intrinsics to convert one type to another.
 
@@ -222,21 +222,21 @@ Name | Signature | Description
 
 Name | Signature | Description
 -----|-----------|-------------
-`lt`  | `int int -> bool` | Checks if an integer is less than another
-`gt`  | `int int -> bool` | Checks if an integer is greater than another
-`eq`  | `int int -> bool` | Checks if two integers on top of the stack are equal
-`neq` | `int int -> bool` | Checks if two integers on top of the stack are not equal
+`lt`  | `[a: int] [b: int] -> [a < b: bool]` | Checks if an integer is less than another
+`gt`  | `[a: int] [b: int] -> [a > b: bool]` | Checks if an integer is greater than another
+`eq`  | `[a: int] [b: int] -> [a == b: bool]` | Checks if two integers on top of the stack are equal
+`neq` | `[a: int] [b: int] -> [a != b: bool]` | Checks if two integers on top of the stack are not equal
 
 ### Bitwise Operations
 
 Name | Signature | Description
 -----|-----------|-------------
-`shl` | `int int -> int` | Performs a left bit shift
-`shr` | `int int -> int` | Performs a right bit shift
-`not` | `int -> int`     | Bitwise **NOT**
-`or`  | `int int -> int` | Bitwise **OR**
-`and` | `int int -> int` | Bitwise **AND**
-`xor` | `int int -> int` | Bitwise **XOR**
+`shl` | `[a: int] [b: int] -> [a << b: int]` | Performs a left bit shift
+`shr` | `[a: int] [b: int] -> [a >> b: int]` | Performs a right bit shift
+`not` | `[a: int] -> [~a: int]`     | Bitwise **NOT**
+`or`  | `[a: int] [b: int] -> [a \| b: int]` | Bitwise **OR**
+`and` | `[a: int] [b: int] -> [a & b: int]` | Bitwise **AND**
+`xor` | `[a: int] [b: int] -> [a ^ b: int]` | Bitwise **XOR**
 
 ### Stack Manipulation
 
@@ -267,8 +267,8 @@ Name | Signature | Description
 
 Name | Signature | Description
 -----|-----------|-------------
-`print` | `int`     | Outputs an integer to the standard output
-`puts`  | `int ptr` | Outputs a string to the standard output
+`print` | `[n: int]`     | Outputs an integer to the standard output
+`puts`  | `[str: int ptr]` | Outputs a string to the standard output
 
 ### Compile-time
 
@@ -282,7 +282,118 @@ Name | Signature | Description
 
 # Standard Library
 
-TBD
+Note: The standard library is currently not finished. Anything can change at any time.
 
-## something else
-i forgor 💀
+The standard library is separated into multiple different submodules, currently
+- `io` - interacting with the standard input/output
+- `sys` - interacting with the system
+- `rand` - random number generation
+- `str` - string-related utilities
+
+You can include all modules at once by just importing the `std` library, or you can include only a single specific module like that:
+```
+include "std/io"
+include "std/sys"
+...
+```
+Please note that some modules might depend on another (e. g. `io` depends on `sys`), so importing each module separately is a bit pointless. It should be fine to just import the entire standard library.
+
+## `std/io`
+
+#### Constants
+
+| Name | Value | Description
+|------|-------|-------------
+| `stdin`  | `0` | Standard input stream
+| `stdout` | `1` | Standard output stream
+| `stderr` | `2` | Standard error stream
+
+#### Procedures
+
+| Name | Signature | Description
+|------|-----------|-------------
+| `putu` | `[n: int]` | Outputs an unsigned integer without a newline to stdout
+| `puti` | `[n: int]` | Outputs a signed integer without a newline to stdout
+| `eputs` | `[str: int ptr]` | Outputs a string to stderr
+
+## `std/str`
+
+#### Enums
+
+- **`Str`**
+  * **`len`** - `int` - the length of the string
+  * **`data`** - `ptr` - pointer to the data of the string
+
+#### Procedures
+
+| Name | Signature | Description
+|------|-----------|-------------
+| `is-digit` | `[char: int] -> bool` | Checks whether the provided charcode is a digit (`0`..`9`)
+| `parse-uint` | `[str: int ptr] -> int` | Parses an unsigned integer. Any invalid characters are ignored.
+| `parse-int` | `[str: int ptr] -> int` | Parses a signed integer. Any invalid characters are ignored.
+| `cstr-to-str` | `[cstr: ptr] -> [str: int ptr]` | Converts a C-String to a regular string
+
+**Warning:** `cstr-to-str` DOES NOT copy the data of the string, but actually just calculates the length of it and returns the same pointer.
+
+## `std/sys`
+
+Internally, `sys` is divided into multiple sub-modules for different system compatibility. Currently, only Linux is supported.
+
+### `std/sys/linux`
+
+#### Constants
+
+| Name | Value | Description
+|------|-------|-------------
+| `O_*`   | | Flags for the [`openat`](https://linux.die.net/man/2/openat) Linux syscall
+| `S_*`   | | Modes for the [`openat`](https://linux.die.net/man/2/openat) Linux syscall
+| `sys_*` | | All Linux syscalls. List taken from [here](https://filippo.io/linux-syscall-table/)
+
+#### Structures
+
+- **`timespec`**
+  * **`tv_sec`** - `int` - whole seconds
+  * **`tv_nsec`** - `int` - nanoseconds
+
+#### Procedures
+
+| Name | Signature | Description
+|------|-----------|-------------
+| `write` | `[str: int ptr] [fd: int] -> int` | Writes a string to the provided `fd`
+| `read`  | `[size: int] [ptr] [fd: int] -> int` | Reads `size` bytes to `ptr` from `fd`
+| `fstat` | `[ptr] [fd: int] -> int` | Gets stats of `fd` and saves them into `ptr`
+| `close` | `[close: fd] -> int` | Closes `fd`
+| `openat` | `[mode: int] [flags: int] [path: ptr]` | Opens a file at `path` (C-string) with the provided `flags` and `mode`
+| `exit` | `[code: int]` | Exits the process with the provided code
+| `gettime_s` | `-> int` | Gets the current UNIX timestamp in seconds
+| `gettime_ms` | `-> int` | Gets the current UNIX timestamp in milliseconds
+| `gettime_ns` | `-> int` | Gets the current UNIX timestamp in nanoseconds
+
+## `std/rand`
+
+**Note:** Uses the [LCG](https://en.wikipedia.org/wiki/Linear_congruential_generator) algorithm
+
+#### Constants
+
+| Name | Value | Description
+|------|-------|-------------
+| `LCG_MULTIPLIER` | `6364136223846793005` | The multiplier used for the LCG algorithm
+| `LCG_INCREMENT`  | `1442695040888963407` | The increment used for the LCG algorithm
+
+Uses parameters from MMIX by Donald Knuth
+
+#### Memories
+
+| Name | Size | Description
+|------|-----------|--------------
+| `lcg_seed` | `int` (8 bytes) | Stores the current seed
+
+#### Procedures
+
+| Name | Signature | Description
+|------|-----------|-------------
+| `rand`      | `-> int` | Generates a random 32-bit integer
+| `randseed`  | `[seed: int]` | Sets the current seed
+| `randrange` | `[min: int] [max: int] -> int` | Generates a random integer within the specified range
+
+**Note:** Before using `rand` or `randrange`, a seed must be seed using `randseed`. A recommended approach is to use `gettime_ms` from `sys` as the current seed.
