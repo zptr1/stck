@@ -2,7 +2,7 @@
 
 **stck** is a statically typed stack-based concatenative programming language
 
-- [Documentation](doc/01_GETTING_STARTED.md)
+- [Documentation](doc/00_INTRODUCTION.md)
 - [Reference](doc/REFERENCE.md)
 - [Examples](examples/)
 
