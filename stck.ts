@@ -158,7 +158,7 @@ function main() {
 
       trace(INFO, "Running");
 
-      Bun.spawnSync({
+      Bun.spawn({
         stdio: ["inherit", "inherit", "inherit"],
         cmd: [path],
         onExit(_, code, sig) {
