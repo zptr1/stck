@@ -15,10 +15,12 @@ export enum Instr {
   IDivMod,
 
   // Comprasion
-  Lt,
   Eq,
   Neq,
+  Lt,
   Gt,
+  LtEq,
+  GtEq,
 
   // Bitwise Operations
   Shl,  // <<

@@ -87,6 +87,10 @@ export class Lexer {
     }
 
     this.reader.next();
+    if (!value) {
+      this.error("Empty string");
+    }
+
     return value;
   }
 

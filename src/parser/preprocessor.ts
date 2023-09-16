@@ -127,14 +127,22 @@ export class Preprocessor {
       const rhs = stack.pop(), lhs = stack.pop();
       stack.push(lhs / rhs);
       stack.push(lhs % rhs);
+    } else if (name == "eq") {
+      stack.push(BigInt(stack.pop() == stack.pop()));
+    } else if (name == "neq") {
+      stack.push(BigInt(stack.pop() != stack.pop()));
     } else if (name == "lt") {
       const rhs = stack.pop(), lhs = stack.pop();
       stack.push(BigInt(lhs > rhs));
     } else if (name == "gt") {
       const rhs = stack.pop(), lhs = stack.pop();
       stack.push(BigInt(lhs < rhs));
-    } else if (name == "eq") {
-      stack.push(BigInt(stack.pop() == stack.pop()));
+    } else if (name == "lteq") {
+      const rhs = stack.pop(), lhs = stack.pop();
+      stack.push(BigInt(lhs > rhs || lhs == rhs));
+    } else if (name == "gteq") {
+      const rhs = stack.pop(), lhs = stack.pop();
+      stack.push(BigInt(lhs < rhs || lhs == rhs));
     } else if (name == "shl") {
       const rhs = stack.pop(), lhs = stack.pop();
       stack.push(lhs << rhs);

@@ -71,16 +71,22 @@ export class VM {
       } else if (type == Instr.Xor) {
         const rhs = stack.pop()!, lhs = stack.pop()!;
         stack.push(lhs ^ rhs);
-      } else if (type == Instr.Lt) {
-        const rhs = stack.pop()!, lhs = stack.pop()!;
-        stack.push(BigInt(lhs < rhs));
       } else if (type == Instr.Eq) {
         stack.push(BigInt(stack.pop()! == stack.pop()!));
       } else if (type == Instr.Neq) {
         stack.push(BigInt(stack.pop()! != stack.pop()!));
+      } else if (type == Instr.Lt) {
+        const rhs = stack.pop()!, lhs = stack.pop()!;
+        stack.push(BigInt(lhs < rhs));
       } else if (type == Instr.Gt) {
         const rhs = stack.pop()!, lhs = stack.pop()!;
         stack.push(BigInt(lhs > rhs));
+      } else if (type == Instr.LtEq) {
+        const rhs = stack.pop()!, lhs = stack.pop()!;
+        stack.push(BigInt(lhs < rhs || lhs == rhs));
+      } else if (type == Instr.GtEq) {
+        const rhs = stack.pop()!, lhs = stack.pop()!;
+        stack.push(BigInt(lhs > rhs || lhs == rhs));
       } else if (type == Instr.Dup) {
         const a = stack.pop()!;
         stack.push(a, a);
