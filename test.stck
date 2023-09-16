@@ -74,7 +74,7 @@ proc Lexer.push-token :: int ptr int do
   end
 end
 
-proc Lexer.tokenzie :: int ptr do
+proc Lexer.tokenize :: int ptr do
   let len str do
     0 while dup len lt do
       len str rot Lexer.skip-whitespace
@@ -103,7 +103,7 @@ proc main
   cast(ptr)
 
   let fd size contents do
-    size contents Lexer.tokenzie
+    size contents Lexer.tokenize
 
     "Read " puts token-count read64 putu " tokens\n" puts
 
