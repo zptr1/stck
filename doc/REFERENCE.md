@@ -126,7 +126,7 @@ From the example before, `DAYS_COUNT` is set to 7, but if the value of that cons
 
 ## Memory Regions
 
-Memory regions are a simple compile-time feature which improves memory management. Memory regions are defined similarly to constants, except a `memory` keyword is used instead and the value must be integer. The value will be used as a size of the memory region.
+Memory regions are a simple compile-time feature which improves memory management. Memory regions are defined similarly to constants, except a `memory` keyword is used instead and the value must be an integer. The value will be used as a size of the memory region.
 ```
 memory a 255 end
 ```
@@ -281,6 +281,63 @@ Name | Signature | Description
 `<dump-stack>` |              | A debug intrinsic that outputs the current types on the stack once encountered at compile time.
 `<here>`       | `-> int ptr` | Pushes a string `"<path>:<row>:<col>"` representing a location where this intrinsic was called at, where `path` is the full path to the file, `row` is the line number and `col` is the column number. Useful for debug purposes.
 
+# Prelude
+
+Prelude is a built-in library that is included into every program automatically.
+
+### Constants
+
+| Name | Value | Description
+|------|-------|-------------
+| `sizeof(u8)`   | `1` | Size of a 8-bit integer in bytes
+| `sizeof(u16)`  | `2` | Size of a 16-bit integer in bytes
+| `sizeof(u32)`  | `4` | Size of a 32-bit integer in bytes
+| `sizeof(u64)`  | `8` | Size of a 64-bit integer in bytes
+| `sizeof(int)`  | `8` | Size of an integer
+| `sizeof(ptr)`  | `8` | Size of a pointer
+| `sizeof(bool)` | `1` | Size of a boolean
+
+**Note:** while the `sizeof(bool)` constant equals `1` (8-bit), all values in the stack stored as 64-bit integers. Such constants are provided only for memory management.
+
+### Mathematical operations
+
+| Name | Signature | Description
+|------|-----------|-------------
+| `ptr+` | `[a: ptr] [b: int] -> [a + b: ptr]` | Offsets a pointer by an integer by adding them
+| `ptr-` | `[a: ptr] [b: int] -> [a - b: ptr]` | Offsets a pointer by an integer by subtracting them
+| `div` | `[a: int] [b: int] -> [a / b: int]` | Same as `divmod`, but drops the remainder
+| `mod` | `[a: int] [b: int] -> [a % b: int]` | Same as `divmod`, but drops the quotient
+| `idiv` | `int int -> int` | Ditto, but for `idivmod`
+| `imod` | `int int -> int` | Ditto, but for `idivmod`
+
+### Logical operations
+
+| Name | Signature | Description
+|------|-----------|-------------
+| `lnot` | `[a: bool] -> [!a: bool]` | Negates a boolean
+| `land` | `[a: bool] [b: bool] -> [a && b: bool]` | Checks whether both booleans are `true`
+| `lor`  | `[a: bool] [b: bool] -> [a || b: bool]` | Checks whether at least one of the booleans is `true`
+| `lxor` | `[a: bool] [b: bool] -> [a ^^ b: bool]` | Checks whether only one of the booleans is `true`
+
+### Memory Operations
+
+| Name | Signature | Description
+|------|-----------|-------------
+| `!8`    | `int ptr`    | Alias for `write8`
+| `!16`   | `int ptr`    | Alias for `write16`
+| `!32`   | `int ptr`    | Alias for `write32`
+| `!64`   | `int ptr`    | Alias for `write64`
+| `@8`    | `ptr -> int` | Alias for `read8`
+| `@16`   | `ptr -> int` | Alias for `read16`
+| `@32`   | `ptr -> int` | Alias for `read32`
+| `@64`   | `ptr -> int` | Alias for `read64`
+| `!int`  | `int ptr`    | Writes an integer
+| `!ptr`  | `ptr ptr`    | Writes a pointer
+| `!bool` | `ptr ptr`    | Writes a boolean
+| `@int`  | `ptr -> int` | Reads an integer
+| `@ptr`  | `ptr -> ptr` | Reads a pointer
+| `@bool` | `ptr -> ptr` | Reads a boolean
+
 # Standard Library
 
 Note: The standard library is currently not finished. Anything can change at any time.
@@ -329,10 +386,11 @@ Please note that some modules might depend on another (e. g. `io` depends on `sy
 
 | Name | Signature | Description
 |------|-----------|-------------
-| `is-digit` | `[char: int] -> bool` | Checks whether the provided charcode is a digit (`0`..`9`)
-| `parse-uint` | `[str: int ptr] -> int` | Parses an unsigned integer. Any invalid characters are ignored.
-| `parse-int` | `[str: int ptr] -> int` | Parses a signed integer. Any invalid characters are ignored.
+| `streq`       | `[str1: int ptr] [str2: int ptr] -> [str1 == str2: bool]` | Checks whether both strings are equal
 | `cstr-to-str` | `[cstr: ptr] -> [str: int ptr]` | Converts a C-String to a regular string
+| `is-digit`    | `[char: int] -> bool`           | Checks whether the provided charcode is a digit (`0`..`9`)
+| `parse-uint`  | `[str: int ptr] -> int`         | Parses an unsigned integer. Any invalid characters are ignored.
+| `parse-int`   | `[str: int ptr] -> int`         | Parses a signed integer. Any invalid characters are ignored.
 
 **Warning:** `cstr-to-str` DOES NOT copy the data of the string, but actually just calculates the length of it and returns the same pointer.
 

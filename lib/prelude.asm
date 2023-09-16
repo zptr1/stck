@@ -1,4 +1,4 @@
-;; The core FASM code for stck.
+;; The core functionality of stck.
 ;; Automatically included by the compiler.
 
 segment readable executable
@@ -91,15 +91,6 @@ _intrinsics:
     push rax
   }
 
-  macro intrinsic_lt {
-    pop rbx
-    pop rax
-    cmp rax, rbx
-    setl al
-    movzx rax, al
-    push rax
-  }
-
   macro intrinsic_eq {
     pop rbx
     pop rax
@@ -118,11 +109,38 @@ _intrinsics:
     push rax
   }
 
+  macro intrinsic_lt {
+    pop rbx
+    pop rax
+    cmp rax, rbx
+    setl al
+    movzx rax, al
+    push rax
+  }
+
   macro intrinsic_gt {
     pop rbx
     pop rax
     cmp rax, rbx
     setg al
+    movzx rax, al
+    push rax
+  }
+
+  macro intrinsic_lteq {
+    pop rbx
+    pop rax
+    cmp rax, rbx
+    setle al
+    movzx rax, al
+    push rax
+  }
+
+  macro intrinsic_gteq {
+    pop rbx
+    pop rax
+    cmp rax, rbx
+    setge al
     movzx rax, al
     push rax
   }

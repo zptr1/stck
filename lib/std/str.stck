@@ -2,6 +2,32 @@ const Str.len     sizeof(int) offset end
 const Str.data    sizeof(ptr) offset end
 const sizeof(Str) reset end
 
+proc streq :: int ptr int ptr -> bool do
+  // ptr1 ptr2 len2 len1
+  rot 2swap over eq if
+    // ptr1 ptr2 len
+    let ptr1 ptr2 len do
+      len while
+        dup 0 gteq if
+          1 sub
+               ptr1 over ptr+ read8
+          over ptr2 swap ptr+ read8
+          eq
+        else false end
+      do end
+      0 lt
+    end
+  else
+    drop drop drop false
+  end
+end
+
+proc cstr-to-str :: ptr -> int ptr do
+  0 while 2dup ptr+ read8 0 neq do
+    1 add
+  end swap
+end
+
 proc is-digit :: int -> bool do
   dup  1 add '0' gt
   over 1 sub '9' lt
@@ -27,10 +53,4 @@ proc parse-int :: int ptr -> int do
     1 ptr+ swap 1 sub swap
     parse-uint not 1 add
   else parse-uint end
-end
-
-proc cstr-to-str :: ptr -> int ptr do
-  0 while 2dup ptr+ read8 0 neq do
-    1 add
-  end swap
 end

@@ -1,6 +1,12 @@
 include "std"
 
 proc main
-  gettime_ns randseed
-  0 10 randrange print
+   "The quick brown fox jumps over the lazy dog"
+  c"The quick brown fox jumps over the lazy dog" cstr-to-str
+
+  streq if
+    "Strings are equal\n" puts
+  else
+    "Strings are not equal\n" puts
+  end
 end
