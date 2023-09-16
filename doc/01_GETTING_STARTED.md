@@ -13,12 +13,12 @@ proc main
 end
 ```
 You can then run the program using the `run` subcommand:
-```bash
+```console
 $ ./stck run main.stck
 Hello, World!
 ```
 You can also compile the program to an executable using the `build` subcommand:
-```bash
+```console
 $ ./stck build main.stck
 $ ./main
 Hello, World!
@@ -27,7 +27,7 @@ Hello, World!
 **Note:** This language is not cross platform yet and works properly only on Linux. However, you can use the bytecode instead of native if you're using a different operating system.
 
 Use the `--target` (or `-t`) argument to specify the compilation target when running or building a program
-```bash
+```console
 $ ./stck run main.stck --target bytecode
 Hello, World!
 ```

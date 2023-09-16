@@ -1,6 +1,6 @@
 # stck language reference
 
-For a more in-depth explanation, check out the [documentation](./01_GETTING_STARTED.md).
+For a more in-depth explanation, check out the [documentation](./00_INTRODUCTION.md).
 
 Please note that the language is a work in progress and anything can be changed at any time.
 
@@ -176,7 +176,7 @@ Inline procedures are just like regular procedures, except calling them will ins
 Making a procedure inline might save the overhead of a procedure call, improving the performance for cases when e. g. a small procedure is used a lot of times in the code.
 
 ```
-inline proc print-sum do
+inline proc print-sum
   add print
 end
 ```
@@ -190,7 +190,7 @@ Unsafe procedures don't get typechecked, and you can even use `asm` blocks in th
 
 The assembly code inside of the assembly blocks gets inserted into the generated assembly source, which allows for performing much more advanced tasks that require high performance or doing something that the language can't.
 ```
-unsafe proc add :: int int do
+unsafe proc add :: int int -> int do
   asm
     pop rax
     pop rbx
@@ -199,9 +199,10 @@ unsafe proc add :: int int do
   end
 end
 ```
-**Warning:** It is heavily recommended to avoid unsafe procedures unless absolutely necessarry.
-
+Unsafe procedures **must** have a signature defined for them to be used outside of unsafe procedures.
 Unsafe procedures can also be inline.
+
+It is heavily recommended to avoid unsafe procedures unless absolutely necessarry.
 
 # Intrinsics (built-in procedures)
 
