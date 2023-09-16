@@ -253,6 +253,7 @@ export class TypeChecker {
 
         for (let i = expr.bindings.length - 1; i >= 0; i--) {
           ctx.bindings.set(expr.bindings[i], ctx.stack.pop()!);
+          ctx.stackLocations.pop();
         }
 
         this.typecheckBody(expr.body, ctx);
@@ -260,19 +261,19 @@ export class TypeChecker {
         for (const binding of expr.bindings)
           ctx.bindings.delete(binding);
       } else if (expr.kind == AstKind.Push) {
+        ctx.stackLocations.push(expr.loc);
+
         if (expr.type == DataType.AsmBlock) {
           reportError(
             "Assembly blocks cannot be used outside of unsafe procedures", expr.loc
           );
         } else if (expr.type == DataType.Str) {
           ctx.stack.push(DataType.Int, DataType.Ptr);
-          ctx.stackLocations.push(expr.loc, expr.loc);
+          ctx.stackLocations.push(expr.loc);
         } else if (expr.type == DataType.CStr) {
           ctx.stack.push(DataType.Ptr);
-          ctx.stackLocations.push(expr.loc);
         } else {
           ctx.stack.push(expr.type);
-          ctx.stackLocations.push(expr.loc);
         }
       } else {
         throw new Error(`Typechecking is not implemented for ${AstKind[(expr as Expr).kind]}`);
