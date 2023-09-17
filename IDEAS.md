@@ -39,26 +39,33 @@ The `read` procedure accepts a typed pointer and would return a value with the e
 
 ## Variables and Arrays
 
-Variables will be a bit similar to memory regions - they will require to have a defined type instead of a defined size, and would be able to hold only one value instead. Using the variable will push a typed pointer onto the stack.
+#### Variables
 
-An example:
-```
-var inc u64 end
+Variables will be a bit similar to memory regions - they will require to have a defined type instead of a defined size, and would be able to hold only one value instead.
 
-proc increment do
-  inc       // pushes a typed pointer to u64
-  read      // pushes an u64
-  1 add     // increments by one
-  inc write // saves u64 to that variable
-end
+Each variable defines the following things:
+- A constant with the same name as the variable representing a pointer to the variable
+- A procedure prefixed with `@` to read the value of the variable
+- A procedure prefixed with `!` to write a value to the variable
+
+For example,
 ```
+var num u64 end
+```
+would define `num`, `@num` and `!num`.
+
+#### Arrays
 
 Arrays will allow to hold multiple values of a defined type. They would need to have the type and the size both defined, like this:
 ```
 array numbers 10 u64 end
 ```
+This will initialize three procedures: `numbers`, `@numbers` and `!numbers` (where `numbers` is the name of the array).
+Each procedure accepts an integer, which would be an index of the element that you want to access.
 
-**TBD**
+- `numbers` returns a typed pointer to `u64` for the provided index
+- `@numbers` reads an element at the provided index and returns `u64`
+- `!numbers` accepts `u64` and writes an element to the provided index
 
 ## Structures
 
