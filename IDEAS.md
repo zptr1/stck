@@ -1,192 +1,125 @@
-# A few ideas/plans for stck
+# Ideas/plans for stck
 
-Just a collection of my ideas/plans for the language.
-These are currently not a part of the language and might change at any time, or not get implemented at all.
+- Multiple numeric types for different sizes - `u8`, `u16`, `u32`, `u64` - and their signed alternatives (`i8`, `i16`, etc).
+- Get rid of type inference (or, since it is a rewrite, just not implement it)
+- [Type Macros](#type-macros)
+- [Typed Pointers](#typed-pointers)
+- [Better Generics](#better-generics)
+- [Variables and Arrays](#variables-and-arrays)
+- [Structures](#structures)
+- [Quotes](#quotes)
+- [Advanced Type Casting](#advanced-type-casting)
+- [Compilation Stages](#compilation-stages)
+- [(extra) Think of a better name for the language?](#extra-think-of-a-better-name-for-the-language)
 
-While I do have some plans and ideas for the language, I'm still not quite sure where to move to - so any feedback would be appreciated.
+## Type Macros
 
-## Local Memory Regions
+A type macro would be declared with a `type` keyword, followed by the name and the list of types. The defined type macro could then be used in procedure signatures and it would be expanded to the defined list of types.
 
-Currently, memory regions can be defined only globally, and the memory is allocated statically even if it is not used for most of the time. Local memory regions will be allocated only when the procedure is called and will be automatically deallocated when the procedure has finished executing.
+An example:
 ```
-proc main
-  memory a 8 end
+type str int ptr end
 
-  6942 a write64
-  a read64 print
+proc say-hi-to :: str do
+  // ...
 end
 ```
-Small local memory regions will be allocated on the callstack, but large memory regions will be allocated using syscalls instead.
-
-## `let` bindings
-
-#### ✅ Implemented.
-
-Since this language is stack-based, doing complex tasks could get really hard if you have a lot of data on the stack, and you'll likely end up thinking about operating with the stack much more than actually solving the problem. Doing a lot of operations with the stack also ruins readability, and doing small changes could result in you needing to rewrite the entire thing. Also, there's no way to access the 5th or more elements from the stack.
-
-The `let` block will take elements from the stack and bind them to words, allowing you to access the elements from the stack by just using the word.
+would get expanded to
 ```
-proc main
-  34 35
-  let a b do
-    a b add print // prints 69
-    a print       // prints 34
-    b print       // prints 35
-  end
-end
-```
-The values from the stack will be moved to the call stack, and removed once the `let` block closes or the procedure stops executing.
-
-## `offset`/`reset` (idea stolen from Porth)
-
-#### ✅ Implemented.
-
-These compile-time procedures could provide a neat way to do enums or structures using constants
-
-`offset` will accept an integer, return the global increment and increment it by the provided integer, and `reset` will return the global increment and reset it to zero.
-```
-const MONDAY    1 offset end  // 0
-const TUESDAY   1 offset end  // 1
-const WEDNESDAY 1 offset end  // 2
-...
-const COUNT_DAYS reset end  // 7
-```
-This might also be used to define custom "structures", like that:
-```
-const Str.len     sizeof(int) offset end  // 0
-const Str.data    sizeof(ptr) offset end  // 8
-const sizeof(Str) reset end               // 16
-```
-
-## Structures
-
-Managing large amounts of data manually might get quite hard, and manually defining everything for every structure is not really great either. Structures will be a simple compile-time feature that would get expanded into specific constants and procedures.
-
-An example of how would a structure look like:
-```
-struct Str
-  len  int
-  data ptr
-end
-```
-Each field will get expanded to a constant representing the offset of the field and a few inline procedures. For example, the `data` field in the `Str` struct from the example above will get expanded to:
-
-- `Str.data` constant representing the offset of the field in bytes (8)
-- `+Str.data` procedure that would accept a pointer to the `Str` structure and add the offset to it
-- `@Str.data` procedure that would read the value of the field at a given pointer to the structure
-- `!Str.data` procedure that would write the value instead
-
-The structure will also declare a constant representing the size of the structure in bytes, so, the `Str` struct from the example above will declare a constant `sizeof(Str)` with the value 16.
-
-Structure's fields will also be able to use other structures as a type, like this:
-```
-struct Human
-  age  int
-  name Str
-end
-```
-However, the procedures for reading or writing the value of the field won't be declared for such fields, and you will need to offset the pointer instead. For example, you could do `+Human.name @Str.len` to get the length of the name (assuming you have a pointer to the `Human` structure on top of the stack)
-
-## Make the builtin mathematical operations accept any types
-
-#### ✅ Implemented.
-
-That's a small idea but I'm putting it in this list since I'm not sure should I do this or not. Currently, the mathematical intrinsics (such as `add` or `sub`) accept only integers and return only integers. While this makes typechecking more strict and might somewhat be useful(?), casting pointers to integers and back every time you need to offset a pointer gets kinda annoying.
-
-The signature of these intrinsics could be changed to either `a b -> a`, accepting two values of any types and returning a value with the first type (so, adding an integer to a pointer would result in a pointer), or to `a a -> a`, accepting two values of the same type and returning a value with the same type. The former sounds the best imo.
-
-## Quotes
-
-Quotes would be defined by surrounding the code with square brackets (`[` and `]`), like that:
-```
-[ "Hello, World!\n" puts ]
-```
-The code inside of quotes would not get executed immediately, but an address of the quote will be pushed on top of the stack instead, which can then be used with the `call` intrinsic to run the code inside of the quote. For example,
-```
-[ 123 print ]
-dup call
-dup call
-call
-```
-will output the number 123 three times
-
-Quotes would also accept or return specific values to the stack, and the needed types will get automatically inferred by the typechecker. Procedures could also accept an address to a specific quote, although they would need to explicitly provide the needed signature. The type of the quote will be specified by providing the quote's signature in the square brackets. Example:
-```
-// this procedure accepts an address to the quote, which accepts a pointer and returns a boolean,
-// and returns a pointer.
-proc find-where :: [ ptr -> bool ] -> ptr do
+proc say-hi-to :: int ptr do
   // ...
 end
 ```
 
-This feature would indeed be useful for a lot of cases, but implementing it requires changing a lot of stuff related to the current data structure of the typechecking process, and might make the typechecking process much more complicated than it already is. I'll see if I want to implement this in the future.
+## Typed Pointers
 
-## Compile-Time Statements
-
-Compile-time statements would let you to make various operations at compile-time, such as including or excluding code during compilation depending on certain conditions or states of the constants or not letting the program compile at all if the certain condition failed.
-
-#### Compile-time conditions
+A typed pointer would be defined as `<type> ptr-to`. Example:
 ```
-%if <condition> do
-  ...
-%elseif <condition> do
-  ...
-%else
-  ...
-%endif
-```
-(i'm not sure about the prefix yet - either `%`, `#`, `@` or something else)
-
-#### Compile-time assertion (implemented)
-```
-assert "message" <condition> end
-```
-
-For example, the compiler could introduce a global `PLATFORM` constant that would be set to the current operating system the compiler is run on, which would allow you to do something like that:
-```
-%if PLATFORM "linux" eq do
-  include "./syscalls/linux"
-%elseif PLATFORM "windows" eq do
-  include "./syscalls/windows"
-%else
-  assert "This platform is not supported, sorry..." false end
-%endif
-```
-
-This should not be too hard to implement, since I already have compile-time evaluation for constants and memory sizes, and the structure of the preprocessor allows me to add more compile-time stuff to it pretty easily, but at the same time I don't want the language to get too complicated/bloated.
-
-## Top-Level Assembly Blocks
-
-### ❌ Cancelled
-
-Unsafe procedures can use the `asm` block to insert assembly code directly, allowing them to do tasks without the language's limitations, and sometimes even achieving much greater performance. And while this feature makes the language much more unsafe, the restrictions surrounding this feature should make it clear that it's up to the programmer to make sure their code is safe.
-
-Top-level assembly blocks would get embedded before the instructions, which allows you to do even more stuff - such as defining another `.data` section and allocating own stuff here. But while this allows for even more extensibility and I would want to implement this, this breaks the compatibility even more, and there are no proper restrictions around it, making the language even more unsafe.
-
-I'm not really sure if this feature should even be implemented, at least not in the way I planned.
-
-## Assembly Imports
-
-Importing files with an `.asm` extension would include them in the compiled `.asm` source.
-```
-include "./example.asm"
-```
-
-## FFI/Linking
-
-Currently, the compiler outputs a native executable without any linking. Using a linker could improve the cross platform support and allow for even more functionality.
-
-Here's an example:
-```
-// include the `puts` function from the C standard library
-extern puts
-
-// will automatically create 7 procedures - 'puts()', 'puts(1)', 'puts(2)', ...
-// these procedures could then be used to call the included external function using the provided amount of arguments
-// (no arguments for `puts()`, one argument for `puts(1)` and so on)
-
-proc main
-  c"Hello, World\n" puts(1) drop
+proc read-int :: u64 ptr-to do
+  // ...
 end
 ```
-(**TODO:** haven't thought about how would including custom external functions work yet)
+The example above would enforce the pointer to point to an integer and would fail if you try providing the procedure a pointer to something else.
+
+This system does not make memory management fully safe, as typechecking happens at compile-time only, and it is impossible to know the type of some pointers. Due to these limitations, you will be able to pass an untyped pointer to any typed pointer.
+
+## Better Generics
+
+The current type system allows for basic generics, for example `swap :: a b -> b a`. But this system is not really extensible.
+
+The rewrite will overhaul this sytem and allow for more advanced generics.
+Here's an example of how could it work combined with typed pointers:
+```
+proc write :: n n ptr-to      do ... end
+proc read  :: n ptr-to   -> n do ... end
+```
+In this example, the `write` procedure accepts a value of any type, and a typed pointer, which would be required to have the exact same type as the value. So, for example, writing a boolean to a pointer to an integer would fail, but writing an integer to that pointer would be fine.
+
+The `read` procedure accepts a typed pointer and would return a value with the exact same type as the typed pointer. This would fail if
+
+## Variables and Arrays
+
+Variables will be a bit similar to memory regions - they will require to have a defined type instead of a defined size, and would be able to hold only one value instead. Using the variable will push a typed pointer onto the stack.
+
+An example:
+```
+var inc u64 end
+
+proc increment do
+  inc       // pushes a typed pointer to u64
+  read      // pushes an u64
+  1 add     // increments by one
+  inc write // saves u64 to that variable
+end
+```
+
+Arrays will allow to hold multiple values of a defined type. They would need to have the type and the size both defined, like this:
+```
+array numbers 10 u64 end
+```
+
+**TBD**
+
+## Structures
+
+**TBD**
+
+## Quotes
+
+**TBD**
+
+## Advanced Type Casting
+
+All these changes to the type system make type casting quite hard. Currently, type casting is implemented as just compile-time intrinsics that accept a value of any type and return the needed type (e. g. `cast(int)`).
+
+These will remain, but a new `cast` block will be added for more advanced type casts. The contents of the `cast` block will be used as a type, and the value on top of the stack would be converted to that provided type.
+
+An example:
+```
+0
+cast u64 ptr-to end
+```
+Here, an integer gets pushed onto the stack, which then gets cast to a typed pointer to `u64`.
+
+This also allows casting to custom structures or quotes.
+
+## Compilation Stages
+
+- **Lexer:** transforms the source code into a list of tokens
+- **Preprocessor:** takes the list of tokens, handles imports and macros and returns the processed list of tokens
+- **Parser:** parses the list of tokens into AST
+- **Typechecker:** typechecks the AST and outputs something with some additional info idk
+- **Compiler:**
+  * First stage transforms the thing that the typechecker returned into some low representation (some kind of a bytecode)
+  * Second stage does compile-time evaluation for constants and assertions
+  * Third stage generates the outputting executable
+
+**Problem #1:** how do i handle compile-time conditions? they should be handled by the preprocessor, but its impossible if the compile time evaluation is handled by the compiler. i could make it evaluate the list of tokens, but that would lead to duplicated code and some inconvenience
+
+**Problem #2:** what should the typechecker even return?
+
+**Problem #3:** idk aaaaaa my brain doesn't work rn
+
+## (extra) Think of a better name for the language?
+
+"stck" was a random placeholder name I had chosen an year ago when making a programming language similar to this one. But now that the language becomes more like an actual language, this name sounds too unoriginal and weird, since its just a shorter version of **st**a**ck**. I don't like renaming projects once they've been named, but I don't really like the current name of this language either, so I would like to rename this project.
