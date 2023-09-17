@@ -1,0 +1,3 @@
+proc main do
+  34 35 add print
+end
