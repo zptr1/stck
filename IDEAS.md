@@ -2,7 +2,6 @@
 
 - Multiple numeric types for different sizes - `u8`, `u16`, `u32`, `u64` - and their signed alternatives (`i8`, `i16`, etc).
 - Get rid of type inference (or, since it is a rewrite, just not implement it)
-- [Type Macros](#type-macros)
 - [Typed Pointers](#typed-pointers)
 - [Better Generics](#better-generics)
 - [Variables and Arrays](#variables-and-arrays)
@@ -11,25 +10,6 @@
 - [Advanced Type Casting](#advanced-type-casting)
 - [Compilation Stages](#compilation-stages)
 - [(extra) Think of a better name for the language?](#extra-think-of-a-better-name-for-the-language)
-
-## Type Macros
-
-A type macro would be declared with a `type` keyword, followed by the name and the list of types. The defined type macro could then be used in procedure signatures and it would be expanded to the defined list of types.
-
-An example:
-```
-type str int ptr end
-
-proc say-hi-to :: str do
-  // ...
-end
-```
-would get expanded to
-```
-proc say-hi-to :: int ptr do
-  // ...
-end
-```
 
 ## Typed Pointers
 
@@ -123,3 +103,28 @@ This also allows casting to custom structures or quotes.
 ## (extra) Think of a better name for the language?
 
 "stck" was a random placeholder name I had chosen an year ago when making a programming language similar to this one. But now that the language becomes more like an actual language, this name sounds too unoriginal and weird, since its just a shorter version of **st**a**ck**. I don't like renaming projects once they've been named, but I don't really like the current name of this language either, so I would like to rename this project.
+
+---------------
+Cancelled ideas
+===============
+
+## Type Macros
+
+A type macro would be declared with a `type` keyword, followed by the name and the list of types. The defined type macro could then be used in procedure signatures and it would be expanded to the defined list of types.
+
+An example:
+```
+type str int ptr end
+
+proc say-hi-to :: str do
+  // ...
+end
+```
+would get expanded to
+```
+proc say-hi-to :: int ptr do
+  // ...
+end
+```
+
+This is not really needed. Plus that means another reserved keyword. On top of that, macros will probably work everywhere, including in type signatures.
