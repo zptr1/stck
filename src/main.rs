@@ -1,8 +1,8 @@
 use std::{fs::File, io::Read};
 
-use lexer::Lexer;
+use parser::lexer::Lexer;
 
-mod lexer;
+mod parser;
 mod shared;
 
 fn main() {

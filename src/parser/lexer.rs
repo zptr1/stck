@@ -1,8 +1,7 @@
 use std::{str::Chars, iter::Peekable};
 use crate::shared::{error::{Errors, Error}, location::Span};
-use self::token::{Token, Tokens};
 
-pub mod token;
+use super::token::{Token, Tokens};
 
 pub struct Lexer<'a> {
     pub cursor: usize,

@@ -1,10 +1,15 @@
+use crate::parser::token::{TokenKind};
 use super::location::Span;
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Errors {
     UnexpectedEOF,
     UnclosedString,
     EmptyString,
+    InvalidToken {
+        expected: TokenKind,
+        got: TokenKind
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
