@@ -8,7 +8,7 @@ proc fib-recursion :: int -> int do
   end
 end
 
-proc fib-loop
+proc fib-loop do
   1 0 0 while dup 10 lt do
     1 add swap rot
     over add
@@ -17,7 +17,7 @@ proc fib-loop
   end drop drop drop
 end
 
-proc main
+proc main do
   "fib(10) = " puts 10 fib-recursion print
 
   "Fibonacci sequence to 10th term:\n" puts

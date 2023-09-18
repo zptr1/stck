@@ -1,5 +1,13 @@
 include "std"
 
-proc main
-  "Hello, world!\n" puts
+%macro numbers
+  34 35
+%end
+
+%macro print-sum
+  add print
+%end
+
+proc main do
+  numbers print-sum
 end

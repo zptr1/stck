@@ -205,6 +205,9 @@ The compiler could also automatically introduce specific constants depending on 
 
 ## Better Consistency for Preprocessor Directives
 
+#### ❔ Partially Implemented
+- Macros are now prefixed with `%`. I'm a bit unsure about imports right now.
+
 Imports, macros and compile-time conditions are handled entirely by the preprocessor and the existance of them is unknown for the stages after, which makes them preprocessor directives.
 
 While compile-time conditions have a specific prefix before their keywords (`%`) so that they are different from the existing runtime conditions, imports and macros do not have that specific prefix, which makes this kinda inconsistent, and I don't like inconsistency. I also think that having preprocessor directives consistent makes it more convenient/clearer to the programmer.

@@ -364,9 +364,13 @@ export class Preprocessor {
         if (depth.length > 1) {
           body.push(token);
           depth.pop();
+        } else if (isMacro) {
+          body.push(token);
         } else {
           return body;
         }
+      } else if (token.kind == Tokens.EndPre && isMacro) {
+        return body;
       } else if (token.kind == Tokens.EOF && macroExpansionStack.length) {
         macroExpansionStack.pop();
       } else {

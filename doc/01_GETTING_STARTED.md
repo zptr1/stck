@@ -8,7 +8,7 @@ Let's write your first "Hello, World!" program and run it!
 
 Enter the following code into a new file and save it as *`main.stck`*.
 ```
-proc main
+proc main do
   "Hello, world!\n" puts
 end
 ```
@@ -38,17 +38,19 @@ Congratulations, you've just written your first **stck** program!
 
 Let's review this "Hello, World!" program in detail.
 
-The program begins with the line `proc main` and ends with the line `end`.
+The program begins with the line `proc main do` and ends with the line `end`.
 These lines define a **procedure** named `main` - it's a special procedure that gets executed once you run a program.
 
-The body of the procedure begins after its name and ends at `end`, so, in this program, the body of the procedure would be
+The body of the procedure begins after `do` and ends at `end`, so, in this program, the body of the procedure would be
 ```
   "Hello, World\n" puts
 ```
-This line does all the work in this tiny program.
+This line does all the work in this tiny program. Let's see what happens here:
 
 - `"Hello, World\n"` is a string literal, which gets pushed onto the stack when encountered;
 - `puts` is a built-in word which takes the string from the stack and outputs it to the console.
+
+...
 
 ---
 

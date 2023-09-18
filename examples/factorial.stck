@@ -6,6 +6,6 @@ proc factorial :: int -> int do
   end drop drop
 end
 
-proc main
+proc main do
   "10! = " puts 10 factorial print
 end

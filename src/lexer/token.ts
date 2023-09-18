@@ -1,38 +1,55 @@
 import { Location } from "../shared";
 
 export const KEYWORDS = new Set([
-  "proc", "unsafe", "inline", "macro", "const", "memory",
-  "include", "end", "if", "if*", "else", "while", "do",
-  "assert", "let", "::", "->"
+  "%macro",
+  "%end",
+  "include",
+  "proc",
+  "unsafe",
+  "inline",
+  "::",
+  "->",
+  "const",
+  "memory",
+  "assert",
+  "if",
+  "if*",
+  "else",
+  "while",
+  "let",
+  "do",
+  "end",
 ]);
 
 export enum Tokens {
+  // Literals
   Int = "<int>",
   Str = "<str>",
-  CStr = "<cstr>",  // C-style (null-terminated) string
+  CStr = "<cstr>",
   Boolean = "<boolean>",
   Word = "<word>",
   AsmBlock = "<asm>",
-
+  // Preprocessor Directives
+  Macro = "%macro",
+  EndPre = "%end",
+  Include = "include",
+  // Keywords
   Proc = "proc",
   Unsafe = "unsafe",
   Inline = "inline",
-  Macro = "macro",
+  SigIns = "::",
+  SigOuts = "->",
   Const = "const",
   Memory = "memory",
-  Include = "include",
-  End = "end",
+  Assert = "assert",
   If = "if",
   ChainedIf = "if*",
   Else = "else",
   While = "while",
-  Do = "do",
-  Assert = "assert",
   Let = "let",
-  SigIns = "::",
-  SigOuts = "->",
-
-  // Special token appended at the end of the file
+  Do = "do",
+  End = "end",
+  // Special tokens
   EOF = "EOF"
 }
 

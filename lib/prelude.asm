@@ -336,8 +336,6 @@ _builtins:
       ret
 
   check_callstack_overflow:
-    ; mov rcx, 0
-    ; mov rdx, 1
     cmp rbp, callstack
     jge .L2
       mov rax, 1

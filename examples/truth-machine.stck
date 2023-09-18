@@ -2,7 +2,7 @@ include "std"
 
 memory input 1 end
 
-proc main
+proc main do
   1 input stdin read drop
 
   input read8 '1' eq if

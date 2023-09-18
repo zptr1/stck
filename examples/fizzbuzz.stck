@@ -1,6 +1,6 @@
 include "std"
 
-proc main
+proc main do
   1 while dup 100 lt do
     dup  3 mod
     over 5 mod

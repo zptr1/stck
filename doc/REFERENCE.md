@@ -35,7 +35,7 @@ Name   | Description
 ## Procedures
 You can use the `proc` keyword to define a procedure.
 ```
-proc main
+proc main do
   // code here
 end
 ```
@@ -43,11 +43,11 @@ The name of the procedure can be anything that is not a literal and can have any
 
 You can use the name of a procedure to call it. Procedures can also accept data from the stack and return data to the stack. Example:
 ```
-proc print-sum
+proc print-sum :: int int -> int do
   add print
 end
 
-proc main
+proc main do
   34 35 print-sum
 end
 ```
@@ -56,12 +56,8 @@ end
 
 A signature is a list of input and output types - input types determine what is needed on top of the stack to call the procedure, and output types determine what the procedure should return into the stack when it finishes executing.
 
-To determine whether a procedure is used correctly and there are enough data on top of the stack to call it, the typechecker needs to know the procedure's signature. This language has type inference, which will attempt to automatically determine the signature of a procedure. Although, this might not work as intended sometimes and has some restrictions (e. g. no recursion). You can define the signature of the procedure manually:
-```
-proc add :: int int -> int do
-  // code here
-end
-```
+Each procedure that takes something from the stack or returns something onto the stack needs to have a signature defined to ensure that everything is handled properly.
+
 `::` is used to provide the input types, and `->` is used to provide the output types.
 Both of them are optional, for example:
 ```
@@ -70,7 +66,7 @@ proc a :: int do
 end
 
 proc b -> int do
-  // ... returns an integer to the stack
+  // ... returns an integer onto the stack
 end
 
 proc c do
@@ -144,26 +140,26 @@ Technically, only one memory region gets allocated, and memory regions just defi
 
 TBD
 ```
-macro print-sum
+%macro print-sum
   add print
-end
+%end
 
-macro numbers
+%macro numbers
   34 35
-end
+%end
 
-proc main
+proc main do
   numbers print-sum
   // ... expands to
   //     34 35 add print
 end
 ```
 ```
-macro loop
+%macro loop
   \ while true
-end
+%end
 
-proc main
+proc main do
   loop do "hello, world\n" puts end
   // ... expands to
   // while true do ... end
@@ -176,7 +172,7 @@ Inline procedures are just like regular procedures, except calling them will ins
 Making a procedure inline might save the overhead of a procedure call, improving the performance for cases when e. g. a small procedure is used a lot of times in the code.
 
 ```
-inline proc print-sum
+inline proc print-sum :: int int -> int do
   add print
 end
 ```
@@ -199,7 +195,6 @@ unsafe proc add :: int int -> int do
   end
 end
 ```
-Unsafe procedures **must** have a signature defined for them to be used outside of unsafe procedures.
 Unsafe procedures can also be inline.
 
 It is heavily recommended to avoid unsafe procedures unless absolutely necessarry.

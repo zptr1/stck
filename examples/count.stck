@@ -2,7 +2,7 @@ include "std"
 
 memory input_buf 64 end
 
-proc main
+proc main do
   "n = " puts
 
   64 input_buf stdin read

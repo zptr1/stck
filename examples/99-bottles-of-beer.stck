@@ -1,12 +1,12 @@
 include "std"
 
-proc suffix
+proc suffix :: int do
   1 eq lnot if
     "s" puts
   end
 end
 
-proc main
+proc main do
   99 while dup 0 gt do
     dup putu " bottle" puts dup suffix " of the beer on the wall,\n" puts
     dup putu " bottle" puts dup suffix " of the beer.\n" puts
