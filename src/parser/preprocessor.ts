@@ -1,6 +1,6 @@
 import { DataType, DataTypeArray, File, INTRINSICS, Location, formatLoc, tokenToDataType } from "../shared";
 import { Context, createContext, handleSignature, validateContextStack } from "../compiler";
-import { StackElement, reportError, reportErrorWithStack, reportErrorWithoutLoc } from "../errors";
+import { StackElement, reportError, reportErrorWithStack, reportErrorWithoutLoc, reportWarning } from "../errors";
 import { AstKind, Const, IProc, IProgram, Proc } from ".";
 import { Lexer, Token, Tokens } from "../lexer";
 import { ROOT_DIR } from "../const";
@@ -431,7 +431,16 @@ export class Preprocessor {
       this.next();
       proc.signature = { ins: [], outs: [] };
       proc.signature.outs = this.readProcSignature([Tokens.Do])[0];
-    } else if (this.peek()?.kind == Tokens.Do) this.next();
+    } else if (this.peek()?.kind == Tokens.Do) {
+      proc.signature = { ins: [], outs: [] };
+      this.next();
+    } else {
+      reportWarning(
+        "Signature inference is deprecated and will be removed in the future", proc.loc, [
+          "You should define a signature for this procedure"
+        ]
+      );
+    }
 
     proc.body = this.readBody();
 
