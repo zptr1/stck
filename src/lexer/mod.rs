@@ -1,8 +1,6 @@
 use std::{str::Chars, iter::Peekable};
-
 use crate::shared::{error::{Errors, Error}, location::Span};
-
-use self::token::{Token, Tokens, TokenData};
+use self::token::{Token, Tokens};
 
 pub mod token;
 
@@ -67,22 +65,20 @@ impl<'a> Lexer<'a> {
 
         if numeric {
             Ok(Token::new(
-                Tokens::Int,
-                TokenData::Int(word.parse().unwrap()),
+                Tokens::Int(word.parse().unwrap()),
                 self.span()
             ))
         } else {
-            // TODO: find a better way to do this
-            Ok(
+            Ok(Token::new(
                 match word.as_str() {
-                    "true"  => Token::new(Tokens::Bool, TokenData::Bool(true), self.span()),
-                    "false" => Token::new(Tokens::Bool, TokenData::Bool(false), self.span()),
-                    "proc"  => Token::new(Tokens::Proc, TokenData::None, self.span()),
-                    "do"    => Token::new(Tokens::Do, TokenData::None, self.span()),
-                    "end"   => Token::new(Tokens::End, TokenData::None, self.span()),
-                    _ => Token::new(Tokens::Word, TokenData::Word(word), self.span())
-                }
-            )
+                    "true"  => Tokens::Bool(true),
+                    "false" => Tokens::Bool(false),
+                    "proc"  => Tokens::Proc,
+                    "do"    => Tokens::Do,
+                    "end"   => Tokens::End,
+                    _ => Tokens::Word(word)
+                }, self.span()
+            ))
         }
     }
 
@@ -109,7 +105,7 @@ impl<'a> Lexer<'a> {
         if string.is_empty() {
             Err(Errors::EmptyString)
         } else {
-            Ok(Token::new(Tokens::Str, TokenData::Str(string), self.span()))
+            Ok(Token::new(Tokens::Str(string), self.span()))
         }
     }
 
