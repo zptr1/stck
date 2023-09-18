@@ -9,7 +9,7 @@ While I do have some plans and ideas for the language, I'm still not quite sure 
 
 This is not directly related to the features of the language and rather optional, but I still want to think about it.
 
-I don't really like the name of the language anymore, as **stck** was just a placeholder name for my small programming language I made an year ago and never shared anywhere. I didn't have any ideas how to name this language when creating it, so I used that same placeholder name. I was fine with the name at first but now its becoming a proper programming language, and just imo, this name sounds kinda weird and too generic, and might be hard to pronounce.
+I don't really like the name of the language anymore, as **stck** was just a placeholder name for my small programming language I made an year ago and never shared anywhere. I didn't have any ideas how to name this language when creating it, so I used the same placeholder name. I was fine with the name at first but now its becoming a proper programming language, and just imo, this name sounds kinda weird and too generic, and might be hard to pronounce.
 
 I don't have any ideas what would the new name be, but should I consider renaming this language?
 
@@ -17,13 +17,13 @@ I don't have any ideas what would the new name be, but should I consider renamin
 
 Currently, the `if` conditions have the following syntax:
 ```
-<condition> if <body> else <condition> if* <body> else <body> end
+[condition] if <body> else [condition] if* <body> else <body> end
 ```
-where the condition part is not even required, as it just takes an element from the top of the stack.
+This doesn't even treat condition as a separate part, as it just takes a boolean from the top of the stack.
 
-This might be quite confusing and inconvenient especially to the new programmers.
+This might be quite confusing and inconvenient.
 
-This is also a bit inconsistent, considering that the `while` loops have the condition after the keyword, and compile-time conditions (that are not implemented yet) also have the condition after the keyword.
+This is also a bit inconsistent, considering that the `while` loops have the condition after the keyword, and compile-time conditions (that are not implemented yet) will also have the condition after the keyword.
 
 The syntax of the `if` conditions could be changed to something like this instead:
 ```
@@ -53,14 +53,17 @@ end
 ```
 The example above would enforce the pointer to point to an integer and would fail if you try providing the procedure a pointer to something else.
 
-This system does not make memory management fully safe, as typechecking happens at compile-time only, and it is impossible to know the type of some pointers.
+Typed pointers would not be allowed to be offset like untyped pointers, and would require using special elements instead (structures, variables, etc).
 
-I'm unsure about what to do about these limitations now. I could either
+I'm unsure what to do about untyped pointers though. I could either
 - prohibit passing untyped pointers to typed pointers, enforcing type casting
 - allow that, but show a warning every time that happens
 - allow that without any warnings
 
-Typed pointers would not be allowed to be offset.
+The first option sounds the best but at the same time it could get annoying in some cases, as you would need to do type casts every time when passing an untyped pointer to a procedure that requires a typed pointer.
+
+The last option doesn't sound really good, as this makes typed pointers a bit pointless.
+The second option could be a compromise between the other two, although having a lot of warnings every time you run or build a program would get annoying.
 
 #### Structures
 
@@ -103,9 +106,9 @@ I want to remake the system, allowing for more advanced usages, for example this
 proc write :: n n ptr-to      do ... end
 proc read  :: n ptr-to   -> n do ... end
 ```
-In this example, the `write` procedure accepts a value of any type, and a typed pointer, which would be required to have the exact same type as the provided value. So, for example, calling `write` providing an integer would require a typed pointer to an integer.
+In this example, the `write` procedure would accept a value of any type and a typed pointer which would be required to have the exact same type as the provided value. So, for example, calling `write` providing an integer would require a typed pointer to an integer, and providing any other pointer would result in a compilation error.
 
-Same goes for `read` - it accepts a typed pointer of any type, and returns the value of the exact same type. For example, calling `read` providing a typed pointer to a boolean would return a boolean.
+Same goes for `read` - it'd accept a typed pointer of any type, and return the value of the exact same type. For example, calling `read` providing a typed pointer to a boolean would return a boolean.
 
 This will be restricted to primitive types only, and untyped pointers **will not** be allowed.
 
@@ -151,10 +154,10 @@ Each array will also define two constants - `sizeof()` and `length()`, with the 
 
 So, in the example provided abouve, the `numbers` array would define:
 - A `numbers` procedure, accepting an index and returning a typed pointer to an element in the array at the provided index.
-- A `@numbers` procedure that reads the element at the provided index, returning `u64` in our case.
+- A `@numbers` procedure that reads the element at the provided index, which returns `u64` in our case.
 - A `!numbers` procedure that writes a new value to the element at the provided index.
-- A `sizeof(numbers)` constant that has the value of `10 * 8` -> `80` in our case (8 is the size of u64)
-- A `length(numbers)` constant that has the value of `10` in our case
+- A `sizeof(numbers)` constant which would have the value of `10 * 8` -> `80` in our case (8 is the size of u64)
+- A `length(numbers)` constant which would have the value of `10` in our case
 
 The `@` and `!` procedures are **omitted** if a structure is used as a type of the array.
 
@@ -164,9 +167,7 @@ sorry im too lazy to explain this
 
 #### Advanced Type Casting
 
-All these changes to the type system make type casting quite hard. Currently, type casting is implemented as just compile-time intrinsics that accept a value of any type and return the needed type (e. g. `cast(int)`).
-
-These will remain, but a new `cast` block will be added for more advanced type casts. The contents of the `cast` block will be used as a type, and the value on top of the stack would be converted to that provided type.
+Currently, type casting is implemented as just compile-time intrinsics that accept a value of any type and return the needed type (e. g. `cast(int)`). This wouldn't work well with the new type system. To fix this, a new `cast` block could be added for more advanced type casts. The contents of the `cast` block will be used as a type, and the value on top of the stack would be converted to that provided type.
 
 An example:
 ```
@@ -175,11 +176,11 @@ cast u64 ptr-to end
 ```
 Here, an integer gets pushed onto the stack, which then gets cast to a typed pointer to `u64`.
 
-This also allows casting to custom structures or quotes.
+**Note:** The example above should not be used. It is used here as just an example, and using it in an actual code might lead to undefined behavior.
 
 ## Compile-Time Conditions
 
-Compile-time conditions would let you to include or exclude code during compilation depending on certain conditions or states of the constants.
+Compile-time conditions will let you to include or exclude code during compilation depending on certain conditions or states of the constants.
 
 ```
 %if <condition> do
@@ -204,9 +205,9 @@ The compiler could also automatically introduce specific constants depending on 
 
 ## Better Consistency for Preprocessor Directives
 
-Imports, macros and compile-time conditions are handled entirely by the preprocessor and the existance of them is unknown for the stages after, which makes them a preprocessor directive.
+Imports, macros and compile-time conditions are handled entirely by the preprocessor and the existance of them is unknown for the stages after, which makes them preprocessor directives.
 
-While compile-time conditions have a specific prefix before their keywords (`%`) so that they are different from the existing runtime conditions, imports and macros do not have that specific prefix, which makes this kinda inconsistent, and I don't like inconsistency. I also think that having preprocessor directives consistent makes it clearer and more convenient to the user what is handled by the preprocessor and what is not.
+While compile-time conditions have a specific prefix before their keywords (`%`) so that they are different from the existing runtime conditions, imports and macros do not have that specific prefix, which makes this kinda inconsistent, and I don't like inconsistency. I also think that having preprocessor directives consistent makes it more convenient/clearer to the programmer.
 
 An example
 ```
