@@ -147,9 +147,9 @@ function main() {
         stdio: ["inherit", "inherit", "inherit"],
         cmd: [path],
         onExit(_, code, sig) {
-          if (typeof sig == "string" && sig == "SIGSEGV") {
-            console.error("Segmentation fault");
-            process.exit(1);
+          if (typeof sig == "string") {
+            console.error(ERROR, "Process exited with", chalk.bold(sig));
+            process.exit(code ?? 1);
           } else {
             process.exit(code || 0);
           }
