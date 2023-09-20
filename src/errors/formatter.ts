@@ -1,6 +1,7 @@
 import { Context, Location, formatLoc, frameToString } from "../shared";
 import { Err, ErrorSpan } from ".";
 import chalk from "chalk";
+import plib from "path";
 
 export class StckError {
   private readonly spans: ErrorSpan[] = [];
@@ -76,7 +77,7 @@ export class StckError {
     ) as any;
 
     out.push(`${chalk.red.bold("error:")} ${this.message}`);
-    out.push(`${" ".repeat(padding)} ${color("-->")} ${chalk.gray(formatLoc(this.loc!))}`);
+    out.push(`${" ".repeat(padding)} ${color("-->")} ${chalk.gray(plib.relative(process.cwd(), formatLoc(this.loc!)))}`);
     const emptyLineNo = ` ${" ".repeat(padding)} ${color("|")}`;
     out.push(emptyLineNo);
 
