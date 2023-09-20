@@ -1,6 +1,6 @@
 import { KEYWORDS, Token, Tokens } from "./token";
 import { File, formatLoc } from "../shared";
-import { reportError } from "../errors";
+import { Err, StckError } from "../errors";
 import { Reader } from "../util";
 
 export class Lexer {
@@ -20,10 +20,12 @@ export class Lexer {
   }
 
   private error(message: string): never {
-    reportError(message, {
-      file: this.file,
-      span: this.reader.span()
-    });
+    return new StckError("invalid syntax")
+      .add(Err.Error, {
+        file: this.file,
+        span: this.reader.span()
+      }, message)
+      .throw();
   }
 
   private skipWhitespace(): void {

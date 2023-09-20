@@ -1,5 +1,5 @@
 %include "std"
 
 proc main do
-  "Hello, World!\n" puts
+  "Hello, world\n" puts
 end

@@ -1,7 +1,7 @@
-import { reportError, reportErrorWithoutLoc } from "../errors";
+import { ExpansionStackElement, File, Location } from "../shared";
 import { Lexer, Token, Tokens } from "../lexer";
+import { Err, StckError } from "../errors";
 import { existsSync, statSync } from "fs";
-import { File, Location } from "../shared";
 import { ROOT_DIR } from "../const";
 import chalk from "chalk";
 import plib from "path";
@@ -15,13 +15,14 @@ export class Preprocessor {
   private readonly includedFiles = new Set<string>();
   private readonly lastToken: Token;
 
-  private macroExpansionDepth: number = 0;
+  private readonly macroExpansionStack: ExpansionStackElement[] = [];
 
   constructor(
     private readonly tokens: Token[]
   ) {
-    if (tokens.length == 0)
-      reportErrorWithoutLoc("The file is empty");
+    if (tokens.length == 0) {
+      new StckError("the file is empty").throw();
+    }
 
     tokens.reverse();
     this.lastToken = tokens[0];
@@ -36,16 +37,18 @@ export class Preprocessor {
   }
 
   private nextOf(kind: Tokens): Token {
-    if (!this.tokens.length) reportError(
-      `Expected ${chalk.yellow.bold(kind)} but got ${chalk.yellow.bold("EOF")}`,
-      this.lastToken.loc
-    );
+    if (!this.tokens.length) {
+      new StckError("unexpected token")
+        .add(Err.Error, this.lastToken.loc, `expected ${kind} but got EOF`)
+        .throw();
+    }
 
     const token = this.next();
-    if (token.kind != kind) reportError(
-      `Expected ${chalk.yellow.bold(kind)} but got ${chalk.yellow.bold(token.kind)}`,
-      token.loc
-    );
+    if (token.kind != kind) {
+      new StckError("unexpected token")
+        .add(Err.Error, token.loc, `expected ${kind}`)
+        .throw();
+    }
 
     return token;
   }
@@ -62,25 +65,32 @@ export class Preprocessor {
     }
   }
 
-  private expandMacro(body: Token[], loc: Location) {
-    if (this.macroExpansionDepth >= 100) {
-      reportError("Macro expansion overflow", loc);
+  private expandMacro(name: string, body: Token[], loc: Location) {
+    const idx = this.macroExpansionStack.findIndex((x) => x.name == name);
+    if (idx > -1) {
+      const err = new StckError("recursive macro expansion");
+      for (let i = idx; i < this.macroExpansionStack.length; i++) {
+        const expansion = this.macroExpansionStack[i];
+        if (expansion.name == name) {
+          err.add(Err.Note, expansion.loc, `first expansion of ${name}`);
+        } else {
+          err.add(Err.Trace, expansion.loc);
+        }
+      }
+
+      err.add(Err.Error, loc, `${name} expanded again here`);
+      err.throw();
     }
 
-    this.macroExpansionDepth++;
-    // Will decrease `macroExpansionDepth` once encountered
+    this.macroExpansionStack.push({ name, loc });
     this.tokens.push({
       kind: Tokens.EOF,
       loc
     });
 
     for (let i = body.length - 1; i >= 0; i--) {
-      this.tokens.push({
-        kind: body[i].kind,
-        value: body[i].value,
-        // todo
-        loc
-      });
+      // TODO: `expandedFrom?: Location`
+      this.tokens.push(body[i]);
     }
   }
 
@@ -93,7 +103,10 @@ export class Preprocessor {
         // relative import (to the current file)
         const path = plib.resolve(plib.join(token.loc.file.path, "..", raw));
         if (!exists(path)) {
-          reportError("Unresolved import", str.loc);
+          new StckError("unresolved import")
+            .add(Err.Error, token.loc, "could not find this file")
+            .addHint(`import interpreted as ${chalk.yellow(path)}`)
+            .throw();
         }
 
         this.include(path, token.loc.file);
@@ -101,7 +114,10 @@ export class Preprocessor {
         // absolute import
         const path = plib.resolve(raw);
         if (!exists(path)) {
-          reportError("Unresolved import", str.loc);
+          new StckError("unresolved import")
+            .add(Err.Error, token.loc, "could not find this file")
+            .addHint(`import interpreted as ${chalk.yellow(path)}`)
+            .throw();
         }
 
         this.include(path, token.loc.file);
@@ -114,7 +130,10 @@ export class Preprocessor {
 
         const path = paths.find((x) => exists(x));
         if (!path) {
-          reportError("Unresolved import", str.loc);
+          return new StckError("unresolved import")
+            .add(Err.Error, token.loc, "could not find this file")
+            .addHint(`import interpreted as ${chalk.yellow(path)}`)
+            .throw();
         }
 
         this.include(path, token.loc.file);
@@ -122,9 +141,9 @@ export class Preprocessor {
     } else if (token.kind == Tokens.Macro) {
       this.readMacro(this.nextOf(Tokens.Word).value, token.loc);
     } else if (token.kind == Tokens.EOF) {
-      this.macroExpansionDepth--;
+      this.macroExpansionStack.pop();
     } else if (token.kind == Tokens.Word && this.macros.has(token.value)) {
-        this.expandMacro(this.macros.get(token.value)!, token.loc);
+        this.expandMacro(token.value, this.macros.get(token.value)!, token.loc);
     } else {
       out.push(token);
     }
@@ -145,7 +164,9 @@ export class Preprocessor {
       }
     }
 
-    reportError("Unclosed macro", loc);
+    new StckError("unclosed block")
+      .add(Err.Error, loc, "this block was never closed")
+      .throw();
   }
 
   public preprocess(): Token[] {

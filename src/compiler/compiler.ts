@@ -1,8 +1,8 @@
 import { AstKind, Const, Expr, LiteralType, Proc, Program, WordType } from "../parser";
 import { INTRINSICS, Instr, Instruction, Location, formatLoc } from "../shared";
 import { CompilerContext, IRProgram, createContext } from "./ir";
-import { reportError, reportErrorWithoutLoc } from "../errors";
 import { i32_MAX, i32_MIN, i64_MAX, i64_MIN } from "../const";
+import { Err, StckError } from "../errors";
 import { assertNever } from "../util";
 import chalk from "chalk";
 
@@ -104,17 +104,17 @@ export class Compiler {
       } else if (instr.kind == Instr.Print) {
         console.log(chalk.cyan.bold("debug:"), chalk.yellow(stack.pop()), "@", formatLoc(loc), "(comptime expr)");
       } else if (instr.kind == Instr.PushMem) {
-        reportError("Cannot use memories in compile-time expressions", loc);
+        new StckError("invalid compile-time expression")
+          .add(Err.Error, loc, "memories are not allowed here")
+          .throw();
       } else if (instr.kind == Instr.Call) {
-        reportError("Procedure calls are not allowed in compile-time expressions", loc);
-      } else if (
-        instr.kind == Instr.Jmp
-        || instr.kind == Instr.JmpIf
-        || instr.kind == Instr.JmpIfNot
-      ) {
-        reportError("Control flow is not allowed in compile-time expressions", loc);
+        new StckError("invalid compile-time expression")
+          .add(Err.Error, loc, "procedure calls are not allowed here")
+          .throw();
       } else {
-        reportError(`Cannot use ${Instr[instr.kind]} in a compile-time expression`, loc);
+        new StckError("invalid compile-time expression")
+          .add(Err.Error, loc, `cannot use ${Instr[instr.kind]} here`)
+          .throw();
       }
     }
 
@@ -148,7 +148,9 @@ export class Compiler {
       } else if (expr.type == LiteralType.Int) {
         if (expr.value > i32_MAX || expr.value < i32_MIN) {
           if (expr.value > i64_MAX || expr.value < i64_MIN) {
-            reportError("The integer is too big", expr.loc);
+            new StckError("invalid literal")
+              .add(Err.Error, expr.loc, `the integer is too big for i64`)
+              .throw();
           }
 
           out.push({
@@ -183,7 +185,29 @@ export class Compiler {
       } else if (expr.type == WordType.Proc) {
         const proc = this.program.procs.get(expr.value)!;
         if (proc.inline) {
+          const idx = ctx.inlineExpansionStack.findIndex((x) => x.name == proc.name);
+          if (idx > -1) {
+            const err = new StckError("recursive inline procedure expansion");
+            for (let i = idx; i < ctx.inlineExpansionStack.length; i++) {
+              const expansion = ctx.inlineExpansionStack[i];
+              if (expansion.name == proc.name) {
+                err.add(Err.Note, expansion.loc, `first expansion of ${proc.name}`);
+              } else {
+                err.add(Err.Trace, expansion.loc);
+              }
+            }
+
+            err.add(Err.Error, expr.loc, `${proc.name} expanded again here`);
+            err.throw();
+          }
+
+          ctx.inlineExpansionStack.push({
+            loc: expr.loc,
+            name: proc.name
+          });
+
           this.compileBody(proc.body, out, ctx);
+          ctx.inlineExpansionStack.pop();
         } else {
           if (!this.compiledProcs.has(expr.value)) {
             this.compileProcQueue.push(expr.value);
@@ -320,7 +344,9 @@ export class Compiler {
     this.compileBody(memory.body, instr, createContext(memory.loc));
     const size = Number(this.evaluate(memory.loc, instr));
     if (size < 1 || !Number.isSafeInteger(size)) {
-      reportError("Invalid memory size", memory.loc);
+      new StckError("invalid compile-time expression")
+        .add(Err.Error, memory.loc, "invalid memory size")
+        .throw();
     }
 
     this.memoryOffset += size;

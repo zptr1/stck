@@ -9,6 +9,11 @@ export interface Location {
   span: Span;
 }
 
+export interface ExpansionStackElement {
+  name: string;
+  loc: Location;
+}
+
 export function formatLoc(location: Location): string {
   const loc = location.file.lineColumn(location.span[0]);
   return `${location.file.path}:${loc?.line}:${loc?.col}`;

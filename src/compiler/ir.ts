@@ -1,8 +1,7 @@
-import { Instruction, Location } from "../shared";
-import { StackElement } from "../errors";
+import { ExpansionStackElement, Instruction, Location } from "../shared";
 
 export interface CompilerContext {
-  inlineExpansionStack: StackElement[];
+  inlineExpansionStack: ExpansionStackElement[];
   bindings: Map<string, number>;
   loc: Location
 }

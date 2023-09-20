@@ -1,6 +1,6 @@
 import { DataType, Location, TypeFrame, frameToString, Context, INTRINSICS, cloneContext, createContext, formatLoc } from "../shared";
 import { AstKind, Const, Expr, LiteralType, Proc, Program, WordType } from "../parser";
-import { reportError, reportErrorWithStackData } from "../errors";
+import { Err, StckError } from "../errors";
 import { assertNever } from "../util";
 import chalk from "chalk";
 
@@ -8,12 +8,34 @@ function handleSignature(
   loc: Location, ctx: Context,
   ins: TypeFrame[], outs: TypeFrame[],
   strictLength: boolean = true,
-  suffix: string = "", notes: string[] = []
+  modifyStack: boolean = true,
+  suffix: string = "",
+  onErr: (err: StckError) => void = ()=>{}
 ) {
   if (ctx.stack.length < ins.length) {
-    reportErrorWithStackData(`Insufficient data on the stack ${suffix}`, loc, ctx, ins, notes);
+    const err = new StckError("insufficient data on the stack");
+    err.addStackElements(ctx, (e) => `${e} introduced here`);
+    err.add(
+      Err.Error, loc,
+      `${ctx.stack.length ? "also " : ""}needs ${
+        ins.slice(ctx.stack.length)
+        .map((x) => frameToString(x))
+        .join(", ")
+      } ${suffix}`
+    );
+
+    onErr(err);
+    err.throw();
   } else if (strictLength && ctx.stack.length > ins.length) {
-    reportErrorWithStackData(`Unhandled data on the stack ${suffix}`, loc, ctx, ins, notes);
+    const err = new StckError("unhandled data on the stack");
+    err.addStackElements(
+      ctx, (e) => `${e} introduced here`,
+      ctx.stack.length - ins.length - 1
+    );
+
+    err.add(Err.Error, loc, `unhandled data ${suffix}`);
+    onErr(err);
+    err.throw();
   }
 
   const cmp = ctx.stack.slice(-ins.length);
@@ -21,44 +43,30 @@ function handleSignature(
 
   for (let i = 0; i < ins.length; i++) {
     if (!typeFrameEquals(ins[i], cmp[i], generics)) {
-      // TODO: highlight which type frame did not match?
-      reportErrorWithStackData(
-        `Unexpected data on the stack ${suffix}`,
-        loc, ctx, ins.map((x) => insertGenerics(x, generics)), notes
+      const err = new StckError("unexpected data on the stack");
+      err.addStackElements(
+        ctx, (frame, i) => {
+          const expected = frameToString(ins[i]);
+          return frame == expected
+            ? `${frame} introduced here`
+            : `expected ${expected} but got ${frame}`
+        },
+        ctx.stack.length - ins.length
       );
+
+      err.add(Err.Error, loc, `unexpected data ${suffix}`);
+      onErr(err);
+      err.throw();
     }
   }
 
-  ctx.stack.splice(-ins.length, ins.length);
-  ctx.stackLocations.splice(-ins.length, ins.length);
+  if (modifyStack) {
+    ctx.stack.splice(-ins.length, ins.length);
+    ctx.stackLocations.splice(-ins.length, ins.length);
 
-  for (let i = 0; i < outs.length; i++) {
-    ctx.stack.push(insertGenerics(outs[i], generics));
-    ctx.stackLocations.push(loc);
-  }
-}
-
-/// `handleSignature`, except it does not modify the data on the stack and used only to validate the stack
-function validateStack(
-  loc: Location, ctx: Context, stack: TypeFrame[],
-  strictLength: boolean, suffix: string = "", notes: string[] = []
-) {
-  if (ctx.stack.length < stack.length) {
-    reportErrorWithStackData(`Insufficient data on the stack ${suffix}`, loc, ctx, stack, notes);
-  } else if (strictLength && ctx.stack.length > stack.length) {
-    reportErrorWithStackData(`Unhandled data on the stack ${suffix}`, loc, ctx, stack, notes);
-  }
-
-  const cmp = ctx.stack.slice(-stack.length);
-  const generics = new Map<string, TypeFrame>();
-
-  for (let i = 0; i < stack.length; i++) {
-    if (!typeFrameEquals(stack[i], cmp[i], generics)) {
-      // TODO: highlight which type frame did not match?
-      reportErrorWithStackData(
-        `Unexpected data on the stack ${suffix}`,
-        loc, ctx, stack, notes
-      );
+    for (let i = 0; i < outs.length; i++) {
+      ctx.stack.push(insertGenerics(outs[i], generics));
+      ctx.stackLocations.push(loc);
     }
   }
 }
@@ -125,10 +133,10 @@ export class TypeChecker {
       } else if (expr.type == LiteralType.Bool) {
         ctx.stack.push({ type: DataType.Bool });
       } else if (expr.type == LiteralType.Assembly) {
-        reportError(
-          "Assembly blocks cannot be used in safe procedures",
-          expr.loc
-        );
+        new StckError("invalid literal")
+          .add(Err.Error, expr.loc, "assembly blocks cannot be used in safe procedures")
+          .addHint("you can add `unsafe` before the procedure to make it unsafe (not recommended)")
+          .throw();
       } else {
         assertNever(expr.type);
       }
@@ -144,7 +152,7 @@ export class TypeChecker {
         handleSignature(
           expr.loc, ctx,
           intrinsic.ins, intrinsic.outs,
-          false, "for the intrinsic call"
+          false, true, "for the intrinsic call"
         );
       } else if (this.program.procs.has(expr.value)) {
         const proc = this.program.procs.get(expr.value)!;
@@ -152,7 +160,7 @@ export class TypeChecker {
         handleSignature(
           expr.loc, ctx,
           proc.signature.ins, proc.signature.outs,
-          false, "for the procedure call"
+          false, true, "for the procedure call"
         );
       } else if (ctx.bindings.has(expr.value)) {
         expr.type = WordType.Binding;
@@ -161,7 +169,9 @@ export class TypeChecker {
       } else if (this.program.consts.has(expr.value)) {
         const constant = this.program.consts.get(expr.value)!;
         if (constant.type.type == DataType.Unknown) {
-          reportError("This constant is not defined yet", expr.loc);
+          new StckError("unknown word")
+            .add(Err.Error, expr.loc, "the constant was used before it was defined")
+            .throw();
         }
 
         expr.type = WordType.Constant;
@@ -172,13 +182,15 @@ export class TypeChecker {
         ctx.stack.push({ type: DataType.Ptr });
         ctx.stackLocations.push(expr.loc);
       } else {
-        reportError("Unknown word", expr.loc);
+        new StckError("unknown word")
+          .add(Err.Error, expr.loc)
+          .throw();
       }
     } else if (expr.kind == AstKind.If) {
       this.validateBody(expr.condition, ctx);
       handleSignature(
         expr.loc, ctx, [{ type: DataType.Bool }], [],
-        false, "for the condition"
+        false, true, "for the condition"
       );
 
       if (expr.elseBranch) {
@@ -188,16 +200,22 @@ export class TypeChecker {
         this.validateBody(expr.body, ctx);
         this.validateBody(expr.else, clone);
 
-        validateStack(expr.loc, clone, ctx.stack, true, "after the condition", [
-          "both branches of the condition must result in the same data on the stack"
-        ]);
+        handleSignature(
+          expr.loc, clone, ctx.stack, [], true, false, "after the condition",
+          (err) => {
+            err.add(Err.Trace, expr.elseBranch!, "second branch starts here");
+            err.addStackElements(ctx, (f) => `${f} introduced here`);
+            err.addHint("both branches of the condition must result in the same data on the stack");
+          }
+        );
       } else {
         // only if - the branch must not modify the amount of elements or their types on the stack
         const clone = cloneContext(ctx);
         this.validateBody(expr.body, clone);
-        validateStack(expr.loc, clone, ctx.stack, true, "after the condition", [
-          "the condition must not change the amount of elements or their types on the stack"
-        ]);
+        handleSignature(
+          expr.loc, clone, ctx.stack, [], true, false, "after the condition",
+          (err) => err.addHint("a condition with a single branch must not alter the amount of elements or their types on the stack")
+        );
       }
     } else if (expr.kind == AstKind.While) {
       const clone = cloneContext(ctx);
@@ -205,38 +223,39 @@ export class TypeChecker {
       handleSignature(
         expr.loc, clone,
         [{ type: DataType.Bool }], [],
-        false, "for the condition of the loop"
+        false, true, "for the condition of the loop"
       );
 
       this.validateBody(expr.body, clone);
-      validateStack(
-        expr.loc, clone, ctx.stack, true,
-        "after a single iteration of te loop", [
-          "loops should not modify the amount of elements or their types on the stack"
-        ]
+      handleSignature(
+        expr.loc, clone, ctx.stack, [], true, false,
+        "after a single iteration of the loop",
+        (err) => err.addHint("loops should not modify the amount of elements or their types on the stack")
       );
     } else if (expr.kind == AstKind.Let) {
+      if (ctx.stack.length < expr.bindings.length) {
+        new StckError("unsufficient data on the stack")
+          .addStackElements(ctx, (e) => `${e} introduced here`)
+          .add(
+            Err.Error, expr.loc,
+            expr.bindings.length > 1
+              ? `takes ${expr.bindings.length} elements but got ${ctx.stack.length}`
+              : "takes an element but got nothing"
+          ).throw();
+      }
+
       for (let i = expr.bindings.length - 1; i >= 0; i--) {
         const binding = expr.bindings[i];
 
         if (ctx.bindings.has(binding)) {
-          reportError(
-            `The binding ${chalk.bold(binding)} is already defined`,
-            expr.loc
-          );
+          new StckError("duplicated name")
+            .add(
+              Err.Error, expr.loc,
+              `\`${binding}\` is already bound to ${frameToString(ctx.bindings.get(binding)!)}`
+            ).throw();
         } else {
-          const frame = ctx.stack.pop();
+          const frame = ctx.stack.pop()!;
           ctx.stackLocations.pop();
-
-          if (!frame) {
-            reportErrorWithStackData(
-              "Insufficient data on the stack for the let binding", expr.loc, ctx, [], [
-                `the let binding takes ${expr.bindings.length} elements`,
-                `${ctx.stack.length} elements were provided`
-              ]
-            );
-          }
-
           ctx.bindings.set(binding, frame);
         }
       }
@@ -244,10 +263,14 @@ export class TypeChecker {
       this.validateBody(expr.body, ctx);
     } else if (expr.kind == AstKind.Cast) {
       if (ctx.stack.length < expr.types.length) {
-        reportErrorWithStackData(
-          "Insufficient data on the stack for type casting",
-          expr.loc, ctx, []
-        );
+        new StckError("insufficient data on the stack")
+          .addStackElements(ctx, (e) => `${e} introduced here`)
+          .add(
+          Err.Error, expr.loc,
+          expr.types.length > 1
+            ? `casts ${expr.types.length} elements but got ${ctx.stack.length}`
+            : "casts an element but got nothing"
+          ).throw();
       }
 
       ctx.stack.splice(-expr.types.length, expr.types.length);
@@ -255,7 +278,7 @@ export class TypeChecker {
 
       for (let i = expr.types.length - 1; i >= 0; i--) {
         ctx.stack.push(expr.types[i]);
-        ctx.stackLocations.push(expr.loc);
+        ctx.stackLocations.push(expr.types[i].loc!);
       }
     } else {
       assertNever(expr);
@@ -276,18 +299,18 @@ export class TypeChecker {
     }
 
     this.validateBody(proc.body, ctx);
-    validateStack(proc.loc, ctx, proc.signature.outs, true, "after the procedure");
+    handleSignature(proc.loc, ctx, proc.signature.outs, [], true, false, "after the procedure");
   }
 
   private validateConst(constant: Const) {
     const ctx = createContext();
     this.validateBody(constant.body, ctx);
-
-    if (ctx.stack.length < 0) {
-      reportError("Constant resulted in no value", constant.loc);
-    } else if (ctx.stack.length > 1) {
-      reportErrorWithStackData("Constant resulted in multiple values", constant.loc, ctx, []);
-    }
+    handleSignature(
+      constant.loc, ctx,
+      [{ type: DataType.Unknown }], [],
+      true, false, "for the constant",
+      (err) => err.addHint("constants must result in exactly one value")
+    );
 
     constant.type = ctx.stack.pop()!;
   }
@@ -295,10 +318,10 @@ export class TypeChecker {
   private validateMemory(memory: Const) {
     const ctx = createContext();
     this.validateBody(memory.body, ctx);
-    validateStack(
+    handleSignature(
       memory.loc, ctx,
-      [{ type: DataType.Int }],
-      true
+      [{ type: DataType.Int }], [],
+      true, false, "for the memory region"
     );
   }
 

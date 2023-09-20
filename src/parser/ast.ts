@@ -64,7 +64,6 @@ export interface Proc extends Ast<AstKind.Proc> {
 export interface Word extends Ast<AstKind.Word> {
   value: string;
   type: WordType;
-  // signature
 }
 
 export interface Literal extends Ast<AstKind.Literal> {
@@ -76,7 +75,7 @@ export interface Condition extends Ast<AstKind.If> {
   condition: Expr[];
   body: Expr[];
   else: Expr[];
-  elseBranch: boolean;
+  elseBranch?: Location;
 }
 
 export interface While extends Ast<AstKind.While> {

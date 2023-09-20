@@ -1,7 +1,7 @@
 import { AstKind, Condition, Const, Expr, Let, LiteralType, Proc, Program, While, WordType } from "./ast";
 import { DataType, Location, TypeFrame } from "../shared";
+import { Err, StckError } from "../errors";
 import { Token, Tokens } from "../lexer";
-import { reportError } from "../errors";
 import chalk from "chalk";
 
 export class Parser {
@@ -24,21 +24,31 @@ export class Parser {
 
   private nextOf(kind: Tokens) {
     const token = this.next();
-    if (!token || token.kind != kind) reportError(
-      `Expected ${chalk.yellow.bold(kind)} but got ${chalk.yellow.bold(token?.kind ?? "EOF")}`,
-      token?.loc ?? this.lastToken.loc
-    );
+    if (!token || token.kind != kind) {
+      new StckError("unexpected token")
+        .add(Err.Error, token.loc, `expected \`${kind}\``)
+        .throw();
+    }
 
     return token;
   }
 
   private checkUniqueDefinition(name: string, loc: Location) {
     if (this.procs.has(name)) {
-      reportError("A procedure with the same name is already defined", loc);
+      new StckError("duplicated name")
+        .add(Err.Error, loc, "there is already a procedure with the same name")
+        .add(Err.Note, this.procs.get(name)!.loc, "defined here")
+        .throw();
     } else if (this.consts.has(name)) {
-      reportError("A constant with the same name is already defined", loc);
+      new StckError("duplicated name")
+        .add(Err.Error, loc, "there is already a constant with the same name")
+        .add(Err.Note, this.consts.get(name)!.loc, "defined here")
+        .throw();
     } else if (this.memories.has(name)) {
-      reportError("A memory region with the same name is already defined", loc);
+      new StckError("duplicated name")
+        .add(Err.Error, loc, "there is already a memory region with the same name")
+        .add(Err.Note, this.memories.get(name)!.loc, "defined here")
+        .throw();
     }
   }
 
@@ -71,7 +81,7 @@ export class Parser {
     } else if (token.kind == Tokens.Cast) {
       return {
         kind: AstKind.Cast, loc: token.loc,
-        types: this.parseSignature([Tokens.End])[0]
+        types: this.parseSignature(token.loc, [Tokens.End])[0]
       };
     } else if (token.kind == Tokens.If) {
       return this.parseCondition(token.loc);
@@ -80,7 +90,9 @@ export class Parser {
     } else if (token.kind == Tokens.Let) {
       return this.parseBinding(token.loc);
     } else {
-      reportError("Unexpected token", token.loc);
+      return new StckError("unexpected token")
+        .add(Err.Error, token.loc)
+        .throw();
     }
   }
 
@@ -89,15 +101,16 @@ export class Parser {
       kind: AstKind.If, loc,
       condition: [],
       body: [],
-      else: [],
-      elseBranch: false
+      else: []
     }
 
     while (true) {
       const token = this.next();
 
       if (!token) {
-        reportError("Unclosed block", loc);
+        new StckError("unclosed block")
+          .add(Err.Error, loc, "this block was never closed")
+          .throw();
       } else if (token.kind == Tokens.Do) {
         loc = token.loc;
         break;
@@ -110,14 +123,16 @@ export class Parser {
       const token = this.next();
 
       if (!token) {
-        reportError("Unclosed block", loc);
+        new StckError("unclosed block")
+          .add(Err.Error, loc, "this block was never closed")
+          .throw();
       } else if (token.kind == Tokens.Else) {
         condition.else = this.parseBody(token.loc);
-        condition.elseBranch = true;
+        condition.elseBranch = token.loc;
         break;
       } else if (token.kind == Tokens.ElseIf) {
         condition.else.push(this.parseCondition(token.loc));
-        condition.elseBranch = true;
+        condition.elseBranch = token.loc;
         break;
       } else if (token.kind == Tokens.End) {
         break;
@@ -140,7 +155,9 @@ export class Parser {
       const token = this.next();
 
       if (!token) {
-        reportError("Unclosed block", loc);
+        new StckError("unclosed block")
+          .add(Err.Error, loc, "this block was never closed")
+          .throw();
       } else if (token.kind == Tokens.Do) {
         loop.body = this.parseBody(token.loc);
         break;
@@ -163,14 +180,19 @@ export class Parser {
       const token = this.next();
 
       if (!token) {
-        reportError("Unclosed block", loc);
+        new StckError("unclosed block")
+          .add(Err.Error, loc, "this block was never closed")
+          .throw();
       } else if (token.kind == Tokens.Do) {
         binding.body = this.parseBody(token.loc);
         break;
       } else if (token.kind == Tokens.Word) {
         binding.bindings.push(token.value);
       } else {
-        reportError("Unexpected token", token.loc);
+        new StckError("unexpected token")
+          .add(Err.Note, loc, "binding starts here")
+          .add(Err.Error, token.loc, "expected a word")
+          .throw();
       }
     }
 
@@ -194,19 +216,21 @@ export class Parser {
           || token.kind == Tokens.While
         )
       ) {
-        reportError(
-          `Cannot use ${chalk.yellow.bold(token.kind)} in a compile-time expression`,
-          token.loc
-        );
+        new StckError("invalid compile-time expression")
+          .add(Err.Note, loc)
+          .add(Err.Error, token.loc, `cannot use ${token.kind} here`)
+          .throw();
       } else {
         body.push(this.parseExpr(token));
       }
     }
 
-    reportError("Unclosed block", loc);
+    return new StckError("unclosed block")
+      .add(Err.Error, loc, "this block was never closed")
+      .throw();
   }
 
-  private parseSignature(end: Tokens[], unsafe: boolean = false): [TypeFrame[], Token] {
+  private parseSignature(loc: Location, end: Tokens[], unsafe: boolean = false): [TypeFrame[], Token] {
     const signature: TypeFrame[] = [];
 
     while (this.tokens.length) {
@@ -231,7 +255,10 @@ export class Parser {
         } else if (token.value == "ptr-to") {
           const type = signature.pop();
           if (!type) {
-            reportError("Expected a type for `ptr-to`", token.loc);
+            return new StckError("invalid type signature")
+              .add(Err.Note, loc, "signature starts here")
+              .add(Err.Error, token.loc, "needs a type")
+              .throw();
           }
 
           signature.push({
@@ -241,7 +268,10 @@ export class Parser {
           });
         } else if (token.value == "unknown") {
           if (!unsafe) {
-            reportError("The `unknown` type is allowed only in unsafe procedures", token.loc);
+            new StckError("invalid type signature")
+              .add(Err.Note, loc, "signature starts here")
+              .add(Err.Error, token.loc, "this type is allowed only in unsafe procedures")
+              .throw();
           }
 
           signature.push({
@@ -250,7 +280,10 @@ export class Parser {
           });
         } else if (token.value.startsWith("<") && token.value.endsWith(">")) {
           if (!unsafe) {
-            reportError("Custom generics are allowed only in unsafe procedures", token.loc);
+            new StckError("invalid type signature")
+              .add(Err.Note, loc, "signature starts here")
+              .add(Err.Error, token.loc, "this type is allowed only in unsafe procedures")
+              .throw();
           }
 
           signature.push({
@@ -259,19 +292,24 @@ export class Parser {
             value: { type: DataType.Unknown }
           });
         } else {
-          reportError(
-            "Unknown type",
-            token.loc
-          );
+          new StckError("invalid type signature")
+            .add(Err.Note, loc, "signature starts here")
+            .add(Err.Error, token.loc, "unknown word")
+            .throw();
         }
       } else if (end.includes(token.kind)) {
         return [signature, token];
       } else {
-        reportError("Unexpected token in the type signature", token.loc);
+        new StckError("invalid type signature")
+          .add(Err.Note, loc, "signature starts here")
+          .add(Err.Error, token.loc, "unknown word")
+          .throw();
       }
     }
 
-    reportError("Unexpected EOF", this.lastToken.loc);
+    return new StckError("unclosed block")
+      .add(Err.Error, loc, "this block was never closed")
+      .throw();
   }
 
   private parseProc(loc: Location, inline: boolean, unsafe: boolean) {
@@ -289,27 +327,28 @@ export class Parser {
     // TODO: Find a better way to do this
     const token = this.next();
     if (token.kind == Tokens.SigIns) {
-      const [types, end] = this.parseSignature([Tokens.Do, Tokens.SigOuts], unsafe);
+      const [types, end] = this.parseSignature(token.loc, [Tokens.Do, Tokens.SigOuts], unsafe);
       proc.signature.ins = types;
 
       if (end.kind == Tokens.SigOuts) {
-        const [types, end] = this.parseSignature([Tokens.Do], unsafe);
+        const [types, end2] = this.parseSignature(end.loc, [Tokens.Do], unsafe);
         proc.signature.outs = types;
-        proc.body = this.parseBody(end.loc);
+        proc.body = this.parseBody(end2.loc);
       } else {
         proc.body = this.parseBody(end.loc);
       }
     } else if (token.kind == Tokens.SigOuts) {
-      const [types, end] = this.parseSignature([Tokens.Do], unsafe);
+      const [types, end] = this.parseSignature(token.loc, [Tokens.Do], unsafe);
       proc.signature.outs = types;
       proc.body = this.parseBody(end.loc);
     } else if (token.kind == Tokens.Do) {
       proc.body = this.parseBody(token.loc);
     } else {
-      reportError(
-        "Unexpected token in the procedure declaration",
-        token.loc
-      );
+      new StckError("unexpected token")
+        .add(Err.Note, loc, "procedure defined here")
+        .add(Err.Error, token.loc, "unexpected token")
+        .addHint(`did you forget to add ${chalk.yellow.bold("do")} after the name of the procedure?`)
+        .throw();
     }
 
     this.procs.set(proc.name, proc);
@@ -355,7 +394,9 @@ export class Parser {
       } else if (token.kind == Tokens.Unsafe) {
         unsafeProc = true;
       } else if (inlineProc || unsafeProc) {
-        reportError("Unexpected token in the procedure declaration", token.loc);
+        new StckError("unexpected token")
+          .add(Err.Error, token.loc, "expected procedure declaration here")
+          .throw();
       } else if (token.kind == Tokens.Const) {
         this.parseConst(token.loc);
       } else if (token.kind == Tokens.Memory) {
@@ -363,7 +404,9 @@ export class Parser {
       } else if (token.kind == Tokens.Assert) {
         throw new Error("Assertions are not implemented yet");
       } else {
-        reportError("Unexpected token at the top level", token.loc);
+        new StckError("unexpected token")
+          .add(Err.Error, token.loc, "invalid token at the top level")
+          .throw();
       }
     }
 

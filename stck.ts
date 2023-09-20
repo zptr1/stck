@@ -17,13 +17,9 @@ const CMD   = chalk.bold.white("[CMD]");
 
 let verbose = false;
 function trace(...msg: any[]) {
-  if (!verbose) {
-    process.stdout.moveCursor(0, -1);
-    process.stdout.cursorTo(0);
-    process.stdout.clearLine(0);
+  if (verbose) {
+    console.log(...msg);
   }
-
-  console.log(...msg);
 }
 
 const TARGET_OPTIONS = ["bytecode", "fasm"];
@@ -92,11 +88,6 @@ function main() {
     panic("Available targets:", TARGET_OPTIONS.join(", "));
 
   verbose = args.verbose || args.v || verbose;
-  if (!verbose) {
-    // `trace` moves the cursor to one line above to edit it
-    // so an empty line should be printed before using it
-    console.log();
-  }
 
   const file = File.read(plib.resolve(path));
   trace(INFO, "Parsing");
@@ -112,7 +103,7 @@ function main() {
     trace(ERROR, "No main procedure");
     return;
   } else if (program.procs.get("main")?.unsafe) {
-    trace(WARN, "Unsafe main procedure\n");
+    trace(WARN, "Unsafe main procedure");
   }
 
   if (action == "check") {
@@ -126,7 +117,7 @@ function main() {
   if (target == "bytecode") {
     panic("Bytecode has been temporarily removed, sorry! Will be added back soon");
   } else if (target == "fasm") {
-    if (platform() != "linux") trace(WARN, `This platform (${platform()}) might not be supported\n`);
+    if (platform() != "linux") trace(WARN, `This platform (${platform()}) might not be supported`);
 
     const out = codegenFasm(prog);
 
