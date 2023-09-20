@@ -1,5 +1,5 @@
 proc fib-recursion :: int -> int do
-  dup 2 gt if
+  if dup 2 gt do
     dup  2 sub fib-recursion
     swap 1 sub fib-recursion
     add

@@ -13,57 +13,12 @@ I don't really like the name of the language anymore, as **stck** was just a pla
 
 I don't have any ideas what would the new name be, but should I consider renaming this language?
 
-## Change the syntax of the `if` conditions
-
-Currently, the `if` conditions have the following syntax:
-```
-[condition] if <body> else [condition] if* <body> else <body> end
-```
-This doesn't even treat condition as a separate part, as it just takes a boolean from the top of the stack.
-
-This might be quite confusing and inconvenient.
-
-This is also a bit inconsistent, considering that the `while` loops have the condition after the keyword, and compile-time conditions (that are not implemented yet) will also have the condition after the keyword.
-
-The syntax of the `if` conditions could be changed to something like this instead:
-```
-if [condition] do
-  <body>
-elseif [condition] do
-  <body>
-else
-  <body>
-end
-```
-
 ## Better Type System
 
 #### More Built-In Types
 
 Currently, the only existing types are `int`, `ptr` and `bool`, which makes typechecking a bit pointless.
 The integer type could be split into `u8`, `u16`, `u32`, `u64` and their signed alternatives (`i8`, `i16`, ...).
-
-#### Typed Pointers
-
-A typed pointer would be defined as `<type> ptr-to`. Example:
-```
-proc read-int :: u64 ptr-to do
-  // ...
-end
-```
-The example above would enforce the pointer to point to an integer and would fail if you try providing the procedure a pointer to something else.
-
-Typed pointers would not be allowed to be offset like untyped pointers, and would require using special elements instead (structures, variables, etc).
-
-I'm unsure what to do about untyped pointers though. I could either
-- prohibit passing untyped pointers to typed pointers, enforcing type casting
-- allow that, but show a warning every time that happens
-- allow that without any warnings
-
-The first option sounds the best but at the same time it could get annoying in some cases, as you would need to do type casts every time when passing an untyped pointer to a procedure that requires a typed pointer.
-
-The last option doesn't sound really good, as this makes typed pointers a bit pointless.
-The second option could be a compromise between the other two, although having a lot of warnings every time you run or build a program would get annoying.
 
 #### Structures
 
@@ -96,21 +51,6 @@ struct Example2
   Str ptr-to :: b
 end
 ```
-
-#### Better Generics
-
-The current type system allows for basic generics, for example `swap :: a b -> b a`. But this system is not really extensible.
-
-I want to remake the system, allowing for more advanced usages, for example this:
-```
-proc write :: n n ptr-to      do ... end
-proc read  :: n ptr-to   -> n do ... end
-```
-In this example, the `write` procedure would accept a value of any type and a typed pointer which would be required to have the exact same type as the provided value. So, for example, calling `write` providing an integer would require a typed pointer to an integer, and providing any other pointer would result in a compilation error.
-
-Same goes for `read` - it'd accept a typed pointer of any type, and return the value of the exact same type. For example, calling `read` providing a typed pointer to a boolean would return a boolean.
-
-This will be restricted to primitive types only, and untyped pointers **will not** be allowed.
 
 #### Variables
 
@@ -165,19 +105,6 @@ The `@` and `!` procedures are **omitted** if a structure is used as a type of t
 
 sorry im too lazy to explain this
 
-#### Advanced Type Casting
-
-Currently, type casting is implemented as just compile-time intrinsics that accept a value of any type and return the needed type (e. g. `cast(int)`). This wouldn't work well with the new type system. To fix this, a new `cast` block could be added for more advanced type casts. The contents of the `cast` block will be used as a type, and the value on top of the stack would be converted to that provided type.
-
-An example:
-```
-0
-cast u64 ptr-to end
-```
-Here, an integer gets pushed onto the stack, which then gets cast to a typed pointer to `u64`.
-
-**Note:** The example above should not be used. It is used here as just an example, and using it in an actual code might lead to undefined behavior.
-
 ## Compile-Time Conditions
 
 Compile-time conditions will let you to include or exclude code during compilation depending on certain conditions or states of the constants.
@@ -197,32 +124,10 @@ Compile-time conditions will also be able to use a special operation `def?` foll
 The compiler could also automatically introduce specific constants depending on the platform, which would allow for additional cross-platform support, for example
 ```
 %if def? _WIN32 do
-  include "windows"
+  %include "windows"
 %else
-  include "posix"
+  %include "posix"
 %end
-```
-
-## Better Consistency for Preprocessor Directives
-
-#### ❔ Partially Implemented
-- Macros are now prefixed with `%`. I'm a bit unsure about imports right now.
-
-Imports, macros and compile-time conditions are handled entirely by the preprocessor and the existance of them is unknown for the stages after, which makes them preprocessor directives.
-
-While compile-time conditions have a specific prefix before their keywords (`%`) so that they are different from the existing runtime conditions, imports and macros do not have that specific prefix, which makes this kinda inconsistent, and I don't like inconsistency. I also think that having preprocessor directives consistent makes it more convenient/clearer to the programmer.
-
-An example
-```
-%include "std"
-
-%macro numbers
-  34 35
-%end
-
-proc main
-  numbers add print
-end
 ```
 
 ## Local Memory Regions
@@ -242,7 +147,7 @@ Small local memory regions will be allocated on the callstack, but large memory 
 
 Importing files with an `.asm` extension would include them in the compiled `.asm` source.
 ```
-include "./example.asm"
+%include "./example.asm"
 ```
 
 ## FFI/Linking

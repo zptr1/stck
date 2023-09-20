@@ -15,7 +15,7 @@ TL;DR: **Not for production use!**
 
 # Roadmap / To-Do
 
-- [x] Statically typed (with type inference)
+- [x] Statically typed
 - [x] Compiler into own bytecode
 - [x] Compiler into native
 - [ ] **More Features** (in progress)

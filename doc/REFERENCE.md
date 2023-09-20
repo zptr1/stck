@@ -22,13 +22,59 @@ C-String is like a regular string but it does not push its length into the stack
 
 # Types
 
-Name   | Description
--------|-------------
-`int`  | Signed 64-bit integer
-`ptr`  | Memory address
-`bool` | Either `true` (1) or `false` (0)
+Name      | Example   | Description
+----------|-----------|-------------
+`int`        | `69`          | Signed 64-bit integer
+`bool`       | `true`        | Either `true` (1) or `false` (0)
+`ptr`        | `ptr`         | A memory address
+`<t> ptr-to` | `int ptr-to ` | A **typed** memory address to type `t`
+`<t>`        | `<t>`         | Generic type
+`unknown`    | `unknown`     | Unknown type
+
+Built-in procedures use generic and unknown types, but you cannot use these outside of unsafe procedures.
 
 **NOTE:** Types exist at compile-time only. Everything at runtime is just integers.
+
+# Control Flow
+
+## Conditions
+
+Syntax
+```
+if <condition> do
+  <body>
+elif <condition2> do
+  <body>
+else
+  <body>
+end
+```
+Example
+```
+if 2 2 eq do
+  // 2 equals 2
+else
+  // the laws of the universe no longer work
+end
+```
+
+## Loops
+
+Syntax
+```
+while <condition> do
+  <body>
+end
+```
+Example
+```
+// prints numbers from 1 to 10 incrementally
+0 while dup 10 lt do
+  1 add dup print
+end
+```
+
+##
 
 # Program
 
@@ -74,14 +120,6 @@ proc c do
 end
 ```
 
-## Imports
-To import a library or a file, use the `include` keyword
-```
-include "std"
-include "./example"
-```
-This will include all constants, procedures and other definitions from the provided file. The `.stck` extension gets added to the path automatically.
-
 ## Constants
 You can use the `const` keyword to define a constant.
 ```
@@ -112,14 +150,6 @@ const Str.data    sizeof(ptr) offset end  // 8
 const sizeof(Str) reset end  // 16
 ```
 
-## Compile-time assertions
-
-Assertions will prevent the program from compiling unless the provided condition is met. An example would be:
-```
-assert "There must be 7 days in a week." DAYS_COUNT 7 eq end
-```
-From the example before, `DAYS_COUNT` is set to 7, but if the value of that constant changes (e. g. a new day gets added or a day gets removed), the compilation will fail, outputting an error.
-
 ## Memory Regions
 
 Memory regions are a simple compile-time feature which improves memory management. Memory regions are defined similarly to constants, except a `memory` keyword is used instead and the value must be an integer. The value will be used as a size of the memory region.
@@ -135,6 +165,35 @@ memory example sizeof(int) 10 mul end
 ```
 
 Technically, only one memory region gets allocated, and memory regions just define the offsets. There are no restrictions, so be careful!
+
+## Imports
+To import a library or a file, use the `include` keyword
+```
+%include "std"
+%include "./example"
+```
+This will include all constants, procedures and other definitions from the provided file. The `.stck` extension gets added to the path automatically.
+
+## Advanced Type Casting
+
+You can use the `cast` operation to cast elements on the stack from one type to another. (this is a compile-time only operation)
+```
+// will cast the element on top of the stack to a typed pointer to an integer
+cast int ptr-to end
+```
+You can also cast multiple elements on the stack:
+```
+// will cast the element on top of the stack to an integer, and the element below the top of the stack to a boolean
+cast bool int end
+```
+
+## Compile-time assertions
+
+Assertions will prevent the program from compiling unless the provided condition is met. An example would be:
+```
+assert "There must be 7 days in a week." DAYS_COUNT 7 eq end
+```
+From the example before, `DAYS_COUNT` is set to 7, but if the value of that constant changes (e. g. a new day gets added or a day gets removed), the compilation will fail, outputting an error.
 
 ## Macros
 
@@ -199,6 +258,18 @@ Unsafe procedures can also be inline.
 
 It is heavily recommended to avoid unsafe procedures unless absolutely necessarry.
 
+Unsafe procedures can also use the `unknown` type and generics, for example:
+```
+unsafe proc swap :: <a> <b> -> <b> <a> do
+  asm
+    pop rax
+    pop rbx
+    push rbx
+    push rax
+  end
+end
+```
+
 # Intrinsics (built-in procedures)
 
 ### Mathematical operations
@@ -214,7 +285,7 @@ Name | Signature | Description
 
 `add` and `sub` intrinsics accept any type, but the type of two values must be the same - e. g. you can add a pointer to a pointer, or an integer to an integer, but can't add a pointer to an integer. Note: You can use the `cast(int)`, `cast(ptr)` or `cast(bool)` intrinsics to convert one type to another.
 
-### Comprasion
+### Comparison
 
 Name | Signature | Description
 -----|-----------|-------------
@@ -229,10 +300,10 @@ Name | Signature | Description
 -----|-----------|-------------
 `shl` | `[a: int] [b: int] -> [a << b: int]` | Performs a left bit shift
 `shr` | `[a: int] [b: int] -> [a >> b: int]` | Performs a right bit shift
-`not` | `[a: int] -> [~a: int]`     | Bitwise **NOT**
+`not` | `[a: int] -> [~a: int]`              | Bitwise **NOT**
 `or`  | `[a: int] [b: int] -> [a \| b: int]` | Bitwise **OR**
-`and` | `[a: int] [b: int] -> [a & b: int]` | Bitwise **AND**
-`xor` | `[a: int] [b: int] -> [a ^ b: int]` | Bitwise **XOR**
+`and` | `[a: int] [b: int] -> [a & b: int]`  | Bitwise **AND**
+`xor` | `[a: int] [b: int] -> [a ^ b: int]`  | Bitwise **XOR**
 
 ### Stack Manipulation
 
@@ -244,7 +315,6 @@ Name | Signature | Description
 `rot`   | `a b c -> b c a`     | Rotates the top three elements on the stack
 `over`  | `a b -> a b a`       | Copies the element below the top of the stack
 `2dup`  | `a b -> a b a b`     | Duplicates the top two elements on the stack
-`2swap` | `a b c d -> d c b a` | Swaps the top four elements on the stack
 
 ### Memory
 
@@ -345,8 +415,8 @@ The standard library is separated into multiple different submodules, currently
 
 You can include all modules at once by just importing the `std` library, or you can include only a single specific module like that:
 ```
-include "std/io"
-include "std/sys"
+%include "std/io"
+%include "std/sys"
 ...
 ```
 Please note that some modules might depend on another (e. g. `io` depends on `sys`), so importing each module separately is a bit pointless. It should be fine to just import the entire standard library.

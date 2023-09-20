@@ -1,13 +1,5 @@
-include "std"
-
-%macro numbers
-  34 35
-%end
-
-%macro print-sum
-  add print
-%end
+%include "std"
 
 proc main do
-  numbers print-sum
+  "Hello, World!\n" puts
 end

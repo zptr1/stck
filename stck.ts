@@ -1,19 +1,19 @@
 #!bun
 
-import { BytecodeCompiler, FasmCompiler, TypeChecker, decodeBytecode, encodeBytecode, isBytecode } from "./src/compiler";
-import { existsSync, readFileSync, statSync, unlinkSync, writeFileSync } from "fs";
+import { Compiler, TypeChecker, codegenFasm } from "./src/compiler";
+import { existsSync, statSync, writeFileSync } from "fs";
 import { Parser, Preprocessor } from "./src/parser";
 import { tmpdir, platform } from "os";
 import { Lexer } from "./src/lexer";
 import { File } from "./src/shared";
-import { VM } from "./src/vm";
 import minimist from "minimist";
 import chalk from "chalk";
 import plib from "path";
 
-const INFO = chalk.bold.green("[INFO]");
-const WARN = chalk.yellow.bold("[WARN]");
-const CMD  = chalk.bold.white("[CMD]");
+const ERROR = chalk.red.bold("[ERROR]");
+const INFO  = chalk.bold.green("[INFO]");
+const WARN  = chalk.yellow.bold("[WARN]");
+const CMD   = chalk.bold.white("[CMD]");
 
 let verbose = false;
 function trace(...msg: any[]) {
@@ -36,19 +36,19 @@ function panic(...data: any[]): never {
 function printHelp(): never {
   console.log(chalk.bold("stck v0.0.2"));
   console.log(chalk.red("usage:"));
-  console.log("", chalk.bold("stck run"), chalk.yellow.bold("<file>"));
-  console.log(" ", "Run a program");
-  console.log("", chalk.bold("stck build"), chalk.yellow.bold("<file>"), chalk.yellow.dim("[output]"));
-  console.log(" ", "Build a program");
+  console.log(" ", chalk.bold("stck run"), chalk.yellow.bold("<file>"));
+  console.log("   ", "Run a program");
+  console.log(" ", chalk.bold("stck build"), chalk.yellow.bold("<file>"), chalk.yellow.dim("[output]"));
+  console.log("   ", "Build a program");
+  console.log(" ", chalk.bold("stck check"), chalk.yellow.bold("<file>"));
+  console.log("   ", "Typecheck a program without running or compiling it");
   console.log();
   console.log(chalk.gray("options:"));
-  console.log("", chalk.bold("--target, -t"), chalk.yellow.bold("<target>"));
-  console.log(" ", "Change the compilation target");
-  console.log(" ", "Available targets:", chalk.bold(TARGET_OPTIONS.join(", ")));
-  console.log("", chalk.bold("--verbose, -v"));
-  console.log(" ", "More verbose logs");
-  console.log("", chalk.bold("--unsafe"));
-  console.log(" ", "Disable typechecking");
+  console.log(" ", chalk.bold("--target, -t"), chalk.yellow.bold("<target>"));
+  console.log("   ", "Change the compilation target");
+  console.log("   ", "Available targets:", chalk.bold(TARGET_OPTIONS.join(", ")));
+  console.log(" ", chalk.bold("--verbose, -v"));
+  console.log("   ", "More verbose logs");
   console.log();
   process.exit(1);
 }
@@ -58,7 +58,7 @@ function cmd(command: string[]) {
   const cmd = Bun.spawnSync({ cmd: command });
 
   if (cmd.exitCode != 0) {
-    console.error(chalk.red.bold("[ERROR]"), chalk.bold("Command failed"));
+    console.error(ERROR, chalk.bold("Command failed"));
 
     const lines = cmd.stderr.toString().trim().split("\n");
     for (const line of lines) {
@@ -72,8 +72,8 @@ function cmd(command: string[]) {
 function main() {
   const args = minimist(process.argv.slice(2));
 
-  const action = args._[0] as ("build" | "run");
-  if (action != "build" && action != "run")
+  const action = args._[0] as ("run" | "build" | "check");
+  if (action != "run" && action != "build" && action != "check")
     printHelp();
 
   const path = args._[1];
@@ -91,8 +91,6 @@ function main() {
   if (!TARGET_OPTIONS.includes(target))
     panic("Available targets:", TARGET_OPTIONS.join(", "));
 
-  const source = readFileSync(path);
-
   verbose = args.verbose || args.v || verbose;
   if (!verbose) {
     // `trace` moves the cursor to one line above to edit it
@@ -100,50 +98,37 @@ function main() {
     console.log();
   }
 
-  if (action == "run" && isBytecode(source)) {
-    trace(INFO, "Running");
-    new VM(decodeBytecode(source));
-    return;
-  }
-
-  const file = new File(
-    plib.resolve(path),
-    source.toString("utf-8")
-  );
-
+  const file = File.read(plib.resolve(path));
   trace(INFO, "Parsing");
 
   const tokens = new Lexer(file).collect();
   const preprocessed = new Preprocessor(tokens).preprocess();
   const program = new Parser(preprocessed).parse();
 
-  if (args.unsafe) {
-    trace(WARN, "Skipping typechecking\n");
-  } else {
-    trace(INFO, "Typechecking");
-    new TypeChecker(program).typecheck();
+  trace(INFO, "Typechecking");
+  new TypeChecker(program).typecheck();
 
-    if (program.procs.get("main")?.unsafe) {
-      trace(WARN, "Unsafe main procedure\n");
-    }
+  if (!program.procs.has("main")) {
+    trace(ERROR, "No main procedure");
+    return;
+  } else if (program.procs.get("main")?.unsafe) {
+    trace(WARN, "Unsafe main procedure\n");
+  }
+
+  if (action == "check") {
+    trace(INFO, "Typechecking successful");
+    return;
   }
 
   trace(INFO, "Compiling");
+  const prog = new Compiler(program).compile();
+
   if (target == "bytecode") {
-    const out = new BytecodeCompiler(program).compile();
-
-    if (action == "build") {
-      writeFileSync(outPath + ".stbin", encodeBytecode(out));
-      trace(INFO, "Compiled to", chalk.bold(outPath + ".stbin"));
-    } else {
-      trace(INFO, "Running");
-      new VM(out);
-    }
+    panic("Bytecode has been temporarily removed, sorry! Will be added back soon");
   } else if (target == "fasm") {
-    const out = new FasmCompiler(program).compile();
-
-    if (process.arch != "x64") trace(WARN, `This architecture (${process.arch}) might not be supported\n`);
     if (platform() != "linux") trace(WARN, `This platform (${platform()}) might not be supported\n`);
+
+    const out = codegenFasm(prog);
 
     if (action == "build") {
       writeFileSync(outPath + ".asm", out.join("\n"));

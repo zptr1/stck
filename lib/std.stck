@@ -1,4 +1,4 @@
-include "./std/str"
-include "./std/sys"
-include "./std/rand"
-include "./std/io"
+%include "./std/str"
+%include "./std/sys"
+%include "./std/rand"
+%include "./std/io"

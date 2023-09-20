@@ -1,19 +1,23 @@
-include "std"
+%include "std"
 
-proc suffix :: int do
-  1 eq lnot if
-    "s" puts
+proc print-bottles :: int do
+  dup putu
+  if 1 eq lnot do
+    " bottles " puts
+  else
+    " bottle " puts
   end
 end
 
 proc main do
   99 while dup 0 gt do
-    dup putu " bottle" puts dup suffix " of the beer on the wall,\n" puts
-    dup putu " bottle" puts dup suffix " of the beer.\n" puts
+    dup print-bottles "of the beer on the wall,\n" puts
+    dup print-bottles "of the beer.\n" puts
     "Take one down, pass it around,\n" puts
     1 sub
-    dup 0 gt if
-      dup putu " bottle" puts dup suffix " of the beer on the wall.\n\n" puts
+
+    if dup 0 gt do
+      dup print-bottles "of the beer on the wall.\n\n" puts
     else
       "No bottles of beer on the wall.\n\n" puts
     end

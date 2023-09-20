@@ -3,7 +3,7 @@ import { Location } from "../shared";
 export const KEYWORDS = new Set([
   "%macro",
   "%end",
-  "include",
+  "%include",
   "proc",
   "unsafe",
   "inline",
@@ -13,10 +13,11 @@ export const KEYWORDS = new Set([
   "memory",
   "assert",
   "if",
-  "if*",
+  "elif",
   "else",
   "while",
   "let",
+  "cast",
   "do",
   "end",
 ]);
@@ -32,7 +33,7 @@ export enum Tokens {
   // Preprocessor Directives
   Macro = "%macro",
   EndPre = "%end",
-  Include = "include",
+  Include = "%include",
   // Keywords
   Proc = "proc",
   Unsafe = "unsafe",
@@ -43,10 +44,11 @@ export enum Tokens {
   Memory = "memory",
   Assert = "assert",
   If = "if",
-  ChainedIf = "if*",
+  ElseIf = "elif",
   Else = "else",
   While = "while",
   Let = "let",
+  Cast = "cast",
   Do = "do",
   End = "end",
   // Special tokens

@@ -1,3 +1,4 @@
+// note: overflows after 20
 proc factorial :: int -> int do
   1 swap 0 while 2dup gt do
     1 add
@@ -7,5 +8,5 @@ proc factorial :: int -> int do
 end
 
 proc main do
-  "10! = " puts 10 factorial print
+  "16! = " puts 16 factorial print
 end

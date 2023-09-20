@@ -11,9 +11,20 @@ const sizeof(int)  sizeof(u64) end
 const sizeof(ptr)  sizeof(u64) end
 const sizeof(bool) sizeof(u8)  end
 
+%macro cast(int)  cast int  end %end
+%macro cast(ptr)  cast ptr  end %end
+%macro cast(bool) cast bool end %end
+
 /// Pointer operations
-inline proc ptr+ :: ptr int -> ptr do cast(ptr) add end
-inline proc ptr- :: ptr int -> ptr do cast(ptr) add end
+inline proc ptr+ :: ptr int -> ptr do
+  cast int int end
+  add cast(ptr)
+end
+
+inline proc ptr- :: ptr int -> ptr do
+  cast int int end
+  add cast(ptr)
+end
 
 /// Mathematical operations
 inline proc div  :: int int -> int do divmod      drop end
@@ -24,19 +35,19 @@ inline proc imod :: int int -> int do idivmod swap drop end
 
 /// Logical operations
 inline proc lnot :: bool -> bool do
-  cast(int) 1 swap sub cast(bool)
+  cast(int) not 2 add cast(bool)
 end
 
 inline proc land :: bool bool -> bool do
-  cast(int) swap cast(int) and cast(bool)
+  cast int int end and cast(bool)
 end
 
 inline proc lor :: bool bool -> bool do
-  cast(int) swap cast(int) or cast(bool)
+  cast int int end or cast(bool)
 end
 
 inline proc lxor :: bool bool -> bool do
-  2dup land lnot rot rot lor land
+  cast int int end xor cast(bool)
 end
 
 /// Memory

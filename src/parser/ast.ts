@@ -1,19 +1,45 @@
-import { DataType, DataTypeArray, File, Location } from "../shared";
-import { Token } from "../lexer";
-
-export interface Signature {
-  ins: DataTypeArray;
-  outs: DataTypeArray;
-}
+import { File, Location, TypeFrame } from "../shared";
 
 export enum AstKind {
   Proc,
   Const,
-  Push,
+  Literal,
   Word,
   If,
   While,
-  Let
+  Let,
+  Cast,
+}
+
+export enum WordType {
+  Unknown,
+  Intrinsic,
+  Proc,
+  Memory,
+  Constant,
+  Binding,
+}
+
+export enum LiteralType {
+  Int,
+  Bool,
+  Str,
+  CStr,
+  Assembly
+}
+
+export type Expr = Word | Literal | Condition | While | Let | Cast;
+
+export interface Program {
+  file: File;
+  procs: Map<string, Proc>;
+  consts: Map<string, Const>;
+  memories: Map<string, Const>;
+}
+
+export interface Signature {
+  ins: TypeFrame[];
+  outs: TypeFrame[];
 }
 
 export interface Ast<T extends AstKind> {
@@ -21,61 +47,36 @@ export interface Ast<T extends AstKind> {
   loc: Location;
 }
 
-// Preprocessed unparsed procedure
-export interface IProc extends Ast<AstKind.Proc> {
-  name: string;
-  body: Token[];
-  signature?: Signature;
-  unsafe: boolean;
-  inline: boolean;
-}
-
-// Preprocessed unparsed program
-export interface IProgram {
-  file: File;
-  procs: Map<string, IProc>;
-  consts: Map<string, Const>;
-  memories: Map<string, Const>;
-}
-
 export interface Const extends Ast<AstKind.Const> {
   name: string;
-  type: DataType;
-  value: any;
-}
-
-// Parsed procedure
-export type Proc = Omit<IProc, 'body'> & {
   body: Expr[];
+  type: TypeFrame;
 }
 
-// Parsed program
-export type Program = Omit<IProgram, 'procs'> & {
-  procs: Map<string, Proc>;
-}
-
-export type Expr = Word | Push | Condition | While | Let;
-export enum WordType {
-  Intrinsic,
-  Proc,
-  Memory,
-  Constant,
-  Binding
+export interface Proc extends Ast<AstKind.Proc> {
+  name: string;
+  body: Expr[];
+  signature: Signature;
+  unsafe: boolean;
+  inline: boolean;
 }
 
 export interface Word extends Ast<AstKind.Word> {
   value: string;
   type: WordType;
+  // signature
 }
 
-export interface Push extends Ast<AstKind.Push> {
-  type: DataType | string;
+export interface Literal extends Ast<AstKind.Literal> {
+  type: LiteralType;
   value: any;
 }
 
 export interface Condition extends Ast<AstKind.If> {
+  condition: Expr[];
   body: Expr[];
   else: Expr[];
+  elseBranch: boolean;
 }
 
 export interface While extends Ast<AstKind.While> {
@@ -86,4 +87,8 @@ export interface While extends Ast<AstKind.While> {
 export interface Let extends Ast<AstKind.Let> {
   bindings: string[];
   body: Expr[];
+}
+
+export interface Cast extends Ast<AstKind.Cast> {
+  types: TypeFrame[];
 }

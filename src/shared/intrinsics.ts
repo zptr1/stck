@@ -1,4 +1,4 @@
-import { DataType, DataTypeArray } from "./types";
+import { DataType, TypeFrame } from "./context";
 import { Instr } from "./instruction";
 
 export const INTRINSICS = new Map<string, Intrinsic>();
@@ -6,27 +6,41 @@ export const INTRINSICS = new Map<string, Intrinsic>();
 export interface Intrinsic {
   name: string;
   instr: Instr;
-  ins: DataTypeArray,
-  outs: DataTypeArray,
+  ins: TypeFrame[];
+  outs: TypeFrame[];
 }
 
-function addIntrinsic(name: string, instr: Instr, ins: DataTypeArray, outs: DataTypeArray) {
+function addIntrinsic(name: string, instr: Instr, ins: (DataType | string)[], outs: (DataType | string)[]) {
   INTRINSICS.set(name, {
     name, instr,
-    ins, outs
+    // TODO: Find a better way to do this
+    ins: ins.map(
+      (x) => typeof x == "string" ? {
+        type: DataType.Generic,
+        value: { type: DataType.Unknown },
+        label: x,
+      } : { type: x as any }
+    ),
+    outs: outs.map(
+      (x) => typeof x == "string" ? {
+        type: DataType.Generic,
+        value: { type: DataType.Unknown },
+        label: x,
+      } : { type: x as any }
+    )
   });
 }
 
 // Math
-addIntrinsic("add",    Instr.Add,    ["a", "a"], ["a"]);
-addIntrinsic("sub",    Instr.Sub,    ["a", "a"], ["a"]);
+addIntrinsic("add",    Instr.Add,    [DataType.Int, DataType.Int], [DataType.Int]);
+addIntrinsic("sub",    Instr.Sub,    [DataType.Int, DataType.Int], [DataType.Int]);
 addIntrinsic("mul",    Instr.Mul,    [DataType.Int, DataType.Int], [DataType.Int]);
 addIntrinsic("divmod", Instr.DivMod, [DataType.Int, DataType.Int], [DataType.Int, DataType.Int]);
 
 addIntrinsic("imul",    Instr.IMul,    [DataType.Int, DataType.Int], [DataType.Int]);
 addIntrinsic("idivmod", Instr.IDivMod, [DataType.Int, DataType.Int], [DataType.Int, DataType.Int]);
 
-// Comprasion
+// Comparison
 addIntrinsic("eq",   Instr.Eq,   [DataType.Int, DataType.Int], [DataType.Bool]);
 addIntrinsic("neq",  Instr.Neq,  [DataType.Int, DataType.Int], [DataType.Bool]);
 addIntrinsic("lt",   Instr.Lt,   [DataType.Int, DataType.Int], [DataType.Bool]);
@@ -43,17 +57,12 @@ addIntrinsic("and", Instr.And, [DataType.Int,  DataType.Int], [DataType.Int]);
 addIntrinsic("xor", Instr.Xor, [DataType.Int,  DataType.Int], [DataType.Int]);
 
 // Stack manipulation
+addIntrinsic("drop", Instr.Drop, [DataType.Unknown], []);
 addIntrinsic("dup",  Instr.Dup,  ["a"],           ["a", "a"]);
-addIntrinsic("drop", Instr.Drop, ["a"],           []);
 addIntrinsic("swap", Instr.Swap, ["a", "b"],      ["b", "a"]);
-addIntrinsic("rot",  Instr.Rot,  ["a", "b", "c"], ["c", "a", "b"]);
-addIntrinsic("over", Instr.Over, ["a", "b"],      ["b", "a", "b"]);
+addIntrinsic("rot",  Instr.Rot,  ["a", "b", "c"], ["b", "c", "a"]);
+addIntrinsic("over", Instr.Over, ["a", "b"],      ["a", "b", "a"]);
 addIntrinsic("2dup", Instr.Dup2, ["a", "b"],      ["a", "b", "a", "b"]);
-addIntrinsic(
-  "2swap", Instr.Swap2,
-  ["a", "b", "c", "d"],
-  ["d", "c", "b", "a"]
-);
 
 // Memory
 addIntrinsic("write8",  Instr.Write8,  [DataType.Int, DataType.Ptr], []);
@@ -71,6 +80,5 @@ addIntrinsic("puts",  Instr.Puts,  [DataType.Int, DataType.Ptr], []);
 
 // Compile-time
 addIntrinsic("<dump-stack>", Instr.Nop, [], []);
-addIntrinsic("cast(int)",    Instr.Nop, ["a"], [DataType.Int]);
-addIntrinsic("cast(ptr)",    Instr.Nop, ["a"], [DataType.Ptr]);
-addIntrinsic("cast(bool)",   Instr.Nop, ["a"], [DataType.Bool]);
+addIntrinsic("offset",       Instr._CExpr__Offset, [DataType.Int], [DataType.Int]);
+addIntrinsic("reset",        Instr._CExpr__Reset,  [],             [DataType.Int]);

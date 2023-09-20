@@ -1,4 +1,4 @@
-import { File, Location, Span, formatLoc } from "../shared";
+import { File, Location, Span, TypeFrame, Context, formatLoc, frameToString } from "../shared";
 import chalk, { ChalkInstance } from "chalk";
 import lineColumn from "line-column";
 
@@ -78,7 +78,7 @@ function report(
   console.error();
 }
 
-export type StackElement = { name?: string, value?: string, loc: Location }
+export type StackElement = { name: string, loc: Location }
 
 export function reportErrorWithStack(
   message: string, loc: Location, stack: StackElement[], notes: string[] = []
@@ -99,7 +99,7 @@ export function reportErrorWithStack(
     console.error(
       "", chalk.gray("~ in"),
       chalk.gray.bold(formatLoc(o.loc)),
-      `(${chalk.bold(o.name || o.value)})`
+      `(${chalk.bold(o.name)})`
     );
   }
 
@@ -140,4 +140,32 @@ export function reportErrorWithoutLoc(message: string, notes: string[] = [], fil
 
   console.error();
   process.exit(1);
+}
+
+export function reportErrorWithStackData(
+  message: string,
+  loc: Location,
+  ctx: Context,
+  expectedStack: TypeFrame[],
+  notes: string[] = []
+): never {
+  if (expectedStack.length) {
+    notes.push(chalk.greenBright.bold("Expected data:"));
+    for (const frame of expectedStack)
+      notes.push(` - ${chalk.bold(frameToString(frame))}`);
+  }
+
+  if (ctx.stack.length) {
+    notes.push(chalk.redBright.bold("Current data on the stack:"));
+    for (let i = 0; i < ctx.stack.length; i++) {
+      const frame = ctx.stack[i];
+      notes.push(` - ${
+        chalk.bold(frameToString(frame))
+      } @ ${
+        formatLoc(ctx.stackLocations[i])
+      }`);
+    }
+  }
+
+  reportError(message, loc, notes);
 }

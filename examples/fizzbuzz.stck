@@ -1,17 +1,12 @@
-include "std"
+%include "std"
 
 proc main do
   1 while dup 100 lt do
-    dup  3 mod
-    over 5 mod
-
-    0 eq if
-      0 eq if
-        "FizzBuzz\n" puts
-      else
-        "Buzz\n" puts
-      end
-    else 0 eq if*
+    if dup 15 mod 0 eq do
+      "FizzBuzz\n" puts
+    elif dup 5 mod 0 eq do
+      "Buzz\n" puts
+    elif dup 3 mod 0 eq do
       "Fizz\n" puts
     else
       dup print

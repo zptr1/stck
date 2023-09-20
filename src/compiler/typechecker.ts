@@ -1,77 +1,60 @@
-import { DataType, DataTypeArray, TemplateMap, compareDataTypeArrays, Location, formatLoc, INTRINSICS } from "../shared";
-import { AstKind, Const, Expr, Proc, Program, Signature, WordType } from "../parser/ast";
-import { StackElement, reportError, reportErrorWithStack } from "../errors";
+import { DataType, Location, TypeFrame, frameToString, Context, INTRINSICS, cloneContext, createContext, formatLoc } from "../shared";
+import { AstKind, Const, Expr, LiteralType, Proc, Program, WordType } from "../parser";
+import { reportError, reportErrorWithStackData } from "../errors";
+import { assertNever } from "../util";
 import chalk from "chalk";
 
-export interface Context {
-  stack: DataTypeArray;
-  stackLocations: Location[];
-  bindings: Map<string, DataType | string>;
-  // ...
-}
-
-export function createContext(
-  stack: DataTypeArray = [],
-  stackLocations: Location[] = [],
-  bindings: Map<string, DataType | string> = new Map()
-): Context {
-  return {
-    stack,
-    stackLocations,
-    bindings
-  }
-}
-
-export function reportErrorWithStackData(
-  message: string,
-  loc: Location,
-  ctx: Context,
-  expectedStack: DataTypeArray,
-  notes: string[] = []
-): never {
-  if (expectedStack.length) {
-    notes.push(chalk.greenBright.bold("Expected data:"));
-    for (const e of expectedStack)
-      notes.push(` - ${chalk.bold(
-        typeof e == "string" ? "Any" : DataType[e])
-      }`);
+function handleSignature(
+  loc: Location, ctx: Context,
+  ins: TypeFrame[], outs: TypeFrame[],
+  strictLength: boolean = true,
+  suffix: string = "", notes: string[] = []
+) {
+  if (ctx.stack.length < ins.length) {
+    reportErrorWithStackData(`Insufficient data on the stack ${suffix}`, loc, ctx, ins, notes);
+  } else if (strictLength && ctx.stack.length > ins.length) {
+    reportErrorWithStackData(`Unhandled data on the stack ${suffix}`, loc, ctx, ins, notes);
   }
 
-  if (ctx.stack.length) {
-    notes.push(chalk.redBright.bold("Current data on the stack:"));
-    for (let i = 0; i < ctx.stack.length; i++) {
-      const e = ctx.stack[i];
-      notes.push(` - ${chalk.bold(
-        typeof e == "string" ? "Any" : DataType[e])
-      } @ ${formatLoc(ctx.stackLocations[i])}`);
+  const cmp = ctx.stack.slice(-ins.length);
+  const generics = new Map<string, TypeFrame>();
+
+  for (let i = 0; i < ins.length; i++) {
+    if (!typeFrameEquals(ins[i], cmp[i], generics)) {
+      // TODO: highlight which type frame did not match?
+      reportErrorWithStackData(
+        `Unexpected data on the stack ${suffix}`,
+        loc, ctx, ins.map((x) => insertGenerics(x, generics)), notes
+      );
     }
   }
 
-  reportError(message, loc, notes);
+  ctx.stack.splice(-ins.length, ins.length);
+  ctx.stackLocations.splice(-ins.length, ins.length);
+
+  for (let i = 0; i < outs.length; i++) {
+    ctx.stack.push(insertGenerics(outs[i], generics));
+    ctx.stackLocations.push(loc);
+  }
 }
 
-export function validateContextStack(
-  loc: Location,
-  ctx: Context,
-  stack: DataTypeArray,
-  strictLength: boolean = true,
-  suffix: string = "",
-  notes: string[] = []
+/// `handleSignature`, except it does not modify the data on the stack and used only to validate the stack
+function validateStack(
+  loc: Location, ctx: Context, stack: TypeFrame[],
+  strictLength: boolean, suffix: string = "", notes: string[] = []
 ) {
   if (ctx.stack.length < stack.length) {
     reportErrorWithStackData(`Insufficient data on the stack ${suffix}`, loc, ctx, stack, notes);
+  } else if (strictLength && ctx.stack.length > stack.length) {
+    reportErrorWithStackData(`Unhandled data on the stack ${suffix}`, loc, ctx, stack, notes);
   }
 
-  if (strictLength) {
-    if (ctx.stack.length > stack.length) {
-      reportErrorWithStackData(`Unhandled data on the stack ${suffix}`, loc, ctx, stack, notes);
-    } else if (!compareDataTypeArrays(stack, ctx.stack)) {
-      reportErrorWithStackData(`Unexpected data on the stack ${suffix}`, loc, ctx, stack, notes);
-    }
-  } else {
-    const currentStack = ctx.stack.slice().reverse().slice(0, stack.length);
+  const cmp = ctx.stack.slice(-stack.length);
+  const generics = new Map<string, TypeFrame>();
 
-    if (!compareDataTypeArrays(stack.slice().reverse(), currentStack)) {
+  for (let i = 0; i < stack.length; i++) {
+    if (!typeFrameEquals(stack[i], cmp[i], generics)) {
+      // TODO: highlight which type frame did not match?
       reportErrorWithStackData(
         `Unexpected data on the stack ${suffix}`,
         loc, ctx, stack, notes
@@ -80,427 +63,252 @@ export function validateContextStack(
   }
 }
 
-export function handleSignature(signature: Signature, ctx: Context, loc: Location) {
-  const templates = new Map<string, DataType | string>();
-
-  for (const type of signature.ins) {
-    ctx.stackLocations.pop();
-    if (typeof type == "string") {
-      templates.set(type, ctx.stack.pop()!);
+function typeFrameEquals(frame: TypeFrame, cmp: TypeFrame, generics: Map<string, TypeFrame>): boolean {
+  if (frame.type == DataType.Generic) {
+    if (frame.value.type == DataType.Unknown) {
+      if (generics.has(frame.label)) {
+        return typeFrameEquals(generics.get(frame.label)!, cmp, generics);
+      } else {
+        generics.set(frame.label, cmp);
+        return true;
+      }
     } else {
-      ctx.stack.pop();
+      if (!generics.has(frame.label))
+        generics.set(frame.label, frame.value);
+
+      return typeFrameEquals(frame.value, cmp, generics);
     }
+  } else if (frame.type == DataType.PtrTo) {
+    return (
+      cmp.type == DataType.PtrTo
+      && typeFrameEquals(frame.value, cmp.value, generics)
+    )
+  } else if (frame.type == DataType.Unknown || cmp.type == DataType.Unknown) {
+    // TODO: ?
+    return true;
+  } else {
+    return frame.type == cmp.type;
   }
+}
 
-  for (let i = signature.outs.length - 1; i >= 0; i--) {
-    const type = signature.outs[i];
-    ctx.stackLocations.push(loc);
-    if (typeof type == "string") {
-      ctx.stack.push(templates.get(type)!);
-    } else {
-      ctx.stack.push(type);
+function insertGenerics(frame: TypeFrame, generics: Map<string, TypeFrame>): TypeFrame {
+  if (frame.type == DataType.Generic && frame.value.type == DataType.Unknown) {
+    const value = generics.get(frame.label);
+    return value ?? frame;
+  } else if (frame.type == DataType.PtrTo) {
+    return {
+      type: frame.type,
+      loc: frame.loc,
+      value: insertGenerics(frame.value, generics)
     }
+  } else {
+    return frame;
   }
 }
 
 export class TypeChecker {
-  public readonly procs: Map<string, Proc>;
-  public readonly consts: Map<string, Const>;
-  public readonly memories: Map<string, Const>;
+  constructor (
+    public readonly program: Program
+  ) {}
 
-  constructor (program: Program) {
-    this.consts = program.consts;
-    this.procs = program.procs;
-    this.memories = program.memories;
-  }
+  private validateExpr(expr: Expr, ctx: Context) {
+    if (expr.kind == AstKind.Literal) {
+      ctx.stackLocations.push(expr.loc)
 
-  public typecheckBody(exprs: Expr[], ctx: Context = createContext()) {
-    for (const expr of exprs) {
-      if (expr.kind == AstKind.Word) {
-        if (expr.value == "<dump-stack>") {
-          console.debug(chalk.blueBright.bold("debug:"), "Current data on the stack at", chalk.gray(formatLoc(expr.loc)));
+      if (expr.type == LiteralType.Str) {
+        ctx.stack.push({ type: DataType.Int }, { type: DataType.Ptr });
+        ctx.stackLocations.push(expr.loc);
+      } else if (expr.type == LiteralType.CStr) {
+        ctx.stack.push({ type: DataType.Ptr });
+      } else if (expr.type == LiteralType.Int) {
+        ctx.stack.push({ type: DataType.Int });
+      } else if (expr.type == LiteralType.Bool) {
+        ctx.stack.push({ type: DataType.Bool });
+      } else if (expr.type == LiteralType.Assembly) {
+        reportError(
+          "Assembly blocks cannot be used in safe procedures",
+          expr.loc
+        );
+      } else {
+        assertNever(expr.type);
+      }
+    } else if (expr.kind == AstKind.Word) {
+      if (expr.value == "<dump-stack>") {
+        console.log(chalk.cyan.bold("debug:"), "Current data on the stack");
+        for (let i = 0; i < ctx.stack.length; i++) {
+          console.log("..... ", chalk.bold(frameToString(ctx.stack[i])), "@", formatLoc(ctx.stackLocations[i]));
+        }
+      } else if (INTRINSICS.has(expr.value)) {
+        const intrinsic = INTRINSICS.get(expr.value)!;
+        expr.type = WordType.Intrinsic;
+        handleSignature(
+          expr.loc, ctx,
+          intrinsic.ins, intrinsic.outs,
+          false, "for the intrinsic call"
+        );
+      } else if (this.program.procs.has(expr.value)) {
+        const proc = this.program.procs.get(expr.value)!;
+        expr.type = WordType.Proc;
+        handleSignature(
+          expr.loc, ctx,
+          proc.signature.ins, proc.signature.outs,
+          false, "for the procedure call"
+        );
+      } else if (ctx.bindings.has(expr.value)) {
+        expr.type = WordType.Binding;
+        ctx.stack.push(ctx.bindings.get(expr.value)!);
+        ctx.stackLocations.push(expr.loc);
+      } else if (this.program.consts.has(expr.value)) {
+        const constant = this.program.consts.get(expr.value)!;
+        if (constant.type.type == DataType.Unknown) {
+          reportError("This constant is not defined yet", expr.loc);
+        }
 
-          for (let i = 0; i < ctx.stack.length; i++) {
-            const e = ctx.stack[i];
-            console.debug(
-              chalk.blueBright.bold("debug:"),
-              "-", chalk.bold(
-                typeof e == "string" ? "Any" : DataType[e]
-              ),
-              "@", chalk.bold(formatLoc(ctx.stackLocations[i]))
+        expr.type = WordType.Constant;
+        ctx.stack.push(constant.type);
+        ctx.stackLocations.push(expr.loc);
+      } else if (this.program.memories.has(expr.value)) {
+        expr.type = WordType.Memory;
+        ctx.stack.push({ type: DataType.Ptr });
+        ctx.stackLocations.push(expr.loc);
+      } else {
+        reportError("Unknown word", expr.loc);
+      }
+    } else if (expr.kind == AstKind.If) {
+      this.validateBody(expr.condition, ctx);
+      handleSignature(
+        expr.loc, ctx, [{ type: DataType.Bool }], [],
+        false, "for the condition"
+      );
+
+      if (expr.elseBranch) {
+        // if and else - both branches must result in the same data on the stack
+        const clone = cloneContext(ctx);
+
+        this.validateBody(expr.body, ctx);
+        this.validateBody(expr.else, clone);
+
+        validateStack(expr.loc, clone, ctx.stack, true, "after the condition", [
+          "both branches of the condition must result in the same data on the stack"
+        ]);
+      } else {
+        // only if - the branch must not modify the amount of elements or their types on the stack
+        const clone = cloneContext(ctx);
+        this.validateBody(expr.body, clone);
+        validateStack(expr.loc, clone, ctx.stack, true, "after the condition", [
+          "the condition must not change the amount of elements or their types on the stack"
+        ]);
+      }
+    } else if (expr.kind == AstKind.While) {
+      const clone = cloneContext(ctx);
+      this.validateBody(expr.condition, clone);
+      handleSignature(
+        expr.loc, clone,
+        [{ type: DataType.Bool }], [],
+        false, "for the condition of the loop"
+      );
+
+      this.validateBody(expr.body, clone);
+      validateStack(
+        expr.loc, clone, ctx.stack, true,
+        "after a single iteration of te loop", [
+          "loops should not modify the amount of elements or their types on the stack"
+        ]
+      );
+    } else if (expr.kind == AstKind.Let) {
+      for (let i = expr.bindings.length - 1; i >= 0; i--) {
+        const binding = expr.bindings[i];
+
+        if (ctx.bindings.has(binding)) {
+          reportError(
+            `The binding ${chalk.bold(binding)} is already defined`,
+            expr.loc
+          );
+        } else {
+          const frame = ctx.stack.pop();
+          ctx.stackLocations.pop();
+
+          if (!frame) {
+            reportErrorWithStackData(
+              "Insufficient data on the stack for the let binding", expr.loc, ctx, [], [
+                `the let binding takes ${expr.bindings.length} elements`,
+                `${ctx.stack.length} elements were provided`
+              ]
             );
           }
-        } else if (expr.type == WordType.Proc) {
-          const proc = this.procs.get(expr.value)!;
 
-          if (!proc.signature) {
-            if (proc.unsafe) {
-              reportError(
-                "Call of an unsafe procedure in a safe context", expr.loc, [
-                  "the unsafe procedure must have a signature defined"
-                ]
-              );
-            } else {
-              proc.signature = this.inferProcSignature(proc, [{
-                loc: expr.loc,
-                name: proc.name
-              }]);
-            }
-          }
-
-          validateContextStack(expr.loc, ctx, proc.signature!.ins, false, "for the procedure call");
-          // TODO: okay well thats definitely weird...
-          // fuck it i think i'll rewrite the typechecker :/
-
-          const templates = new Map<string, DataType | string>();
-
-          for (const type of proc.signature!.ins) {
-            ctx.stackLocations.pop();
-            if (typeof type == "string") {
-              templates.set(type, ctx.stack.pop()!);
-            } else {
-              ctx.stack.pop();
-            }
-          }
-
-          for (const type of proc.signature!.outs) {
-            ctx.stackLocations.push(expr.loc);
-            if (typeof type == "string") {
-              ctx.stack.push(templates.get(type)!);
-            } else {
-              ctx.stack.push(type);
-            }
-          }
-          // let i = proc.signature!.outs.length - 1; i >= 0; i--
-          // handleSignature(proc.signature!, ctx, expr.loc);
-        } else if (expr.type == WordType.Constant) {
-          const constant = this.consts.get(expr.value)!;
-          if (constant.type == DataType.Str) {
-            ctx.stack.push(DataType.Int, DataType.Ptr);
-            ctx.stackLocations.push(expr.loc, expr.loc);
-          } else if (constant.type == DataType.CStr) {
-            ctx.stack.push(DataType.Ptr);
-            ctx.stackLocations.push(expr.loc);
-          } else {
-            ctx.stack.push(constant.type);
-            ctx.stackLocations.push(expr.loc);
-          }
-        } else if (expr.type == WordType.Memory) {
-          ctx.stack.push(DataType.Ptr);
-          ctx.stackLocations.push(expr.loc);
-        } else if (expr.type == WordType.Binding) {
-          ctx.stack.push(ctx.bindings.get(expr.value)!);
-          ctx.stackLocations.push(expr.loc);
-        } else if (expr.type == WordType.Intrinsic) {
-          const intrinsic = INTRINSICS.get(expr.value)!;
-
-          validateContextStack(expr.loc, ctx, intrinsic.ins, false, "for the intrinsic call");
-          handleSignature(intrinsic, ctx, expr.loc);
-        } else {
-          reportError("Unknown word", expr.loc);
+          ctx.bindings.set(binding, frame);
         }
-      } else if (expr.kind == AstKind.While) {
-        const initialStack = structuredClone(ctx.stack);
+      }
 
-        this.typecheckBody(expr.condition, ctx);
-        validateContextStack(expr.loc, ctx, [DataType.Bool], false, "in the condition of the loop");
-        ctx.stackLocations.pop();
-        ctx.stack.pop();
+      this.validateBody(expr.body, ctx);
+    } else if (expr.kind == AstKind.Cast) {
+      if (ctx.stack.length < expr.types.length) {
+        reportErrorWithStackData(
+          "Insufficient data on the stack for type casting",
+          expr.loc, ctx, []
+        );
+      }
 
-        this.typecheckBody(expr.body, ctx);
-        validateContextStack(expr.loc, ctx, initialStack, true, "after a single interation of the loop");
-      } else if (expr.kind == AstKind.If) {
-        validateContextStack(expr.loc, ctx, [DataType.Bool], false, "for the condition");
-        ctx.stackLocations.pop();
-        ctx.stack.pop();
+      ctx.stack.splice(-expr.types.length, expr.types.length);
+      ctx.stackLocations.splice(-expr.types.length, expr.types.length);
 
-        const branches = [];
-
-        if (expr.body.length > 0) {
-          const clone = createContext(structuredClone(ctx.stack), ctx.stackLocations.slice(), ctx.bindings);
-          this.typecheckBody(expr.body, clone);
-          branches.push(clone);
-        }
-
-        if (expr.else.length > 0) {
-          const clone = createContext(structuredClone(ctx.stack), ctx.stackLocations.slice(), ctx.bindings);
-          this.typecheckBody(expr.else, clone);
-          branches.push(clone);
-        }
-
-        if (branches.length > 1) {
-          validateContextStack(expr.loc, branches[1], branches[0].stack, true, "after the condition", [
-            "Both branches must result in the same data on the stack"
-          ]);
-        } else if (branches.length > 0) {
-          validateContextStack(expr.loc, branches[0], ctx.stack, true, "after the condition", [
-            "Conditions must not change the types and the amount of elements on the stack"
-          ]);
-        }
-
-        if (branches.length > 0) {
-          ctx.stack = branches[0].stack;
-          ctx.stackLocations = branches[0].stackLocations;
-        }
-      } else if (expr.kind == AstKind.Let) {
-        if (ctx.stack.length < expr.bindings.length) {
-          reportErrorWithStackData(
-            "Not enough data on the stack for the binding", expr.loc, ctx, [
-              `Expected at least ${expr.bindings.length} values`
-            ]
-          );
-        }
-
-        for (let i = expr.bindings.length - 1; i >= 0; i--) {
-          ctx.bindings.set(expr.bindings[i], ctx.stack.pop()!);
-          ctx.stackLocations.pop();
-        }
-
-        this.typecheckBody(expr.body, ctx);
-
-        for (const binding of expr.bindings)
-          ctx.bindings.delete(binding);
-      } else if (expr.kind == AstKind.Push) {
+      for (let i = expr.types.length - 1; i >= 0; i--) {
+        ctx.stack.push(expr.types[i]);
         ctx.stackLocations.push(expr.loc);
-
-        if (expr.type == DataType.AsmBlock) {
-          reportError(
-            "Assembly blocks cannot be used outside of unsafe procedures", expr.loc
-          );
-        } else if (expr.type == DataType.Str) {
-          ctx.stack.push(DataType.Int, DataType.Ptr);
-          ctx.stackLocations.push(expr.loc);
-        } else if (expr.type == DataType.CStr) {
-          ctx.stack.push(DataType.Ptr);
-        } else {
-          ctx.stack.push(expr.type);
-        }
-      } else {
-        throw new Error(`Typechecking is not implemented for ${AstKind[(expr as Expr).kind]}`);
       }
+    } else {
+      assertNever(expr);
     }
   }
 
-  public typecheckProc(proc: Proc, ctx: Context = createContext()) {
-    if (proc.name == "main") {
-      if (proc.signature!.ins.length > 0) {
-        reportError(
-          "The main procedure must not accept any data from the stack",
-          proc.loc
-        );
-      } else if (proc.signature!.outs.length > 0) {
-        reportError(
-          "The main procedure must not return anything",
-          proc.loc
-        );
-      }
-    }
-
-    this.typecheckBody(proc.body, ctx);
-    validateContextStack(proc.loc, ctx, proc.signature!.outs, true, "after the procedure call");
+  private validateBody(body: Expr[], ctx: Context) {
+    for (const expr of body)
+      this.validateExpr(expr, ctx);
   }
 
-  public inferSignature(
-    exprs: Expr[],
-    callstack: StackElement[] = [],
-    ins: DataTypeArray = [],
-    outs: DataTypeArray = [],
-    templates: TemplateMap = new Map(),
-    bindings: Map<string, DataType | string> = new Map()
-  ): Signature & {
-    templates: TemplateMap
-  } {
-    for (const expr of exprs) {
-      if (expr.kind == AstKind.Word) {
-        if (this.procs.has(expr.value)) {
-          const proc = this.procs.get(expr.value)!;
-          if (!proc.signature) {
-            if (callstack.find((x) => x.name == expr.value)) {
-              reportErrorWithStack(
-                "Recursive calls of procedures without signatures are not supported",
-                expr.loc, callstack
-              );
-            } else {
-              this.inferProcSignature(proc, callstack.concat(expr));
-            }
-          }
+  private validateProc(proc: Proc) {
+    const ctx = createContext();
 
-          const tmpl: TemplateMap = new Map();
-
-          for (const type of proc.signature!.ins) {
-            if (typeof type == "string") {
-              if (outs.length) {
-                tmpl.set(type, outs.pop()!);
-              } else {
-                tmpl.set(type, type);
-                ins.push(type);
-              }
-            } else if (outs.length) {
-              const e = outs.pop();
-              if (typeof e == "string" && !templates.has(e)) {
-                templates.set(e, type);
-              }
-            } else {
-              ins.push(type);
-            }
-          }
-
-          for (let i = proc.signature!.outs.length - 1; i >= 0; i--) {
-            const type = proc.signature!.outs[i];
-            if (typeof type == "string") {
-              outs.push(tmpl.get(type)!);
-            } else {
-              outs.push(type);
-            }
-          }
-        } else if (INTRINSICS.has(expr.value)) {
-          const intrinsic = INTRINSICS.get(expr.value)!;
-          const tmpl: TemplateMap = new Map();
-
-          for (const type of intrinsic.ins) {
-            if (typeof type == "string") {
-              if (outs.length) {
-                tmpl.set(type, outs.pop()!);
-              } else {
-                tmpl.set(type, type);
-                ins.push(type);
-              }
-            } else if (outs.length) {
-              const e = outs.pop();
-              if (typeof e == "string") {
-                templates.set(e, type);
-              }
-            } else {
-              ins.push(type);
-            }
-          }
-
-          for (let i = intrinsic.outs.length - 1; i >= 0; i--) {
-            const type = intrinsic.outs[i];
-            if (typeof type == "string") {
-              outs.push(tmpl.get(type)!);
-            } else {
-              outs.push(type);
-            }
-          }
-        } else if (this.memories.has(expr.value)) {
-          outs.push(DataType.Int);
-        } else if (this.consts.has(expr.value)) {
-          const type = this.consts.get(expr.value)!.type;
-
-          if (type == DataType.Str) {
-            outs.push(DataType.Int, DataType.Ptr);
-          } else if (type == DataType.CStr) {
-            outs.push(DataType.Ptr);
-          } else {
-            outs.push(type);
-          }
-        }
-      } else if (expr.kind == AstKind.While) {
-        this.inferSignature(expr.condition, callstack, ins, outs);
-        outs.pop();
-
-        this.inferSignature(expr.body, callstack, ins, outs);
-      } else if (expr.kind == AstKind.If) {
-        if (outs.length) outs.pop();
-        else ins.push(DataType.Bool);
-
-        if (expr.body.length > 0) {
-          this.inferSignature(expr.body, callstack, ins, outs);
-        }
-      } else if (expr.kind == AstKind.Let) {
-        // console.warn(chalk.yellow.bold("[WARN]"), "Type inference does not work properly for `let` bindings\n");
-        for (let i = expr.bindings.length - 1; i >= 0; i--) {
-          if (outs.length) {
-            bindings.set(expr.bindings[i], outs.pop()!);
-          } else {
-            bindings.set(expr.bindings[i], expr.bindings[i]);
-            ins.push(expr.bindings[i]);
-          }
-        }
-
-        this.inferSignature(expr.body, callstack, ins, outs, templates, bindings);
-
-        for (const binding of expr.bindings)
-          bindings.delete(binding);
-      } else if (expr.kind == AstKind.Push) {
-        if (expr.type == DataType.Str) {
-          outs.push(DataType.Int, DataType.Ptr);
-        } else if (expr.type == DataType.CStr) {
-          outs.push(DataType.Ptr);
-        } else if (expr.type == DataType.Int) {
-          outs.push(DataType.Int);
-        } else if (expr.type == DataType.Bool) {
-          outs.push(DataType.Bool);
-        }
-      } else {
-        throw new Error(`Type inference is not implemented for ${AstKind[(expr as Expr).kind]}`);
-      }
+    for (const frame of proc.signature.ins) {
+      ctx.stack.push(frame);
+      ctx.stackLocations.push(frame.loc ?? proc.loc);
     }
 
-    return {
-      ins, outs, templates
-    };
+    this.validateBody(proc.body, ctx);
+    validateStack(proc.loc, ctx, proc.signature.outs, true, "after the procedure");
   }
 
-  public inferProcSignature(proc: Proc, callstack: StackElement[] = []): Signature {
-    if (!proc.signature) {
-      if (proc.name == "main") {
-        proc.signature = { ins: [], outs: [] };
-      } else {
-        const signature = this.inferSignature(proc.body, callstack);
+  private validateConst(constant: Const) {
+    const ctx = createContext();
+    this.validateBody(constant.body, ctx);
 
-        proc.signature = {
-          ins: signature.ins.map(
-            (x) => typeof x == "string"
-              ? signature.templates.get(x) ?? x
-              : x
-          ),
-          outs: signature.outs.map(
-            (x) => typeof x == "string"
-              ? signature.templates.get(x) ?? x
-              : x
-          )
-        }
-      }
+    if (ctx.stack.length < 0) {
+      reportError("Constant resulted in no value", constant.loc);
+    } else if (ctx.stack.length > 1) {
+      reportErrorWithStackData("Constant resulted in multiple values", constant.loc, ctx, []);
     }
 
-    return proc.signature;
+    constant.type = ctx.stack.pop()!;
+  }
+
+  private validateMemory(memory: Const) {
+    const ctx = createContext();
+    this.validateBody(memory.body, ctx);
+    validateStack(
+      memory.loc, ctx,
+      [{ type: DataType.Int }],
+      true
+    );
   }
 
   public typecheck() {
-    this.procs.forEach((proc) => {
-      if (proc.unsafe) {
-        return;
+    this.program.consts.forEach((constant) => this.validateConst(constant));
+    this.program.memories.forEach((memory) => this.validateMemory(memory));
+    this.program.procs.forEach((proc) => {
+      if (!proc.unsafe) {
+        this.validateProc(proc);
       }
-
-      const ctx = createContext();
-
-      if (!proc.signature) {
-        proc.signature = this.inferProcSignature(proc, [{
-          name: proc.name,
-          loc: proc.loc
-        }]);
-      } else if (
-        proc.signature.ins.find((x) => typeof x == "string")
-        || proc.signature.outs.find((x) => typeof x == "string")
-      ) {
-        reportError(
-          "Generics in the signatures are allowed only for unsafe procedures", proc.loc
-        );
-      }
-
-      for (const e of proc.signature.ins) {
-        ctx.stack.push(e);
-        ctx.stackLocations.push(proc.loc);
-      }
-
-      this.typecheckProc(proc, ctx);
     });
-
-    if (!this.procs.has("main")) {
-      console.error(chalk.red.bold("[ERROR]"), "No main procedure.");
-      process.exit(1);
-    }
   }
 }

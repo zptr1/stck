@@ -1,4 +1,4 @@
-include "std"
+%include "std"
 
 memory input_buf 64 end
 
@@ -13,13 +13,13 @@ proc main do
     64 input_buf stdin read
     input_buf parse-int
 
-    dup 99 gt if
+    if dup 99 gt do
       "The guess must be from 0 to 99.\n" puts
-    else 2dup eq if*
+    elif 2dup eq do
       "You won!\n" puts
-    else 2dup lt if*
+    elif 2dup lt do
       "Wrong, the actual number is less than your guess.\n" puts
-    else 2dup gt if*
+    elif 2dup gt do
       "Wrong, the actual number is greater than your guess.\n" puts
     end
   end drop drop

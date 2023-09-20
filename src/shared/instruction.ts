@@ -1,10 +1,21 @@
 export enum Instr {
-  Push,
-  Call,
   Nop,
-  Jmp,
-  JmpIfNot,
+  Label,
+
+  EnterProc,
+
+  Push,
+  Push64,
+  PushStr,
+  PushMem,
+  AsmBlock,
+
+  // Control flow
+  Call,
   Ret,
+  Jmp,
+  JmpIf,
+  JmpIfNot,
 
   // Math
   Add,
@@ -14,7 +25,7 @@ export enum Instr {
   IMul,
   IDivMod,
 
-  // Comprasion
+  // Comparison
   Eq,
   Neq,
   Lt,
@@ -37,7 +48,6 @@ export enum Instr {
   Rot,
   Over,
   Dup2,
-  Swap2,
   Bind,
   PushBind,
   Unbind,
@@ -55,15 +65,34 @@ export enum Instr {
   // Program
   Print,
   Puts,
-  Halt
+  Halt,
+
+  // Compile-time expressions
+  _CExpr__Offset,
+  _CExpr__Reset
 }
 
-export type LabeledInstr = [Instr, ...(number | bigint | string)[]];
-export type Instruction = [Instr, ...(number | bigint)[]];
+type _instr = (
+  | { kind: Instr.EnterProc, name: string }
+  | { kind: Instr.Label, label: number }
+  | { kind: Instr.Push, value: number }
+  | { kind: Instr.Push64, value: bigint }
+  | { kind: Instr.PushStr, id: number, len: number }
+  | { kind: Instr.PushMem, offset: number }
+  | { kind: Instr.PushBind, element: number }
+  | { kind: Instr.AsmBlock, value: string }
+  | {
+      kind: Instr.Bind | Instr.Unbind,
+      count: number
+    }
+  | {
+      kind: Instr.Jmp | Instr.JmpIf | Instr.JmpIfNot,
+      label: number
+    }
+  | { kind: Instr.Call, name: string }
+  | { kind: Instr.Halt, code: number }
+);
 
-export interface ByteCode {
-  text: string[];
-  instr: Instruction[];
-  textMemSize: number;
-  progMemSize: number;
-}
+export type Instruction =
+  | _instr
+  | { kind: Exclude<Instr, _instr["kind"]> };

@@ -1,15 +1,13 @@
-include "std"
+%include "std"
 
-memory input 1 end
+memory input 2 end
 
 proc main do
-  1 input stdin read drop
+  2 input stdin read drop
 
-  input read8 '1' eq if
+  if input read8 '1' eq do
     while true do
       "1\n" puts
     end
-  else
-    "0\n" puts
   end
 end
