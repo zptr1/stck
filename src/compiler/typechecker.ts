@@ -17,7 +17,7 @@ function handleSignature(
     err.addStackElements(ctx, (e) => `${e} introduced here`);
     err.add(
       Err.Error, loc,
-      `${ctx.stack.length ? "also " : ""}needs ${
+      `missing ${
         ins.slice(ctx.stack.length)
         .map((x) => frameToString(x))
         .join(", ")
@@ -44,15 +44,14 @@ function handleSignature(
   for (let i = 0; i < ins.length; i++) {
     if (!typeFrameEquals(ins[i], cmp[i], generics)) {
       const err = new StckError("unexpected data on the stack");
-      err.addStackElements(
-        ctx, (frame, i) => {
-          const expected = frameToString(ins[i]);
-          return frame == expected
-            ? `${frame} introduced here`
-            : `expected ${expected} but got ${frame}`
-        },
-        ctx.stack.length - ins.length
-      );
+      for (let j = ctx.stack.length - ins.length; i < ctx.stack.length; i++) {
+        const frame = frameToString(insertGenerics(ctx.stack[j], generics));
+        if (j == i) {
+          err.add(Err.Warn, ctx.stackLocations[i], `expected ${frameToString(ins[i])} but got ${frame}`);
+        } else {
+          err.add(Err.Note, ctx.stackLocations[i], `${frame} introduced here`);
+        }
+      }
 
       err.add(Err.Error, loc, `unexpected data ${suffix}`);
       onErr(err);

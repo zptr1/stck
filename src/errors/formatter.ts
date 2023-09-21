@@ -6,6 +6,8 @@ import plib from "path";
 function errColor(kind: Err) {
   if (kind == Err.Error) {
     return chalk.red.bold;
+  } else if (kind == Err.Warn) {
+    return chalk.yellow.bold;
   } else if (kind == Err.Note) {
     return chalk.blue.bold;
   } else {
@@ -14,8 +16,8 @@ function errColor(kind: Err) {
 }
 
 function errArrow(kind: Err, size: number) {
-  if (kind == Err.Error) {
-    return "^" + "=".repeat(size - 1);
+  if (kind == Err.Error || kind == Err.Warn) {
+    return "^" + "~".repeat(size - 1);
   } else {
     return "^" + "-".repeat(size - 1);
   }
@@ -51,11 +53,23 @@ export class StckError {
     const startLc = loc.file.lineColumn(loc.span[0]) ?? this.getLastLoc();
     const endLc = loc.file.lineColumn(loc.span[1]) ?? this.getLastLoc();
 
-    this._lastFile!.spans.push({
-      kind, loc, text,
-      start: { line: startLc.line - 1, col: startLc.col - 1 },
-      end:   { line: endLc.line - 1, col: endLc.col - 2 },
-    });
+    const existing = this._lastFile!.spans.find(
+      (x) => x.start.line == startLc.line - 1
+        && x.start.col >= startLc.col - 1
+        && x.end.col <= endLc.col - 2
+    );
+
+    if (existing) {
+      // TODO: Temporary fix
+      existing.text ??= "";
+      existing.text += `\n${errColor(kind)(text)}`;
+    } else {
+      this._lastFile!.spans.push({
+        kind, loc, text,
+        start: { line: startLc.line - 1, col: startLc.col - 1 },
+        end:   { line: endLc.line - 1, col: endLc.col - 2 },
+      });
+    }
 
     return this;
   }
@@ -133,7 +147,7 @@ export class StckError {
       spans.reverse();
 
       const span = spans.shift()!;
-      if (span.text) {
+      if (span.text && !span.text.includes("\n")) {
         arrows.pop();
 
         if (span.end.col + span.text.length < 65) {
@@ -153,8 +167,11 @@ export class StckError {
 
           const padding = arrows.pop()!.split("|")[0];
           const color = errColor(span.kind);
+          const s = `${emptyLineNo} ${arrows.join("")}${padding}`;
 
-          out.push(`${emptyLineNo} ${arrows.join("")}${padding}${color(span.text)}`);
+          for (const ln of span.text.split("\n")) {
+            out.push(`${s}${color(ln)}`);
+          }
         } else {
           arrows.pop();
         }

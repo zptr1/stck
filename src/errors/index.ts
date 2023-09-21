@@ -2,6 +2,7 @@ import { File, Location } from "../shared";
 
 export enum Err {
   Error,
+  Warn,
   Note,
   Trace,
 }
