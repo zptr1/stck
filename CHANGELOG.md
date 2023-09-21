@@ -6,7 +6,7 @@ This is the changelog for **stck**.
 
 ### Added
 
-- Added new Rust-like error messages, which are more detailed and look much better than the old messages. [Screenshot](https://cdn.discordapp.com/attachments/994971483040395374/1154149784593117234/image.png)
+- Added new Rust-like error messages, which are more detailed and look much better than the old messages. [Screenshot](https://cdn.discordapp.com/attachments/994971483040395374/1154350814521999411/image.png)
 
 ### Fixes
 

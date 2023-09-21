@@ -74,7 +74,7 @@ export class Preprocessor {
         if (expansion.name == name) {
           err.add(Err.Note, expansion.loc, `first expansion of ${name}`);
         } else {
-          err.add(Err.Trace, expansion.loc);
+          err.add(Err.Trace, expansion.loc, `${this.macroExpansionStack[i - 1].name} lead to this expansion`);
         }
       }
 

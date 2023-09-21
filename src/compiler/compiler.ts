@@ -193,7 +193,7 @@ export class Compiler {
               if (expansion.name == proc.name) {
                 err.add(Err.Note, expansion.loc, `first expansion of ${proc.name}`);
               } else {
-                err.add(Err.Trace, expansion.loc);
+                err.add(Err.Trace, expansion.loc, `${ctx.inlineExpansionStack[i - 1]?.name} lead to this expansion`);
               }
             }
 
