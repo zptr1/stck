@@ -6,10 +6,7 @@ segment readable executable
 _start:
   mov rbp, rsp
   mov rsp, callstack_end
-  call __proc_main
-  mov rax, 60
-  mov rdi, 0
-  syscall
+  jmp __proc_main
 
 macro _swap a,b {
   mov rax, a
@@ -43,26 +40,17 @@ macro _ret_callp id {
   }
 ; Intrinsics
 ;; Math
-  macro _i_add {
+  macro __i_infix op {
     pop rbx
     pop rax
-    add rax, rbx
+    op rax, rbx
     push rax
   }
 
-  macro _i_sub {
-    pop rbx
-    pop rax
-    sub rax, rbx
-    push rax
-  }
-
-  macro _i_mul {
-    pop rbx
-    pop rax
-    mul rbx
-    push rax
-  }
+  macro _i_add  { __i_infix add  }
+  macro _i_sub  { __i_infix sub  }
+  macro _i_mul  { __i_infix mul  }
+  macro _i_imul { __i_infix imul }
 
   macro _i_divmod {
     pop rbx
@@ -73,42 +61,19 @@ macro _ret_callp id {
     push rdx
   }
 
-  macro _i_imul {
-    pop rbx
-    pop rax
-    imul rbx
-    push rax
-  }
-
   macro _i_idivmod {
     pop rbx
     pop rax
+    xor rdx, rdx
     idiv rbx
     push rax
+    push rdx
   }
 
 ;; Bitwise
-  macro _i_or {
-    pop rbx
-    pop rax
-    or rax, rbx
-    push rax
-  }
-
-  macro _i_and {
-    pop rbx
-    pop rax
-    and rax, rbx
-    push rax
-  }
-
-  macro _i_xor {
-    pop rbx
-    pop rax
-    xor rax, rbx
-    push rax
-  }
-
+  macro _i_or  { __i_infix or  }
+  macro _i_and { __i_infix and }
+  macro _i_xor { __i_infix xor }
   macro _i_shl {
     pop rcx
     pop rbx
@@ -124,9 +89,7 @@ macro _ret_callp id {
   }
 
   macro _i_not {
-    pop rax
-    not rax
-    push rax
+    not qword [rsp]
   }
 
 ;; Comparison
@@ -136,57 +99,48 @@ macro _ret_callp id {
     cmp rax, rbx
   }
 
-  macro _i_eq {
-    __i_cmp
-    sete al
+  macro __i_cmp_set t {
+    set#t al
     movzx rax, al
     push rax
+  }
+
+  macro _i_eq {
+    __i_cmp
+    __i_cmp_set e
   }
 
   macro _i_neq {
     __i_cmp
-    setne al
-    movzx rax, al
-    push rax
+    __i_cmp_set ne
   }
 
   macro _i_lt {
     __i_cmp
-    setl al
-    movzx rax, al
-    push rax
+    __i_cmp_set l
   }
 
   macro _i_gt {
     __i_cmp
-    setg al
-    movzx rax, al
-    push rax
+    __i_cmp_set g
   }
 
   macro _i_lteq {
     __i_cmp
-    setle al
-    movzx rax, al
-    push rax
+    __i_cmp_set le
   }
 
   macro _i_gteq {
     __i_cmp
-    setge al
-    movzx rax, al
-    push rax
+    __i_cmp_set ge
   }
 
 ;; Stack
-  macro _i_dup {
-    pop rax
-    push rax
-    push rax
-  }
-
-  macro _i_drop {
-    pop rax
+  macro _i_dup  { push qword [rsp] }
+  macro _i_over { push qword [rsp+16] }
+  macro _i_dup2 {
+    push qword [rsp+8]
+    push qword [rsp+8]
   }
 
   macro _i_swap {
@@ -203,23 +157,6 @@ macro _ret_callp id {
     push rbx
     push rax
     push rcx
-  }
-
-  macro _i_over {
-    pop rax
-    pop rbx
-    push rbx
-    push rax
-    push rbx
-  }
-
-  macro _i_dup2 {
-    pop rax
-    pop rbx
-    push rbx
-    push rax
-    push rbx
-    push rax
   }
 ;; Memory
   macro __i_write _reg {
@@ -324,7 +261,7 @@ stack_overflow:
   syscall
 
 segment readable writeable
-  callstack:     rb 80000
+  callstack:     rb 640000
   callstack_end:
 
   stack_overflow_msg:       db '[RUNTIME ERROR] Stack overflow', 10

@@ -60,22 +60,30 @@ export function codegenFasm(prog: IRProgram): string[] {
 
   const pushIdent = (s: string) => out.push("\t" + s);
   let lastInstr: Instruction = null as any;
+  let currentProc: string = "";
 
-  // i wish js had pattern matching ...
   for (const instr of prog.instr) {
     if (instr.kind == Instr.EnterProc) {
+      // TODO: normalizeWord repalces any invalid characters with underscores, which could result in duplicate label names
+      //       either make it add an increment in case of a duplicate,
+      //       or just use an increment like it did previouly (e. g. 'proc_0')
       out.push(`__proc_${normalizeWord(instr.name)}:`);
       pushIdent("_swap rsp,rbp");
-    } else if (instr.kind == Instr.Call) {
-      pushIdent(`_callp __proc_${normalizeWord(instr.name)}`);
+      currentProc = instr.name;
     } else if (instr.kind == Instr.Ret) {
-      if (lastInstr.kind == Instr.Call) {
+      if (currentProc == "main") {
+        pushIdent("mov rax, 60");
+        pushIdent("mov rdi, 0");
+        pushIdent("syscall");
+      } else if (lastInstr.kind == Instr.Call) {
         out.pop();
         pushIdent(`_ret_callp __proc_${normalizeWord(lastInstr.name)}`);
       } else {
         pushIdent("_swap rsp,rbp");
         pushIdent("ret");
       }
+    } else if (instr.kind == Instr.Call) {
+      pushIdent(`_callp __proc_${normalizeWord(instr.name)}`);
     } else if (instr.kind == Instr.Label) {
       pushIdent(`.L${instr.label}:`);
     } else if (instr.kind == Instr.Nop) {

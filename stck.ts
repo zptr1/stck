@@ -130,7 +130,7 @@ function main() {
       const path = plib.join(tmpdir(), "stck-temp");
 
       writeFileSync(path + ".asm", out.join("\n"));
-      cmd(["fasm", path + ".asm"]);
+      cmd(["fasm", "-m", "524288", path + ".asm"]);
 
       trace(INFO, "Running");
 
