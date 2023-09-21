@@ -1,5 +1,17 @@
 %include "std"
 
+var x int end
+
+proc increment :: int ptr-to do
+  dup @int 1 add swap !int
+end
+
 proc main do
-  "Hello, world\n" puts
+  x increment
+  x increment
+  x increment
+  x increment
+  "x = " puts @x print
+  69 !x
+  "x = " puts @x print
 end

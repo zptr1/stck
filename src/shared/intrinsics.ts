@@ -4,7 +4,6 @@ import { Instr } from "./instruction";
 export const INTRINSICS = new Map<string, Intrinsic>();
 
 export interface Intrinsic {
-  name: string;
   instr: Instr;
   ins: TypeFrame[];
   outs: TypeFrame[];
@@ -12,7 +11,7 @@ export interface Intrinsic {
 
 function addIntrinsic(name: string, instr: Instr, ins: (DataType | string)[], outs: (DataType | string)[]) {
   INTRINSICS.set(name, {
-    name, instr,
+    instr,
     // TODO: Find a better way to do this
     ins: ins.map(
       (x) => typeof x == "string" ? {

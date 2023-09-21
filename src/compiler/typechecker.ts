@@ -12,6 +12,7 @@ function handleSignature(
   suffix: string = "",
   onErr: (err: StckError) => void = ()=>{}
 ) {
+  // TODO: move this step to the step later for better error reporting
   if (ctx.stack.length < ins.length) {
     const err = new StckError("insufficient data on the stack");
     err.addStackElements(ctx, (e) => `${e} introduced here`);
@@ -44,12 +45,12 @@ function handleSignature(
   for (let i = 0; i < ins.length; i++) {
     if (!typeFrameEquals(ins[i], cmp[i], generics)) {
       const err = new StckError("unexpected data on the stack");
-      for (let j = ctx.stack.length - ins.length; i < ctx.stack.length; i++) {
+      for (let j = ctx.stack.length - ins.length; j < ctx.stack.length; j++) {
         const frame = frameToString(insertGenerics(ctx.stack[j], generics));
         if (j == i) {
-          err.add(Err.Warn, ctx.stackLocations[i], `expected ${frameToString(ins[i])} but got ${frame}`);
+          err.add(Err.Warn, ctx.stackLocations[j], `expected ${frameToString(ins[i])} but got ${frame}`);
         } else {
-          err.add(Err.Note, ctx.stackLocations[i], `${frame} introduced here`);
+          err.add(Err.Note, ctx.stackLocations[j], `${frame} introduced here`);
         }
       }
 
@@ -180,6 +181,37 @@ export class TypeChecker {
         expr.type = WordType.Memory;
         ctx.stack.push({ type: DataType.Ptr });
         ctx.stackLocations.push(expr.loc);
+      } else if (this.program.vars.has(expr.value)) {
+        expr.type = WordType.Var;
+        ctx.stack.push({
+          type: DataType.PtrTo,
+          value: this.program.vars.get(expr.value)!.type
+        });
+        ctx.stackLocations.push(expr.loc);
+      } else if (expr.value[0] == "@" || expr.value[0] == "!") {
+        const name = expr.value.slice(1);
+        const variable = this.program.vars.get(name)!;
+        if (variable) {
+          if (expr.value[0] == "@") {
+            expr.type = WordType.VarRead;
+            ctx.stack.push(variable.type);
+            ctx.stackLocations.push(expr.loc);
+          } else {
+            expr.type = WordType.VarWrite;
+            handleSignature(
+              expr.loc, ctx,
+              [variable.type], [],
+              false, true,
+              "for the variable write"
+            );
+          }
+
+          expr.value = name;
+        } else {
+          new StckError("unknown word")
+            .add(Err.Error, expr.loc)
+            .throw();
+        }
       } else {
         new StckError("unknown word")
           .add(Err.Error, expr.loc)
@@ -275,9 +307,9 @@ export class TypeChecker {
       ctx.stack.splice(-expr.types.length, expr.types.length);
       ctx.stackLocations.splice(-expr.types.length, expr.types.length);
 
-      for (let i = expr.types.length - 1; i >= 0; i--) {
-        ctx.stack.push(expr.types[i]);
-        ctx.stackLocations.push(expr.types[i].loc!);
+      for (const type of expr.types) {
+        ctx.stack.push(type);
+        ctx.stackLocations.push(type.loc!);
       }
     } else {
       assertNever(expr);

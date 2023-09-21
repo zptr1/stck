@@ -62,6 +62,9 @@ export enum Instr {
   Read32,
   Read64,
 
+  WriteT,
+  ReadT,
+
   // Program
   Print,
   Puts,

@@ -61,10 +61,18 @@ inline proc @16 :: ptr -> int do read16 end
 inline proc @32 :: ptr -> int do read32 end
 inline proc @64 :: ptr -> int do read64 end
 
-inline proc !int  :: int  ptr do write64 end
-inline proc !ptr  :: ptr  ptr do swap cast(int) swap write64 end
-inline proc !bool :: bool ptr do swap cast(int) swap write8  end
+inline proc !int  :: int int ptr-to do
+  cast(ptr) write64
+end
 
-inline proc @int  :: ptr -> int  do read64 end
-inline proc @ptr  :: ptr -> ptr  do read64 cast(ptr)  end
-inline proc @bool :: ptr -> bool do read64 cast(bool) end
+inline proc !ptr  :: ptr ptr ptr-to do
+  cast int ptr end write64
+end
+
+inline proc !bool :: bool bool ptr-to do
+  cast int ptr end write8
+end
+
+inline proc @int  :: int  ptr-to -> int  do cast(ptr) read64            end
+inline proc @ptr  :: ptr  ptr-to -> ptr  do cast(ptr) read64 cast(ptr)  end
+inline proc @bool :: bool ptr-to -> bool do cast(ptr) read8  cast(bool) end

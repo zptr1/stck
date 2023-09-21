@@ -17,9 +17,9 @@ function errColor(kind: Err) {
 
 function errArrow(kind: Err, size: number) {
   if (kind == Err.Error || kind == Err.Warn) {
-    return "^" + "~".repeat(size - 1);
+    return "^" + "~".repeat(Math.max(size - 1, 0));
   } else {
-    return "^" + "-".repeat(size - 1);
+    return "^" + "-".repeat(Math.max(size - 1, 0));
   }
 }
 
@@ -125,7 +125,7 @@ export class StckError {
       let lastSpanEnd = 0;
       for (const span of spans) {
         if (span.end.col < span.start.col || span.end.line != span.start.line) {
-          span.end.col = src.length - 1;
+          span.end.col = src.length;
           span.end.line = lineno;
         }
 
@@ -136,7 +136,7 @@ export class StckError {
         lines.push(padding + clr(errArrow(span.kind, size)));
 
         if (span.text) {
-          arrows.push(padding + clr("|") + " ".repeat(size - 1));
+          arrows.push(padding + clr("|") + " ".repeat(Math.max(size - 1, 0)));
         } else {
           arrows.push(padding + " ".repeat(size));
         }
@@ -148,16 +148,17 @@ export class StckError {
 
       const span = spans.shift()!;
       if (span.text && !span.text.includes("\n")) {
-        arrows.pop();
-
         if (span.end.col + span.text.length < 65) {
           lines.push(lines.pop()! + " " + errColor(span.kind)(span.text));
           out.push(`${emptyLineNo} ${lines.join("")}`);
+          arrows.pop();
         } else {
+          const pad = arrows.pop()!.split("|")[0];
           out.push(`${emptyLineNo} ${lines.join("")}`);
-          out.push(`${emptyLineNo} ${arrows.join("")} ${errColor(span.kind)(span.text)}`);
+          out.push(`${emptyLineNo} ${arrows.join("")}${pad}${errColor(span.kind)(span.text)}`);
         }
       } else {
+        spans.push(span);
         out.push(`${emptyLineNo} ${lines.join("")}`);
       }
 

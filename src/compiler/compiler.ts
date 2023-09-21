@@ -1,5 +1,5 @@
 import { AstKind, Const, Expr, LiteralType, Proc, Program, WordType } from "../parser";
-import { INTRINSICS, Instr, Instruction, Location, formatLoc } from "../shared";
+import { INTRINSICS, Instr, Instruction, Location, formatLoc, frameToString, sizeOf } from "../shared";
 import { CompilerContext, IRProgram, createContext } from "./ir";
 import { i32_MAX, i32_MIN, i64_MAX, i64_MIN } from "../const";
 import { Err, StckError } from "../errors";
@@ -174,7 +174,7 @@ export class Compiler {
           value: expr.value
         });
       } else {
-        throw new Error(`Don't know how to compile literal "${expr.value}" (${LiteralType[expr.type]})`);
+        assertNever(expr.type);
       }
     } else if (expr.kind == AstKind.Word) {
       if (expr.type == WordType.Intrinsic) {
@@ -244,8 +244,45 @@ export class Compiler {
           kind: Instr.PushBind,
           element: ctx.bindings.get(expr.value)!
         });
-      } else {
-        throw new Error(`Don't know how to compile word "${expr.value}" (${WordType[expr.type]})`);
+      } else if (
+        expr.type == WordType.Var
+        || expr.type == WordType.VarRead
+        || expr.type == WordType.VarWrite
+      ) {
+        const variable = this.program.vars.get(expr.value)!;
+        if (!this.memories.has(variable.name)) {
+          this.memories.set(variable.name, this.memoryOffset);
+          this.memoryOffset += variable.size;
+        }
+
+        out.push({
+          kind: Instr.PushMem,
+          offset: this.memories.get(variable.name)!
+        });
+
+        if (expr.type == WordType.VarRead) {
+          out.push({ kind: (
+            variable.size == 1
+              ? Instr.Read8
+            : variable.size == 2
+              ? Instr.Read16
+            : variable.size == 4
+              ? Instr.Read32
+            : Instr.Read64
+          ) });
+        } else if (expr.type == WordType.VarWrite) {
+          out.push({ kind: (
+            variable.size == 1
+              ? Instr.Write8
+            : variable.size == 2
+              ? Instr.Write16
+            : variable.size == 4
+              ? Instr.Write32
+            : Instr.Write64
+          ) });
+        }
+      } else if (expr.type != WordType.Unknown) {
+        assertNever(expr.type);
       }
     } else if (expr.kind == AstKind.If) {
       this.compileBody(expr.condition, out, ctx);

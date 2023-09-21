@@ -3,6 +3,7 @@ import { File, Location, TypeFrame } from "../shared";
 export enum AstKind {
   Proc,
   Const,
+  Var,
   Literal,
   Word,
   If,
@@ -16,6 +17,9 @@ export enum WordType {
   Intrinsic,
   Proc,
   Memory,
+  Var,
+  VarRead,
+  VarWrite,
   Constant,
   Binding,
 }
@@ -35,6 +39,7 @@ export interface Program {
   procs: Map<string, Proc>;
   consts: Map<string, Const>;
   memories: Map<string, Const>;
+  vars: Map<string, Var>;
 }
 
 export interface Signature {
@@ -53,6 +58,12 @@ export interface Const extends Ast<AstKind.Const> {
   type: TypeFrame;
 }
 
+export interface Var extends Ast<AstKind.Var> {
+  name: string;
+  type: TypeFrame;
+  size: number;
+}
+
 export interface Proc extends Ast<AstKind.Proc> {
   name: string;
   body: Expr[];
@@ -64,6 +75,7 @@ export interface Proc extends Ast<AstKind.Proc> {
 export interface Word extends Ast<AstKind.Word> {
   value: string;
   type: WordType;
+  datatype: TypeFrame[];
 }
 
 export interface Literal extends Ast<AstKind.Literal> {

@@ -61,3 +61,19 @@ export function frameToString(frame: TypeFrame): string {
     assertNever(frame);
   }
 }
+
+export function sizeOf(frame: TypeFrame): number {
+  if (
+    frame.type == DataType.Ptr
+    || frame.type == DataType.PtrTo
+    || frame.type == DataType.Int
+  ) {
+    return 8;
+  } else if (frame.type == DataType.Bool) {
+    return 1;
+  } else if (frame.type == DataType.Generic && frame.value.type != DataType.Unknown) {
+    return sizeOf(frame.value);
+  } else {
+    throw new Error(`cannot get the size of ${frameToString(frame)}, as the full type is unknown`);
+  }
+}

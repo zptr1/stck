@@ -1,5 +1,5 @@
-import { AstKind, Condition, Const, Expr, Let, LiteralType, Proc, Program, While, WordType } from "./ast";
-import { DataType, Location, TypeFrame } from "../shared";
+import { AstKind, Condition, Const, Expr, Let, LiteralType, Proc, Program, Var, While, WordType } from "./ast";
+import { DataType, Location, TypeFrame, sizeOf } from "../shared";
 import { Err, StckError } from "../errors";
 import { Token, Tokens } from "../lexer";
 import chalk from "chalk";
@@ -8,6 +8,7 @@ export class Parser {
   public readonly procs = new Map<string, Proc>();
   public readonly consts = new Map<string, Const>();
   public readonly memories = new Map<string, Const>();
+  public readonly vars = new Map<string, Var>();
 
   private readonly lastToken: Token;
 
@@ -49,6 +50,11 @@ export class Parser {
         .add(Err.Error, loc, "there is already a memory region with the same name")
         .add(Err.Note, this.memories.get(name)!.loc, "defined here")
         .throw();
+    } else if (this.vars.has(name)) {
+      new StckError("duplicated name")
+        .add(Err.Error, loc, "there is already a variable with the same name")
+        .add(Err.Note, this.vars.get(name)!.loc, "defined here")
+        .throw();
     }
   }
 
@@ -75,6 +81,7 @@ export class Parser {
     } else if (token.kind == Tokens.Word) {
       return {
         kind: AstKind.Word, loc: token.loc,
+        datatype: [],
         type: WordType.Unknown,
         value: token.value
       }
@@ -256,7 +263,7 @@ export class Parser {
           const type = signature.pop();
           if (!type) {
             return new StckError("invalid type signature")
-              .add(Err.Note, loc, "signature starts here")
+              .add(Err.Note, loc, "type signature starts here")
               .add(Err.Error, token.loc, "needs a type")
               .throw();
           }
@@ -269,8 +276,10 @@ export class Parser {
         } else if (token.value == "unknown") {
           if (!unsafe) {
             new StckError("invalid type signature")
-              .add(Err.Note, loc, "signature starts here")
-              .add(Err.Error, token.loc, "this type is allowed only in unsafe procedures")
+              .add(Err.Note, loc, "type signature starts here")
+              .add(Err.Error, token.loc, "unknown types are not allowed here")
+              .addHint("unsafe procedures can use unknown types")
+              .addHint("(please note that it is not recommended to use them)")
               .throw();
           }
 
@@ -281,8 +290,10 @@ export class Parser {
         } else if (token.value.startsWith("<") && token.value.endsWith(">")) {
           if (!unsafe) {
             new StckError("invalid type signature")
-              .add(Err.Note, loc, "signature starts here")
-              .add(Err.Error, token.loc, "this type is allowed only in unsafe procedures")
+              .add(Err.Note, loc, "type signature starts here")
+              .add(Err.Error, token.loc, "generic types are not allowed here")
+              .addHint("unsafe procedures can use generic types")
+              .addHint("(please note that it is not recommended to use them)")
               .throw();
           }
 
@@ -293,7 +304,7 @@ export class Parser {
           });
         } else {
           new StckError("invalid type signature")
-            .add(Err.Note, loc, "signature starts here")
+            .add(Err.Note, loc, "type signature starts here")
             .add(Err.Error, token.loc, "unknown word")
             .throw();
         }
@@ -301,7 +312,7 @@ export class Parser {
         return [signature, token];
       } else {
         new StckError("invalid type signature")
-          .add(Err.Note, loc, "signature starts here")
+          .add(Err.Note, loc, "type signature starts here")
           .add(Err.Error, token.loc, "unknown word")
           .throw();
       }
@@ -366,6 +377,31 @@ export class Parser {
     });
   }
 
+  private parseVar(loc: Location) {
+    const name = this.nextOf(Tokens.Word);
+    this.checkUniqueDefinition(name.value, name.loc);
+    const [sig, end] = this.parseSignature(name.loc, [Tokens.End]);
+
+    if (sig.length < 1) {
+      new StckError("invalid type signature")
+        .add(Err.Note, loc, "variable defined here")
+        .add(Err.Error, end.loc, "expected a type but got nothing")
+        .throw();
+    } else if (sig.length > 1) {
+      new StckError("invalid type signature")
+        .add(Err.Note, loc, "variable defined here")
+        .add(Err.Error, sig[1].loc!, "expected a single type but got multiple")
+        .throw();
+    }
+
+    this.vars.set(name.value, {
+      kind: AstKind.Var, loc,
+      name: name.value,
+      type: sig[0],
+      size: sizeOf(sig[0])
+    });
+  }
+
   private parseMemory(loc: Location) {
     const name = this.nextOf(Tokens.Word);
     this.checkUniqueDefinition(name.value, name.loc);
@@ -401,6 +437,8 @@ export class Parser {
         this.parseConst(token.loc);
       } else if (token.kind == Tokens.Memory) {
         this.parseMemory(token.loc);
+      } else if (token.kind == Tokens.Var) {
+        this.parseVar(token.loc);
       } else if (token.kind == Tokens.Assert) {
         throw new Error("Assertions are not implemented yet");
       } else {
@@ -415,6 +453,7 @@ export class Parser {
       procs: this.procs,
       consts: this.consts,
       memories: this.memories,
+      vars: this.vars
     }
   }
 }
