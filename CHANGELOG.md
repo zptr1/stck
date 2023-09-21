@@ -8,6 +8,10 @@ This is the changelog for **stck**.
 
 - Added new Rust-like error messages, which are more detailed and look much better than the old messages. [Screenshot](https://cdn.discordapp.com/attachments/994971483040395374/1154149784593117234/image.png)
 
+### Fixes
+
+- Improved the lexer
+
 ## 0.1.0 - 23-09-20
 
 ### Added
