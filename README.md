@@ -19,9 +19,9 @@ TL;DR: **Not for production use!**
 - [x] Compiler into own bytecode
 - [x] Compiler into native
 - [ ] **More Features** (in progress)
+- [ ] **Optimized** (in progress)
 - [ ] **More Examples and Documentation** (in progress)
-- [ ] **Cross Platform** (in progress)
-- [ ] **FFI** (in progress)
+- [ ] FFI
+- [ ] Cross Platform
 - [ ] Package Manager
-- [ ] Optimized
 - [ ] Self-Hosted
