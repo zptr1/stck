@@ -7,10 +7,17 @@ This is the changelog for **stck**.
 ### Added
 
 - Added new Rust-like error messages, which are more detailed and look much better than the old messages. [Screenshot](https://cdn.discordapp.com/attachments/994971483040395374/1154350814521999411/image.png)
+- Added variables
+
+### Changes
+
+- Changed the syntax of typed pointers from postfix to prefix
 
 ### Fixes
 
 - Improved the lexer
+- Improved the performance of the compiled programs
+- Fixed some bugs in the standard library
 
 ## 0.1.0 - 23-09-20
 
