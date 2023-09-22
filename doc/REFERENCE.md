@@ -22,18 +22,12 @@ C-String is like a regular string but it does not push its length into the stack
 
 # Types
 
-Name      | Example   | Description
-----------|-----------|-------------
-`int`        | `69`          | Signed 64-bit integer
-`bool`       | `true`        | Either `true` (1) or `false` (0)
-`ptr`        | `ptr`         | A memory address
-`<t> ptr-to` | `int ptr-to ` | A **typed** memory address to type `t`
-`<t>`        | `<t>`         | Generic type
-`unknown`    | `unknown`     | Unknown type
-
-Built-in procedures use generic and unknown types, but you cannot use these outside of unsafe procedures.
-
-**NOTE:** Types exist at compile-time only. Everything at runtime is just integers.
+Name      | Description
+----------|-------------
+`int`     | Signed 64-bit integer
+`bool`    | Either `true` (1) or `false` (0)
+`ptr`     | A memory address
+`ptr-to`  | A **typed** memory address
 
 # Control Flow
 
@@ -54,7 +48,7 @@ Example
 if 2 2 eq do
   // 2 equals 2
 else
-  // the laws of the universe no longer work
+  // oops, the laws of the universe no longer work
 end
 ```
 
@@ -74,7 +68,11 @@ Example
 end
 ```
 
-##
+## Name Bindings
+
+You can use the `let` keyword to bind a value from the stack to a specific name, and then use the specified name to get that same value back.
+
+
 
 # Program
 
@@ -85,7 +83,7 @@ proc main do
   // code here
 end
 ```
-The name of the procedure can be anything that is not a literal and can have any special symbols. The procedure with the name `main` gets executed automatically once the program starts.
+The name of the procedure can have any special symbols. The procedure with the name `main` gets executed automatically once the program starts.
 
 You can use the name of a procedure to call it. Procedures can also accept data from the stack and return data to the stack. Example:
 ```
@@ -97,10 +95,6 @@ proc main do
   34 35 print-sum
 end
 ```
-
-#### Signatures
-
-A signature is a list of input and output types - input types determine what is needed on top of the stack to call the procedure, and output types determine what the procedure should return into the stack when it finishes executing.
 
 Each procedure that takes something from the stack or returns something onto the stack needs to have a signature defined to ensure that everything is handled properly.
 
@@ -131,11 +125,9 @@ const ANOTHER_NICE_NUMBER 34 35 add end
 ```
 Using the constant from the example above will push `69` (integer) onto the stack.
 
-Constants can be of any type - integers, booleans or strings.
+## Enums and Structures
 
-#### `offset` / `reset`
-
-This language offers [Go-like enums](https://go.dev/ref/spec#Iota).
+You can use the `offset` and `reset` intrinsics inside of constants to make an enum. The `offset` intrinsic accepts an integer, outputs the current global increment and increments it by the given integer. The `reset` intrinsic outputs the current global increment and sets it to 0.
 ```
 const MONDAY    1 offset end  // 0
 const TUESDAY   1 offset end  // 1
@@ -152,7 +144,7 @@ const sizeof(Str) reset end  // 16
 
 ## Memory Regions
 
-Memory regions are a simple compile-time feature which improves memory management. Memory regions are defined similarly to constants, except a `memory` keyword is used instead and the value must be an integer. The value will be used as a size of the memory region.
+Memory regions are a simple compile-time feature which improves memory management. You can define a memory region using the `memory` keyword, followed by the name of the region and its size.
 ```
 memory a 255 end
 ```
@@ -164,7 +156,32 @@ You can also use expressions as well. For example, this will allocate a memory r
 memory example sizeof(int) 10 mul end
 ```
 
-Technically, only one memory region gets allocated, and memory regions just define the offsets. There are no restrictions, so be careful!
+## Variables
+
+Variables are similar to memory regions, except instead of providing the size directly, you need to provide the type of the variable, which ensures type safety when operating with the data. You can define a variable using the `var` keyword, followed by the variable's name and type.
+```
+var x int end
+```
+You can then use the name of the variable to get a **typed** pointer to it, which will have the same type as the variable.
+
+Here's an example
+```
+// This procedure accepts a typed pointer to an integer
+proc increment :: ptr-to int do
+  dup        // duplicate the pointer
+  @int       // read an integer at the given pointer
+  1 add      // increment the integer by one
+  swap !int  // write the new integer back
+end
+
+var x int end
+
+proc main
+  x increment
+  x increment
+  x @int print  // will output 2
+end
+```
 
 ## Imports
 To import a library or a file, use the `include` keyword
@@ -179,7 +196,7 @@ This will include all constants, procedures and other definitions from the provi
 You can use the `cast` operation to cast elements on the stack from one type to another. (this is a compile-time only operation)
 ```
 // will cast the element on top of the stack to a typed pointer to an integer
-cast int ptr-to end
+cast ptr-to int end
 ```
 You can also cast multiple elements on the stack:
 ```
