@@ -54,6 +54,8 @@ function cmd(command: string[]) {
   const cmd = Bun.spawnSync({ cmd: command });
 
   if (cmd.exitCode != 0) {
+    verbose = true;
+    trace(CMD, command.join(" "));
     console.error(ERROR, chalk.bold("Command failed"));
 
     const lines = cmd.stderr.toString().trim().split("\n");
