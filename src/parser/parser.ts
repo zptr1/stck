@@ -1,4 +1,4 @@
-import { AstKind, Condition, Const, Expr, Let, LiteralType, Proc, Program, Var, While, WordType } from "./ast";
+import { AstKind, Condition, Const, Expr, Let, LiteralType, Proc, Program, Signature, Var, While, WordType } from "./ast";
 import { DataType, Location, TypeFrame, sizeOf } from "../shared";
 import { Err, StckError } from "../errors";
 import { Token, Tokens } from "../lexer";
@@ -27,7 +27,7 @@ export class Parser {
     const token = this.next();
     if (!token || token.kind != kind) {
       new StckError("unexpected token")
-        .add(Err.Error, token.loc, `expected \`${kind}\``)
+        .add(Err.Error, token?.loc ??  this.lastToken.loc, `expected \`${kind}\``)
         .throw();
     }
 
@@ -116,7 +116,7 @@ export class Parser {
 
       if (!token) {
         new StckError("unclosed block")
-          .add(Err.Error, loc, "this block was never closed")
+          .add(Err.Error, loc, "this condition was never closed")
           .throw();
       } else if (token.kind == Tokens.Do) {
         loc = token.loc;
@@ -131,7 +131,7 @@ export class Parser {
 
       if (!token) {
         new StckError("unclosed block")
-          .add(Err.Error, loc, "this block was never closed")
+          .add(Err.Error, loc, "this condition was never closed")
           .throw();
       } else if (token.kind == Tokens.Else) {
         condition.else = this.parseBody(token.loc);
@@ -163,7 +163,7 @@ export class Parser {
 
       if (!token) {
         new StckError("unclosed block")
-          .add(Err.Error, loc, "this block was never closed")
+          .add(Err.Error, loc, "this loop was never closed")
           .throw();
       } else if (token.kind == Tokens.Do) {
         loop.body = this.parseBody(token.loc);
@@ -188,7 +188,7 @@ export class Parser {
 
       if (!token) {
         new StckError("unclosed block")
-          .add(Err.Error, loc, "this block was never closed")
+          .add(Err.Error, loc, "this binding was never closed")
           .throw();
       } else if (token.kind == Tokens.Do) {
         binding.body = this.parseBody(token.loc);
@@ -237,89 +237,92 @@ export class Parser {
       .throw();
   }
 
+  private parseType(token: Token, loc: Location, unsafe: boolean = false): TypeFrame {
+    if (token.value == "int") {
+      return {
+        type: DataType.Int,
+        loc: token.loc
+      }
+    } else if (token.value == "bool") {
+      return {
+        type: DataType.Bool,
+        loc: token.loc
+      }
+    } else if (token.value == "ptr") {
+      return {
+        type: DataType.Ptr,
+        loc: token.loc
+      }
+    } else if (token.value == "ptr") {
+      return {
+        type: DataType.Ptr,
+        loc: token.loc
+      }
+    } else if (token.value == "ptr-to") {
+      return {
+        type: DataType.PtrTo, loc: token.loc,
+        value: this.parseType(this.nextOf(Tokens.Word), loc, unsafe)
+      }
+    } else if (token.value == "unknown") {
+      if (!unsafe) {
+        return new StckError("invalid type")
+          .add(Err.Note, loc, "type signature starts here")
+          .add(Err.Error, token.loc, "unknown types are not allowed")
+          .addHint("unknown types can be used in unsafe procedures")
+          .addHint("please note that unsafe procedures are not recommended to use")
+          .throw();
+      }
+
+      return {
+        type: DataType.Unknown, loc: token.loc
+      }
+    } else if (token.value[0] == "<" && token.value.endsWith(">")) {
+      if (!unsafe) {
+        return new StckError("invalid type")
+          .add(Err.Note, loc, "type signature starts here")
+          .add(Err.Error, token.loc, "generic types are not allowed")
+          .addHint("generic types can be used in unsafe procedures")
+          .addHint("please note that unsafe procedures are not recommended to use")
+          .throw();
+      }
+
+      return {
+        type: DataType.Generic, loc: token.loc,
+        label: token.value,
+        value: {
+          type: DataType.Unknown
+        }
+      }
+    } else {
+      return new StckError("invalid type")
+        .add(Err.Note, loc, "type signature starts here")
+        .add(Err.Error, token.loc, "unknown word")
+        .throw();
+    }
+  }
+
   private parseSignature(loc: Location, end: Tokens[], unsafe: boolean = false): [TypeFrame[], Token] {
-    const signature: TypeFrame[] = [];
+    const types: TypeFrame[] = [];
 
     while (this.tokens.length) {
       const token = this.next();
 
-      if (token.kind == Tokens.Word) {
-        if (token.value == "int") {
-          signature.push({
-            type: DataType.Int,
-            loc: token.loc
-          });
-        } else if (token.value == "bool") {
-          signature.push({
-            type: DataType.Bool,
-            loc: token.loc
-          });
-        } else if (token.value == "ptr") {
-          signature.push({
-            type: DataType.Ptr,
-            loc: token.loc
-          });
-        } else if (token.value == "ptr-to") {
-          const type = signature.pop();
-          if (!type) {
-            return new StckError("invalid type signature")
-              .add(Err.Note, loc, "type signature starts here")
-              .add(Err.Error, token.loc, "needs a type")
-              .throw();
-          }
-
-          signature.push({
-            type: DataType.PtrTo,
-            loc: token.loc,
-            value: type
-          });
-        } else if (token.value == "unknown") {
-          if (!unsafe) {
-            new StckError("invalid type signature")
-              .add(Err.Note, loc, "type signature starts here")
-              .add(Err.Error, token.loc, "unknown types are not allowed here")
-              .addHint("unsafe procedures can use unknown types")
-              .addHint("(please note that it is not recommended to use them)")
-              .throw();
-          }
-
-          signature.push({
-            type: DataType.Unknown,
-            loc: token.loc
-          });
-        } else if (token.value.startsWith("<") && token.value.endsWith(">")) {
-          if (!unsafe) {
-            new StckError("invalid type signature")
-              .add(Err.Note, loc, "type signature starts here")
-              .add(Err.Error, token.loc, "generic types are not allowed here")
-              .addHint("unsafe procedures can use generic types")
-              .addHint("(please note that it is not recommended to use them)")
-              .throw();
-          }
-
-          signature.push({
-            type: DataType.Generic, loc: token.loc,
-            label: token.value.slice(1, -1),
-            value: { type: DataType.Unknown }
-          });
-        } else {
-          new StckError("invalid type signature")
-            .add(Err.Note, loc, "type signature starts here")
-            .add(Err.Error, token.loc, "unknown word")
-            .throw();
-        }
+      if (!token) {
+        break;
       } else if (end.includes(token.kind)) {
-        return [signature, token];
+        return [types, token];
+      } else if (token.kind == Tokens.Word) {
+        types.push(this.parseType(token, loc, unsafe));
       } else {
-        new StckError("invalid type signature")
+        new StckError("invalid type")
           .add(Err.Note, loc, "type signature starts here")
-          .add(Err.Error, token.loc, "unknown word")
+          .add(Err.Error, token.loc, "unexpected token")
           .throw();
       }
     }
 
     return new StckError("unclosed block")
-      .add(Err.Error, loc, "this block was never closed")
+      .add(Err.Error, loc, "this signature was never closed")
       .throw();
   }
 
