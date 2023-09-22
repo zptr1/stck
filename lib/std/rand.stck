@@ -1,16 +1,16 @@
 // Using the https://en.wikipedia.org/wiki/Linear_congruential_generator algorithm
-memory lcg_seed sizeof(int) end
+var lcg_seed int end
 const LCG_MULTIPLIER 6364136223846793005 end
 const LCG_INCREMENT  1442695040888963407 end
 
 proc rand -> int do
-  lcg_seed read64
+  lcg_seed @int
   LCG_MULTIPLIER mul LCG_INCREMENT add
-  dup lcg_seed write64
+  dup lcg_seed !int
 end
 
 inline proc randseed :: int do
-  lcg_seed write64
+  lcg_seed !int
 end
 
 inline proc randrange :: int int -> int do

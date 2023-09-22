@@ -27,8 +27,8 @@ proc cstr-to-str :: ptr -> int ptr do
 end
 
 proc is-digit :: int -> bool do
-  dup  1 add '0' gt
-  over 1 sub '9' lt
+  dup  '0' gteq
+  over '9' lteq
   land swap drop
 end
 

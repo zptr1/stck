@@ -49,8 +49,20 @@ macro _ret_callp id {
 
   macro _i_add  { __i_infix add  }
   macro _i_sub  { __i_infix sub  }
-  macro _i_mul  { __i_infix mul  }
-  macro _i_imul { __i_infix imul }
+
+  macro _i_mul  {
+    pop rbx
+    pop rax
+    mul rbx
+    push rax
+  }
+
+  macro _i_imul {
+    pop rbx
+    pop rax
+    imul rbx
+    push rax
+  }
 
   macro _i_divmod {
     pop rbx
@@ -137,7 +149,7 @@ macro _ret_callp id {
 
 ;; Stack
   macro _i_dup  { push qword [rsp] }
-  macro _i_over { push qword [rsp+16] }
+  macro _i_over { push qword [rsp+8] }
   macro _i_dup2 {
     push qword [rsp+8]
     push qword [rsp+8]
