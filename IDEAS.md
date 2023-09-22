@@ -41,41 +41,14 @@ Structures can be used as types as well.
 Problem: types can take more than one word! (typed pointers or quotes) Maybe use a separator for determining the name of the field?
 ```
 struct Example
-  a :: u8  ptr-to
-  b :: Str ptr-to
+  a :: ptr-to u8
+  b :: ptr-to Str
 end
 
 // while i like the above more, something like this would be easier/better to parse:
 struct Example2
-  u8  ptr-to :: a
-  Str ptr-to :: b
-end
-```
-
-#### Variables
-
-Variables will be somewhat similar to memory regions, except they will require to have a defined type instead of a defined size, and will be able to hold only one value instead.
-
-Each variable defines the following things:
-- A constant with the same name as the variable that would contain a typed pointer to the variable
-- A procedure prefixed with `@` to read the value of the variable
-- A procedure prefixed with `!` to write a value to the variable
-- A `sizeof()` constant with the name of the variable inside of the parentheses that represents the size of the variable in bytes.
-
-The `@` and `!` procedures are **omitted** if a structure is used as a type of the variable.
-
-For example,
-```
-var num u64 end
-```
-would define `num`, `@num`, `!num` and `sizeof(num)`.
-
-```
-var inc u64 end
-proc increment do
-  @inc    // reads the variable, which results in u64
-  1 add   // adds 1 to the number
-  !inc    // saves the new number to the variable
+  ptr-to u8  :: a
+  ptr-to Str :: b
 end
 ```
 
