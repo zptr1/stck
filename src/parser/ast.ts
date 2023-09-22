@@ -18,8 +18,6 @@ export enum WordType {
   Proc,
   Memory,
   Var,
-  VarRead,
-  VarWrite,
   Constant,
   Binding,
 }

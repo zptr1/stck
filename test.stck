@@ -11,7 +11,7 @@ proc main do
   x increment
   x increment
   x increment
-  "x = " puts @x print
-  69 !x
-  "x = " puts @x print
+  "x = " puts x @int print
+  69 x !int
+  "x = " puts x @int print
 end

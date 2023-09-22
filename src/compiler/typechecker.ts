@@ -188,30 +188,6 @@ export class TypeChecker {
           value: this.program.vars.get(expr.value)!.type
         });
         ctx.stackLocations.push(expr.loc);
-      } else if (expr.value[0] == "@" || expr.value[0] == "!") {
-        const name = expr.value.slice(1);
-        const variable = this.program.vars.get(name)!;
-        if (variable) {
-          if (expr.value[0] == "@") {
-            expr.type = WordType.VarRead;
-            ctx.stack.push(variable.type);
-            ctx.stackLocations.push(expr.loc);
-          } else {
-            expr.type = WordType.VarWrite;
-            handleSignature(
-              expr.loc, ctx,
-              [variable.type], [],
-              false, true,
-              "for the variable write"
-            );
-          }
-
-          expr.value = name;
-        } else {
-          new StckError("unknown word")
-            .add(Err.Error, expr.loc)
-            .throw();
-        }
       } else {
         new StckError("unknown word")
           .add(Err.Error, expr.loc)

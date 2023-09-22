@@ -244,11 +244,7 @@ export class Compiler {
           kind: Instr.PushBind,
           element: ctx.bindings.get(expr.value)!
         });
-      } else if (
-        expr.type == WordType.Var
-        || expr.type == WordType.VarRead
-        || expr.type == WordType.VarWrite
-      ) {
+      } else if (expr.type == WordType.Var) {
         const variable = this.program.vars.get(expr.value)!;
         if (!this.memories.has(variable.name)) {
           this.memories.set(variable.name, this.memoryOffset);
@@ -259,28 +255,6 @@ export class Compiler {
           kind: Instr.PushMem,
           offset: this.memories.get(variable.name)!
         });
-
-        if (expr.type == WordType.VarRead) {
-          out.push({ kind: (
-            variable.size == 1
-              ? Instr.Read8
-            : variable.size == 2
-              ? Instr.Read16
-            : variable.size == 4
-              ? Instr.Read32
-            : Instr.Read64
-          ) });
-        } else if (expr.type == WordType.VarWrite) {
-          out.push({ kind: (
-            variable.size == 1
-              ? Instr.Write8
-            : variable.size == 2
-              ? Instr.Write16
-            : variable.size == 4
-              ? Instr.Write32
-            : Instr.Write64
-          ) });
-        }
       } else if (expr.type != WordType.Unknown) {
         assertNever(expr.type);
       }
