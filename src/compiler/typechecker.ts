@@ -306,6 +306,46 @@ export class TypeChecker {
     }
   }
 
+  /**
+   * Unsafe procedures do not get typechecked, but we still to add some type data to them
+   */
+  private inferUnsafeBody(body: Expr[], bindings: Set<string>) {
+    for (const expr of body) {
+      if (expr.kind == AstKind.Word) {
+        if (INTRINSICS.has(expr.value)) {
+          expr.type = WordType.Intrinsic;
+        } else if (bindings.has(expr.value)) {
+          expr.type = WordType.Binding;
+        } else if (this.program.procs.has(expr.value)) {
+          expr.type = WordType.Proc;
+        } else if (this.program.consts.has(expr.value)) {
+          expr.type = WordType.Constant;
+        } else if (this.program.memories.has(expr.value)) {
+          expr.type = WordType.Memory;
+        } else if (this.program.vars.has(expr.value)) {
+          expr.type = WordType.Var;
+        } else {
+          new StckError("unknown word")
+            .add(Err.Error, expr.loc)
+            .throw();
+        }
+      } else if (expr.kind == AstKind.If) {
+        this.inferUnsafeBody(expr.condition, bindings);
+        this.inferUnsafeBody(expr.body, bindings);
+        this.inferUnsafeBody(expr.else, bindings);
+      } else if (expr.kind == AstKind.While) {
+        this.inferUnsafeBody(expr.condition, bindings);
+        this.inferUnsafeBody(expr.body, bindings);
+      } else if (expr.kind == AstKind.Let) {
+        for (const binding of expr.bindings)
+          bindings.add(binding);
+        this.inferUnsafeBody(expr.body, bindings);
+        for (const binding of expr.bindings)
+          bindings.delete(binding);
+      }
+    }
+  }
+
   private validateBody(body: Expr[], ctx: Context) {
     for (const expr of body)
       this.validateExpr(expr, ctx);
@@ -350,7 +390,9 @@ export class TypeChecker {
     this.program.consts.forEach((constant) => this.validateConst(constant));
     this.program.memories.forEach((memory) => this.validateMemory(memory));
     this.program.procs.forEach((proc) => {
-      if (!proc.unsafe) {
+      if (proc.unsafe) {
+        this.inferUnsafeBody(proc.body, new Set());
+      } else {
         this.validateProc(proc);
       }
     });

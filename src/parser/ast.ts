@@ -73,7 +73,6 @@ export interface Proc extends Ast<AstKind.Proc> {
 export interface Word extends Ast<AstKind.Word> {
   value: string;
   type: WordType;
-  datatype: TypeFrame[];
 }
 
 export interface Literal extends Ast<AstKind.Literal> {

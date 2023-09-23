@@ -81,7 +81,6 @@ export class Parser {
     } else if (token.kind == Tokens.Word) {
       return {
         kind: AstKind.Word, loc: token.loc,
-        datatype: [],
         type: WordType.Unknown,
         value: token.value
       }

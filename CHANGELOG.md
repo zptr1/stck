@@ -21,6 +21,10 @@ This is the changelog for **stck**.
 - The parser now reports some additional information for some errors
 - Fixed some bugs in the standard library
 
+### Security
+
+- Fixed the compiler skipping all words in unsafe procedures
+
 ## 0.1.0 - 23-09-20
 
 ### Added

@@ -171,7 +171,9 @@ export function codegenFasm(prog: IRProgram): string[] {
       } else {
         pushIdent("_i_swap");
       }
-    } else if (instr.kind != Instr._CExpr__Offset && instr.kind != Instr._CExpr__Reset) {
+    } else if (instr.kind == Instr._CExpr__Offset || instr.kind == Instr._CExpr__Reset) {
+      throw new Error(`Invalid instruction ${Instr[instr.kind]}`);
+    } else {
       pushIdent(`_i_${Instr[instr.kind].toLowerCase()}`);
     }
 

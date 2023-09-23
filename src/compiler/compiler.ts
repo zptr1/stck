@@ -255,7 +255,12 @@ export class Compiler {
           kind: Instr.PushMem,
           offset: this.memories.get(variable.name)!
         });
-      } else if (expr.type != WordType.Unknown) {
+      } else if (expr.type == WordType.Unknown) {
+        new StckError("unknown word")
+          .add(Err.Error, expr.loc, "could not determine the type of this word")
+          .addHint("likely a compiler bug?")
+          .throw();
+      } else {
         assertNever(expr.type);
       }
     } else if (expr.kind == AstKind.If) {
