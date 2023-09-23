@@ -9,11 +9,12 @@ This is the changelog for **stck**.
 - Added new Rust-like error messages, which are more detailed and look much better than the old messages. [Screenshot](https://cdn.discordapp.com/attachments/994971483040395374/1154350814521999411/image.png)
 - Added variables
 
-### Changes
+### Changed
 
 - Changed the syntax of typed pointers from postfix to prefix
+- The built-in `2dup` intrinsic has been moved to a built-in procedure in the prelude
 
-### Fixes
+### Fixed
 
 - Improved the lexer
 - Improved the performance of the compiled programs

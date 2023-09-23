@@ -61,7 +61,6 @@ addIntrinsic("dup",  Instr.Dup,  ["a"],           ["a", "a"]);
 addIntrinsic("swap", Instr.Swap, ["a", "b"],      ["b", "a"]);
 addIntrinsic("rot",  Instr.Rot,  ["a", "b", "c"], ["b", "c", "a"]);
 addIntrinsic("over", Instr.Over, ["a", "b"],      ["a", "b", "a"]);
-addIntrinsic("2dup", Instr.Dup2, ["a", "b"],      ["a", "b", "a", "b"]);
 
 // Memory
 addIntrinsic("write8",  Instr.Write8,  [DataType.Int, DataType.Ptr], []);

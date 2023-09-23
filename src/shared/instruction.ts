@@ -47,12 +47,12 @@ export enum Instr {
   Swap,
   Rot,
   Over,
-  Dup2,
   Bind,
   PushBind,
   Unbind,
 
   // Memory
+  // TODO: A single Write and Read instructions with { size: number }
   Write8,
   Write16,
   Write32,

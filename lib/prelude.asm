@@ -150,10 +150,6 @@ macro _ret_callp id {
 ;; Stack
   macro _i_dup  { push qword [rsp] }
   macro _i_over { push qword [rsp+8] }
-  macro _i_dup2 {
-    push qword [rsp+8]
-    push qword [rsp+8]
-  }
 
   macro _i_swap {
     pop rax
