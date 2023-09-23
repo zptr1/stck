@@ -17,6 +17,8 @@ This is the changelog for **stck**.
 
 - Improved the lexer
 - Improved the performance of the compiled programs
+- Improved type-related errors
+- The parser now reports some additional information for some errors
 - Fixed some bugs in the standard library
 
 ## 0.1.0 - 23-09-20

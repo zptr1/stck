@@ -12,52 +12,51 @@ function handleSignature(
   suffix: string = "",
   onErr: (err: StckError) => void = ()=>{}
 ) {
-  // TODO: move this step to the step later for better error reporting
-  if (ctx.stack.length < ins.length) {
-    const err = new StckError("insufficient data on the stack");
-    err.addStackElements(ctx, (e) => `${e} introduced here`);
-    err.add(
-      Err.Error, loc,
-      `missing ${
-        ins.slice(ctx.stack.length)
-        .map((x) => frameToString(x))
-        .join(", ")
-      } ${suffix}`
-    );
-
-    onErr(err);
-    err.throw();
-  } else if (strictLength && ctx.stack.length > ins.length) {
-    const err = new StckError("unhandled data on the stack");
-    err.addStackElements(
-      ctx, (e) => `${e} introduced here`,
-      ctx.stack.length - ins.length - 1
-    );
-
-    err.add(Err.Error, loc, `unhandled data ${suffix}`);
-    onErr(err);
-    err.throw();
-  }
-
   const cmp = ctx.stack.slice(-ins.length);
   const generics = new Map<string, TypeFrame>();
 
   for (let i = 0; i < ins.length; i++) {
-    if (!typeFrameEquals(ins[i], cmp[i], generics)) {
+    if (cmp.length <= i) {
+      const err = new StckError("insufficient data on the stack");
+      generateTypeError(
+        err, ctx, generics, 0,
+        frameToString(insertGenerics(ins[i], generics)),
+        i
+      );
+
+      err.add(
+        Err.Error, loc,
+        `missing ${
+          ins.slice(ctx.stack.length)
+            .map((x) => frameToString(insertGenerics(x, generics)))
+            .join(", ")
+        } ${suffix}`
+      );
+
+      onErr(err);
+      err.throw();
+    } else if (!typeFrameEquals(ins[i], cmp[i], generics)) {
       const err = new StckError("unexpected data on the stack");
-      for (let j = ctx.stack.length - ins.length; j < ctx.stack.length; j++) {
-        const frame = frameToString(insertGenerics(ctx.stack[j], generics));
-        if (j == i) {
-          err.add(Err.Warn, ctx.stackLocations[j], `expected ${frameToString(ins[i])} but got ${frame}`);
-        } else {
-          err.add(Err.Note, ctx.stackLocations[j], `${frame} introduced here`);
-        }
-      }
+      generateTypeError(
+        err, ctx, generics,
+        ctx.stack.length - ins.length,
+        frameToString(insertGenerics(ins[i], generics)),
+        i
+      );
 
       err.add(Err.Error, loc, `unexpected data ${suffix}`);
       onErr(err);
       err.throw();
     }
+  }
+
+  if (strictLength && ctx.stack.length > ins.length) {
+    const err = new StckError("unhandled data on the stack");
+    generateTypeError(err, ctx, generics, 0, "nothing", ins.length);
+
+    err.add(Err.Error, loc, `unhandled data ${suffix}`);
+    onErr(err);
+    err.throw();
   }
 
   if (modifyStack) {
@@ -67,6 +66,21 @@ function handleSignature(
     for (let i = 0; i < outs.length; i++) {
       ctx.stack.push(insertGenerics(outs[i], generics));
       ctx.stackLocations.push(loc);
+    }
+  }
+}
+
+function generateTypeError(
+  err: StckError,
+  ctx: Context, generics: Map<string, TypeFrame>,
+  offset: number, expected: string, failedAt: number
+) {
+  for (let i = offset; i < ctx.stack.length; i++) {
+    const frame = frameToString(insertGenerics(ctx.stack[i], generics));
+    if (i == failedAt) {
+      err.add(Err.Warn, ctx.stackLocations[i], `expected ${expected} but got ${frame}`);
+    } else {
+      err.add(Err.Note, ctx.stackLocations[i], `${frame} introduced here`);
     }
   }
 }
