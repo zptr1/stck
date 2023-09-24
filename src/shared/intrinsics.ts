@@ -34,9 +34,13 @@ function addIntrinsic(name: string, instr: Instr, ins: (DataType | string)[], ou
 addIntrinsic("add",    Instr.Add,    [DataType.Int, DataType.Int], [DataType.Int]);
 addIntrinsic("sub",    Instr.Sub,    [DataType.Int, DataType.Int], [DataType.Int]);
 addIntrinsic("mul",    Instr.Mul,    [DataType.Int, DataType.Int], [DataType.Int]);
+addIntrinsic("div",    Instr.Div,    [DataType.Int, DataType.Int], [DataType.Int]);
+addIntrinsic("mod",    Instr.Mod,    [DataType.Int, DataType.Int], [DataType.Int]);
 addIntrinsic("divmod", Instr.DivMod, [DataType.Int, DataType.Int], [DataType.Int, DataType.Int]);
 
 addIntrinsic("imul",    Instr.IMul,    [DataType.Int, DataType.Int], [DataType.Int]);
+addIntrinsic("idiv",    Instr.IDiv,    [DataType.Int, DataType.Int], [DataType.Int]);
+addIntrinsic("imod",    Instr.IMod,    [DataType.Int, DataType.Int], [DataType.Int]);
 addIntrinsic("idivmod", Instr.IDivMod, [DataType.Int, DataType.Int], [DataType.Int, DataType.Int]);
 
 // Comparison

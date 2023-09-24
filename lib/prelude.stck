@@ -31,13 +31,6 @@ inline proc ptr- :: ptr int -> ptr do
   add cast(ptr)
 end
 
-/// Mathematical operations
-inline proc div  :: int int -> int do divmod      drop end
-inline proc mod  :: int int -> int do divmod swap drop end
-
-inline proc idiv :: int int -> int do idivmod      drop end
-inline proc imod :: int int -> int do idivmod swap drop end
-
 /// Logical operations
 inline proc lnot :: bool -> bool do
   cast(int) not 2 add cast(bool)

@@ -1,5 +1,5 @@
 import { AstKind, Condition, Const, Expr, Let, LiteralType, Proc, Program, Signature, Var, While, WordType } from "./ast";
-import { DataType, Location, TypeFrame, sizeOf } from "../shared";
+import { DataType, INTRINSICS, Location, TypeFrame, sizeOf } from "../shared";
 import { Err, StckError } from "../errors";
 import { Token, Tokens } from "../lexer";
 import chalk from "chalk";
@@ -35,7 +35,11 @@ export class Parser {
   }
 
   private checkUniqueDefinition(name: string, loc: Location) {
-    if (this.procs.has(name)) {
+    if (INTRINSICS.has(name)) {
+      new StckError("duplicated name")
+        .add(Err.Error, loc, "there is already an intrinsic with the same name")
+        .throw();
+    } else if (this.procs.has(name)) {
       new StckError("duplicated name")
         .add(Err.Error, loc, "there is already a procedure with the same name")
         .add(Err.Note, this.procs.get(name)!.loc, "defined here")

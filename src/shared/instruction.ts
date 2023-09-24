@@ -21,8 +21,12 @@ export enum Instr {
   Add,
   Sub,
   Mul,
+  Div,
+  Mod,
   DivMod,
   IMul,
+  IDiv,
+  IMod,
   IDivMod,
 
   // Comparison

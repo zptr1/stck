@@ -40,42 +40,68 @@ macro _ret_callp id {
   }
 ; Intrinsics
 ;; Math
-  macro __i_infix op {
+  macro __i_pop_infix {
     pop rbx
     pop rax
+  }
+
+  macro __i_infix op {
+    __i_pop_infix
     op rax, rbx
     push rax
   }
 
-  macro _i_add  { __i_infix add  }
-  macro _i_sub  { __i_infix sub  }
+  macro _i_add { __i_infix add  }
+  macro _i_sub { __i_infix sub  }
 
   macro _i_mul  {
-    pop rbx
-    pop rax
+    __i_pop_infix
     mul rbx
     push rax
   }
 
   macro _i_imul {
-    pop rbx
-    pop rax
+    __i_pop_infix
     imul rbx
     push rax
   }
 
+  macro _i_div {
+    __i_pop_infix
+    div rbx
+    push rax
+  }
+
+  macro _i_mod {
+    __i_pop_infix
+    xor rdx, rdx
+    div rbx
+    push rdx
+  }
+
   macro _i_divmod {
-    pop rbx
-    pop rax
+    __i_pop_infix
     xor rdx, rdx
     div rbx
     push rax
     push rdx
   }
 
+  macro _i_idiv {
+    __i_pop_infix
+    idiv rbx
+    push rax
+  }
+
+  macro _i_imod {
+    __i_pop_infix
+    xor rdx, rdx
+    idiv rbx
+    push rdx
+  }
+
   macro _i_idivmod {
-    pop rbx
-    pop rax
+    __i_pop_infix
     xor rdx, rdx
     idiv rbx
     push rax
