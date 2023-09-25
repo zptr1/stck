@@ -4,6 +4,10 @@ This is the changelog for **stck**.
 
 ## [unreleased]
 
+### Fixed
+
+- `div` and `idiv` erroring in SIGFPE when used multiple times
+
 ## 0.1.1 - 2023-09-24
 
 ### Added

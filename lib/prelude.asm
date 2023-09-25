@@ -68,6 +68,7 @@ macro _ret_callp id {
 
   macro _i_div {
     __i_pop_infix
+    xor rdx, rdx
     div rbx
     push rax
   }
@@ -89,6 +90,7 @@ macro _ret_callp id {
 
   macro _i_idiv {
     __i_pop_infix
+    xor rdx, rdx
     idiv rbx
     push rax
   }
