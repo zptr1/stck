@@ -53,6 +53,7 @@ This is the changelog for **stck**.
 - Constants can no longer contain strings. Use macros instead
 - Removed the `2swap` intrinsic
 - Removed the `--unsafe` flag
+- Removed type inference. Procedures are now required to provide the signature.
 - **Temporarily** removed the virtual machine and the bytecode (will be added back later)
 - **Temporarily** removed compile-time assertions (will be added back later)
 
