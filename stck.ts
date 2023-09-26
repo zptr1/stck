@@ -2,9 +2,9 @@
 
 import { Compiler, TypeChecker, codegenFasm } from "./src/compiler";
 import { existsSync, statSync, writeFileSync } from "fs";
-import { Parser, Preprocessor } from "./src/parser";
+import { Lexer, Preprocessor } from "./src/lexer";
 import { tmpdir, platform } from "os";
-import { Lexer } from "./src/lexer";
+import { Parser } from "./src/parser";
 import { File } from "./src/shared";
 import minimist from "minimist";
 import chalk from "chalk";
