@@ -2,7 +2,7 @@
 
 proc print-bottles :: int do
   dup putu
-  if 1 eq lnot do
+  if 1 eq not do
     " bottles " puts
   else
     " bottle " puts

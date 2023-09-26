@@ -28,7 +28,6 @@ export enum Tokens {
   Int = "<int>",
   Str = "<str>",
   CStr = "<cstr>",
-  Boolean = "<boolean>",
   Word = "<word>",
   AsmBlock = "<asm>",
   // Preprocessor Directives

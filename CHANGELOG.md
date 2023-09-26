@@ -7,6 +7,12 @@ This is the changelog for **stck**.
 ### Changed
 
 - Error messages are now grouped into an enum and are now more consistent
+- `true` and `false` have been moved to the prelude and are now not a special token
+- `true` now uses `-1` as its value, meaning all bitwise operations can now be used for booleans as well.
+
+### Deprecated
+
+- `lnot`, `lor`, `land` and `lxor` procedures from the prelude
 
 ### Fixed
 

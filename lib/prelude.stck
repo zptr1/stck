@@ -1,7 +1,15 @@
 // Additional core features for stck.
 // Automatically included into every program.
 
+/// Macros
+%macro cast(int)  cast int  end %end
+%macro cast(ptr)  cast ptr  end %end
+%macro cast(bool) cast bool end %end
+
 /// Types
+const true  -1 cast(bool) end
+const false  0 cast(bool) end
+
 const sizeof(u8)  1 end
 const sizeof(u16) 2 end
 const sizeof(u32) 4 end
@@ -10,10 +18,6 @@ const sizeof(u64) 8 end
 const sizeof(int)  sizeof(u64) end
 const sizeof(ptr)  sizeof(u64) end
 const sizeof(bool) sizeof(u8)  end
-
-%macro cast(int)  cast int  end %end
-%macro cast(ptr)  cast ptr  end %end
-%macro cast(bool) cast bool end %end
 
 /// Stack operations
 unsafe inline proc 2dup :: <a> <b> -> <a> <b> <a> <b> do

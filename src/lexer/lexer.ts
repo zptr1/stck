@@ -147,13 +147,11 @@ export class Lexer {
           ? int
           : BigInt(value)
       );
-    } else if (value == "true" || value == "false") {
-      return this.token(Tokens.Boolean, value == "true");
     } else if (KEYWORDS.has(value)) {
       return this.token(value as Tokens);
     } else if (value == "asm") {
       return this.readAsmBlock();
-    } else if (value == "<here>") {
+    } else if (value == "?here") {
       return this.token(Tokens.Str, formatLoc({
         file: this.file,
         span: [this.reader.spanStart, this.reader.cursor]
@@ -168,10 +166,10 @@ export class Lexer {
       return this.token(Tokens.EOF);
     } else if (this.reader.peek() == '"') {
       return this.readStrToken(Tokens.Str);
-    } else if (this.reader.peek() == "c" && this.reader.peek(1) == '"') {
-      return this.readStrToken(Tokens.CStr);
     } else if (this.reader.peek() == "'") {
       return this.readCharToken();
+    } else if (this.reader.peek() == "c" && this.reader.peek(1) == '"') {
+      return this.readStrToken(Tokens.CStr);
     } else {
       return this.readWordToken();
     }

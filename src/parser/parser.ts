@@ -65,7 +65,6 @@ export class Parser {
   private parseExpr(token: Token): Expr {
     if (
       token.kind == Tokens.Int
-      || token.kind == Tokens.Boolean
       || token.kind == Tokens.Str
       || token.kind == Tokens.CStr
       || token.kind == Tokens.AsmBlock
@@ -74,7 +73,6 @@ export class Parser {
         kind: AstKind.Literal, loc: token.loc,
         type: (
           token.kind == Tokens.Int        ? LiteralType.Int
-          : token.kind == Tokens.Boolean  ? LiteralType.Bool
           : token.kind == Tokens.Str      ? LiteralType.Str
           : token.kind == Tokens.CStr     ? LiteralType.CStr
           : token.kind == Tokens.AsmBlock ? LiteralType.Assembly
