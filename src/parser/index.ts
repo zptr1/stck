@@ -1,3 +1,3 @@
-export * from "./preprocessor";
+export * from "../lexer/preprocessor";
 export * from "./parser";
 export * from "./ast";

@@ -1,4 +1,4 @@
-import { assertNever } from "../util";
+import { assertNever } from "..";
 import { Location } from ".";
 
 export enum DataType {

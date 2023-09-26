@@ -1,7 +1,5 @@
 %include "std"
 
 proc main do
-  69 42 123 456
-  ?stack-data
-  drop drop drop drop
+
 end

@@ -7,8 +7,8 @@
 %macro cast(bool) cast bool end %end
 
 /// Types
-const true  -1 cast(bool) end
-const false  0 cast(bool) end
+const true  1 cast(bool) end
+const false 0 cast(bool) end
 
 const sizeof(u8)  1 end
 const sizeof(u16) 2 end
@@ -37,7 +37,7 @@ end
 
 /// Logical operations
 inline proc lnot :: bool -> bool do
-  cast(int) not cast(bool)
+  cast(int) not 2 add cast(bool)
 end
 
 inline proc land :: bool bool -> bool do

@@ -77,9 +77,9 @@ addIntrinsic("read32",  Instr.Read32,  [DataType.Ptr],               [DataType.I
 addIntrinsic("read64",  Instr.Read32,  [DataType.Ptr],               [DataType.Int]);
 
 // Program
-addIntrinsic("print",       Instr.Print, [DataType.Int],               []);
-addIntrinsic("puts",        Instr.Puts,  [DataType.Int, DataType.Ptr], []);
-addIntrinsic("?stack-data", Instr.DumpStack, [], []);
+addIntrinsic("print",       Instr.Print,     [DataType.Int],               []);
+addIntrinsic("puts",        Instr.Puts,      [DataType.Int, DataType.Ptr], []);
+addIntrinsic("dump-stack",  Instr.DumpStack, [], []);
 
 // Compile-time
 addIntrinsic("?stack-types", Instr.Nop, [], []);

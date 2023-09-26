@@ -1,9 +1,8 @@
 import { AstKind, Const, Expr, LiteralType, Proc, Program, WordType } from "../parser";
-import { INTRINSICS, Instr, Instruction, Location, formatLoc, frameToString, sizeOf } from "../shared";
+import { INTRINSICS, Instr, Instruction, Location, formatLoc } from "../shared";
+import { i32_MAX, i32_MIN, i64_MAX, i64_MIN, assertNever } from "..";
 import { CompilerContext, IRProgram, createContext } from "./ir";
-import { i32_MAX, i32_MIN, i64_MAX, i64_MIN } from "../const";
 import { Err, StckError } from "../errors";
-import { assertNever } from "../util";
 import chalk from "chalk";
 
 export class Compiler {
@@ -241,8 +240,8 @@ export class Compiler {
         });
       } else if (expr.type == WordType.Binding) {
         out.push({
-          kind: Instr.PushBind,
-          element: ctx.bindings.get(expr.value)!
+          kind: Instr.PushLocal,
+          offset: ctx.bindings.get(expr.value)! * 8
         });
       } else if (expr.type == WordType.Var) {
         const variable = this.program.vars.get(expr.value)!;

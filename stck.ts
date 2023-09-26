@@ -13,14 +13,6 @@ import plib from "path";
 const ERROR = chalk.red.bold("[ERROR]");
 const INFO  = chalk.bold.green("[INFO]");
 const WARN  = chalk.yellow.bold("[WARN]");
-const CMD   = chalk.bold.white("[CMD]");
-
-let verbose = false;
-function trace(...msg: any[]) {
-  if (verbose) {
-    console.log(...msg);
-  }
-}
 
 const TARGET_OPTIONS = ["bytecode", "fasm"];
 
@@ -43,26 +35,29 @@ function printHelp(): never {
   console.log(" ", chalk.bold("--target, -t"), chalk.yellow.bold("<target>"));
   console.log("   ", "Change the compilation target");
   console.log("   ", "Available targets:", chalk.bold(TARGET_OPTIONS.join(", ")));
-  console.log(" ", chalk.bold("--verbose, -v"));
-  console.log("   ", "More verbose logs");
   console.log();
   process.exit(1);
 }
 
 function cmd(command: string[]) {
-  trace(CMD, command.join(" "));
-  const cmd = Bun.spawnSync({ cmd: command });
+  try {
+    const cmd = Bun.spawnSync({ cmd: command });
 
-  if (cmd.exitCode != 0) {
-    verbose = true;
-    trace(CMD, command.join(" "));
-    console.error(ERROR, chalk.bold("Command failed"));
+    if (cmd.exitCode != 0) {
+      console.error(chalk.bold.white("[CMD]"), command.join(" "));
+      console.error(ERROR, chalk.bold("Command failed"));
 
-    const lines = cmd.stderr.toString().trim().split("\n");
-    for (const line of lines) {
-      console.error(chalk.red("[ERROR]"), line);
+      const lines = cmd.stderr.toString().trim().split("\n");
+      for (const line of lines) {
+        console.error(chalk.red("[ERROR]"), line);
+      }
+
+      process.exit(1);
     }
-
+  } catch (err: any) {
+    console.error(chalk.bold.white("[CMD]"), command.join(" "));
+    console.error(ERROR, "Command failed");
+    console.error(ERROR, err.toString());
     process.exit(1);
   }
 }
@@ -89,56 +84,44 @@ function main() {
   if (!TARGET_OPTIONS.includes(target))
     panic("Available targets:", TARGET_OPTIONS.join(", "));
 
-  verbose = args.verbose || args.v || verbose;
-
   const file = File.read(plib.resolve(path));
-  trace(INFO, "Parsing");
 
   const tokens = new Lexer(file).collect();
   const preprocessed = new Preprocessor(tokens).preprocess();
   const program = new Parser(preprocessed).parse();
 
-  trace(INFO, "Typechecking");
   new TypeChecker(program).typecheck();
 
   if (!program.procs.has("main")) {
-    trace(ERROR, "No main procedure");
+    console.error(ERROR, "No main procedure");
     return;
   } else if (program.procs.get("main")?.unsafe) {
-    trace(WARN, "Unsafe main procedure");
+    console.warn(WARN, "Unsafe main procedure");
   }
 
   if (action == "check") {
-    trace(INFO, "Typechecking successful");
+    console.log(INFO, "Typechecking successful");
     return;
   }
 
-  trace(INFO, "Compiling");
   const prog = new Compiler(program).compile();
 
-  if (target == "bytecode") {
-    panic("Bytecode has been temporarily removed, sorry! Will be added back soon");
-  } else if (target == "fasm") {
-    if (platform() != "linux") trace(WARN, `This platform (${platform()}) might not be supported`);
+  if (target == "fasm") {
+    if (platform() != "linux") {
+      console.warn(WARN, `This platform (${platform()}) might not be supported`);
+    }
 
     const out = codegenFasm(prog);
+    const path = action == "run"
+      ? plib.join(tmpdir(), "stck-temp")
+      : outPath;
 
-    if (action == "build") {
-      writeFileSync(outPath + ".asm", out.join("\n"));
-      cmd(["fasm", outPath + ".asm"]);
+    writeFileSync(path + ".asm", out.join("\n"));
+    cmd(["fasm", path + ".asm"]);
 
-      trace(INFO, "Compiled to", chalk.bold(plib.resolve(outPath)));
-    } else if (action == "run") {
-      const path = plib.join(tmpdir(), "stck-temp");
-
-      writeFileSync(path + ".asm", out.join("\n"));
-      cmd(["fasm", "-m", "524288", path + ".asm"]);
-
-      trace(INFO, "Running");
-
+    if (action == "run") {
       Bun.spawn({
-        stdio: ["inherit", "inherit", "inherit"],
-        cmd: [path],
+        cmd: [path], stdio: ["inherit", "inherit", "inherit"],
         onExit(_, code, sig) {
           if (typeof sig == "string") {
             console.error(ERROR, "Process exited with", chalk.bold(sig));
@@ -148,7 +131,11 @@ function main() {
           }
         }
       });
+    } else {
+      console.log(INFO, "Compiled to", chalk.bold(plib.resolve(path)));
     }
+  } else if (target == "bytecode") {
+    panic("Bytecode has been temporarily removed, sorry! Will be added back soon");
   } else {
     throw new Error("unreachable");
   }

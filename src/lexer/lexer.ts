@@ -1,52 +1,69 @@
 import { KEYWORDS, Token, Tokens } from "./token";
-import { File, formatLoc } from "../shared";
+import { File, Location, Span, formatLoc } from "../shared";
 import { Err, StckError } from "../errors";
-import { Reader } from "../util";
 
 // TODO: i kinda wanna rewrite this into a single function
 // the language's syntax is quite simple to tokenize sooo... should not be too hard i think?
 
 export class Lexer {
-  public readonly reader: Reader<string>;
+  private cursor: number = 0;
+  private spanStart: number = 0;
 
   constructor(
     public readonly file: File
-  ) {
-    this.reader = new Reader(this.file.source);
+  ) {}
+
+  private next(): string {
+    return this.file.source[this.cursor++];
+  }
+
+  private peek(n = 0): string {
+    return this.file.source[this.cursor + n];
+  }
+
+  private span(): Location {
+    const span: Span = [this.spanStart, this.cursor];
+    this.spanStart = this.cursor;
+
+    return {
+      file: this.file,
+      span,
+    };
+  }
+
+  private isEnd(): boolean {
+    return this.cursor >= this.file.source.length;
   }
 
   private token(kind: Tokens, value?: any): Token {
     return {
       kind, value,
-      loc: this.file.location(this.reader.span())
+      loc: this.span()
     }
   }
 
   private error(message: string): never {
     return new StckError(Err.InvalidSyntax)
-      .addErr({
-        file: this.file,
-        span: this.reader.span()
-      }, message)
+      .addErr(this.span(), message)
       .throw();
   }
 
   private skipWhitespace(): void {
-    while (" \n\r\t".includes(this.reader.peek()))
-      this.reader.next();
+    while (" \n\r\t".includes(this.peek()))
+      this.next();
   }
 
   private skipComment(): void {
     while (
-      !"\n\r".includes(this.reader.next())
-      && !this.reader.isEnd()
+      !"\n\r".includes(this.next())
+      && !this.isEnd()
     );
   }
 
   private readChar(): string {
-    const char = this.reader.next()!;
+    const char = this.next()!;
     if (char == "\\") {
-      const esc = this.reader.next();
+      const esc = this.next();
       if (!esc) {
         this.error("unexpected EOF");
       } else if (esc == "n") {
@@ -68,14 +85,14 @@ export class Lexer {
   private readStrToken(kind: Tokens): Token {
     let value = "";
 
-    this.reader.next();
-    while (this.reader.peek() != '"') {
-      if (this.reader.isEnd())
+    this.next();
+    while (this.peek() != '"') {
+      if (this.isEnd())
         this.error("unclosed string");
       value += this.readChar();
     }
 
-    this.reader.next();
+    this.next();
     if (!value)
       this.error("empty string");
 
@@ -83,10 +100,10 @@ export class Lexer {
   }
 
   private readCharToken(): Token {
-    this.reader.next();
+    this.next();
     const value = this.readChar();
 
-    if (this.reader.next() != "'") {
+    if (this.next() != "'") {
       this.error("unclosed char");
     }
 
@@ -99,7 +116,7 @@ export class Lexer {
     let word = "";
 
     while (true) {
-      const char = this.reader.peek();
+      const char = this.peek();
       if (" \n\r\t".includes(char) && word) {
         if (word == "end") break;
         else if (word[0] == "\\")
@@ -108,7 +125,7 @@ export class Lexer {
         word = "";
       }
 
-      this.reader.next();
+      this.next();
       if (char == "\n") {
         lines.push(line.join(" ").trim());
         line.splice(0, line.length);
@@ -127,11 +144,11 @@ export class Lexer {
   }
 
   private readWordToken(): Token {
-    let value = this.reader.next();
+    let value = this.next();
     let isInt = "-0123456789".includes(value);
 
-    while (!this.reader.isEnd()) {
-      const ch = this.reader.next()!;
+    while (!this.isEnd()) {
+      const ch = this.next()!;
       if (" \n\r\t".includes(ch))
         break;
 
@@ -154,7 +171,7 @@ export class Lexer {
     } else if (value == "?here") {
       return this.token(Tokens.Str, formatLoc({
         file: this.file,
-        span: [this.reader.spanStart, this.reader.cursor]
+        span: [this.spanStart, this.cursor]
       }));
     } else {
       return this.token(Tokens.Word, value);
@@ -162,34 +179,34 @@ export class Lexer {
   }
 
   private readToken(): Token {
-    if (this.reader.isEnd()) {
+    if (this.isEnd()) {
       return this.token(Tokens.EOF);
-    } else if (this.reader.peek() == '"') {
+    } else if (this.peek() == '"') {
       return this.readStrToken(Tokens.Str);
-    } else if (this.reader.peek() == "'") {
+    } else if (this.peek() == "'") {
       return this.readCharToken();
-    } else if (this.reader.peek() == "c" && this.reader.peek(1) == '"') {
+    } else if (this.peek() == "c" && this.peek(1) == '"') {
       return this.readStrToken(Tokens.CStr);
     } else {
       return this.readWordToken();
     }
   }
 
-  public next(): Token {
+  public nextToken(): Token {
     this.skipWhitespace();
-    while (this.reader.peek() == "/" && this.reader.peek(1) == "/") {
+    while (this.peek() == "/" && this.peek(1) == "/") {
       this.skipComment();
       this.skipWhitespace();
     }
 
-    this.reader.span();
+    this.span();
     return this.readToken();
   }
 
   public collect(): Token[] {
     const tokens = [];
-    while (!this.reader.isEnd()) {
-      tokens.push(this.next());
+    while (!this.isEnd()) {
+      tokens.push(this.nextToken());
     }
 
     return tokens;

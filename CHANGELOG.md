@@ -6,16 +6,19 @@ This is the changelog for **stck**.
 
 ### Added
 
-- Added a debug runtime intrinsic `?stack-data` which outputs the data on the stack when called
+- Added a debug runtime intrinsic `dump-stack` which outputs the data on the stack when called
 
 ### Changed
 
 - Error messages are now grouped into a separate enum and are now more consistent
 - Untyped pointers are now displayed as `ptr` instead of `ptr(?)` in the error messages
 - Booleans have been moved to the prelude and are now not a special token
-- The value of `true` has been changed to `-1`
 - The compile-time intrinsic `<dump-stack>` has been renamed to `?stack-types`
 - `<here>` has been renamed to `?here`
+
+### Removed
+
+- Removed the `--verbose` flag from the CLI
 
 ### Fixed
 
@@ -70,7 +73,7 @@ This is the changelog for **stck**.
 
 - Constants can no longer contain strings. Use macros instead
 - Removed the `2swap` intrinsic
-- Removed the `--unsafe` flag
+- Removed the `--unsafe` flag from the CLI
 - Removed type inference. Procedures are now required to provide the signature.
 - **Temporarily** removed the virtual machine and the bytecode (will be added back later)
 - **Temporarily** removed compile-time assertions (will be added back later)

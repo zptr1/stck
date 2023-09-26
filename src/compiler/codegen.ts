@@ -1,7 +1,6 @@
-import { ROOT_DIR } from "../const";
 import { Instr, Instruction } from "../shared";
-import { assertNever } from "../util";
 import { IRProgram } from "./ir";
+import { ROOT_DIR } from "..";
 import plib from "path";
 
 function normalizeWord(word: string): string {
@@ -104,8 +103,8 @@ export function codegenFasm(prog: IRProgram): string[] {
       for (const line of instr.value.split("\n")) {
         out.push("\t" + line);
       }
-    } else if (instr.kind == Instr.PushBind) {
-      pushIdent(`push qword [rbp+${instr.element * 8}]`)
+    } else if (instr.kind == Instr.PushLocal) {
+      pushIdent(`push qword [rbp+${instr.offset}]`)
     } else if (instr.kind == Instr.Bind) {
       pushIdent(`sub rbp, ${8 * instr.count}`);
       for (let i = instr.count - 1; i >= 0; i--) {
@@ -159,7 +158,7 @@ export function codegenFasm(prog: IRProgram): string[] {
         || lastInstr.kind == Instr.Push64
         || lastInstr.kind == Instr.PushMem
         || lastInstr.kind == Instr.PushStr
-        || lastInstr.kind == Instr.PushBind
+        || lastInstr.kind == Instr.PushLocal
       ) {
         out.pop();
       } else {

@@ -1,8 +1,8 @@
 import { ExpansionStackElement, File, Location } from "../shared";
-import { Lexer, Token, Tokens } from "../lexer";
+import { Lexer, Token, Tokens } from ".";
 import { Err, StckError } from "../errors";
 import { existsSync, statSync } from "fs";
-import { ROOT_DIR } from "../const";
+import { ROOT_DIR } from "..";
 import chalk from "chalk";
 import plib from "path";
 

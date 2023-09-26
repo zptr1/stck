@@ -1,27 +1,7 @@
+import { Err, ErrSpanKind, ErrorFile, ErrorSpan, errSpanArrow, errSpanColor, errToStr } from ".";
 import { Context, File, Location, formatLoc, frameToString } from "../shared";
-import { Err, ErrSpanKind, ErrorFile, ErrorSpan, errToStr } from ".";
 import chalk, { ChalkInstance } from "chalk";
 import plib from "path";
-
-function errColor(kind: ErrSpanKind) {
-  if (kind == ErrSpanKind.Error) {
-    return chalk.red.bold;
-  } else if (kind == ErrSpanKind.Warn) {
-    return chalk.yellow.bold;
-  } else if (kind == ErrSpanKind.Note) {
-    return chalk.blue.bold;
-  } else {
-    return chalk.dim.bold;
-  }
-}
-
-function errArrow(kind: ErrSpanKind, size: number) {
-  if (kind == ErrSpanKind.Error || kind == ErrSpanKind.Warn) {
-    return "^" + "~".repeat(Math.max(size - 1, 0));
-  } else {
-    return "^" + "-".repeat(Math.max(size - 1, 0));
-  }
-}
 
 export class StckError {
   private readonly files: Map<File, ErrorFile> = new Map();
@@ -62,7 +42,7 @@ export class StckError {
     if (existing) {
       // TODO: Temporary fix
       existing.text ??= "";
-      existing.text += `\n${errColor(kind)(text)}`;
+      existing.text += `\n${errSpanColor(kind)(text)}`;
     } else {
       this._lastFile!.spans.push({
         kind, loc, text,
@@ -145,11 +125,11 @@ export class StckError {
           span.end.line = lineno;
         }
 
-        const clr = errColor(span.kind);
+        const clr = errSpanColor(span.kind);
         const size = Math.max(span.end.col - span.start.col, 0);
         const padding = " ".repeat(Math.max(span.start.col - lastSpanEnd, 0));
 
-        lines.push(padding + clr(errArrow(span.kind, size)));
+        lines.push(padding + clr(errSpanArrow(span.kind, size)));
 
         if (span.text) {
           arrows.push(padding + clr("|") + " ".repeat(Math.max(size - 1, 0)));
@@ -165,13 +145,13 @@ export class StckError {
       const span = spans.shift()!;
       if (span.text && !span.text.includes("\n")) {
         if (span.end.col + span.text.length < 65) {
-          lines.push(lines.pop()! + " " + errColor(span.kind)(span.text));
+          lines.push(lines.pop()! + " " + errSpanColor(span.kind)(span.text));
           out.push(`${emptyLineNo} ${lines.join("")}`);
           arrows.pop();
         } else {
           const pad = arrows.pop()!.split("|")[0];
           out.push(`${emptyLineNo} ${lines.join("")}`);
-          out.push(`${emptyLineNo} ${arrows.join("")}${pad}${errColor(span.kind)(span.text)}`);
+          out.push(`${emptyLineNo} ${arrows.join("")}${pad}${errSpanColor(span.kind)(span.text)}`);
         }
       } else {
         spans.push(span);
@@ -183,7 +163,7 @@ export class StckError {
           out.push(`${emptyLineNo} ${arrows.join("")}`);
 
           const padding = arrows.pop()!.split("|")[0];
-          const color = errColor(span.kind);
+          const color = errSpanColor(span.kind);
           const s = `${emptyLineNo} ${arrows.join("")}${padding}`;
 
           for (const ln of span.text.split("\n")) {

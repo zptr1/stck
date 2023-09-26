@@ -1,7 +1,7 @@
 import { DataType, Location, TypeFrame, frameToString, Context, INTRINSICS, cloneContext, createContext, formatLoc } from "../shared";
 import { AstKind, Const, Expr, LiteralType, Proc, Program, WordType } from "../parser";
 import { Err, StckError } from "../errors";
-import { assertNever } from "../util";
+import { assertNever } from "..";
 import chalk from "chalk";
 
 function handleSignature(

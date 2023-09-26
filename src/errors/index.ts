@@ -1,5 +1,6 @@
-import { assertNever } from "../util";
 import { Location } from "../shared";
+import { assertNever } from "..";
+import chalk from "chalk";
 
 export enum Err {
   EmptyFile,
@@ -75,6 +76,26 @@ export function errToStr(err: Err): string {
     return "unhandled types on the stack";
   } else {
     assertNever(err);
+  }
+}
+
+export function errSpanColor(kind: ErrSpanKind) {
+  if (kind == ErrSpanKind.Error) {
+    return chalk.red.bold;
+  } else if (kind == ErrSpanKind.Warn) {
+    return chalk.yellow.bold;
+  } else if (kind == ErrSpanKind.Note) {
+    return chalk.blue.bold;
+  } else {
+    return chalk.dim.bold;
+  }
+}
+
+export function errSpanArrow(kind: ErrSpanKind, size: number) {
+  if (kind == ErrSpanKind.Error || kind == ErrSpanKind.Warn) {
+    return "^" + "~".repeat(Math.max(size - 1, 0));
+  } else {
+    return "^" + "-".repeat(Math.max(size - 1, 0));
   }
 }
 

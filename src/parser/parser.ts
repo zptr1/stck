@@ -1,4 +1,4 @@
-import { AstKind, Condition, Const, Expr, Let, LiteralType, Proc, Program, Signature, Var, While, WordType } from "./ast";
+import { AstKind, Condition, Const, Expr, Let, LiteralType, Proc, Program, Var, While, WordType } from "./ast";
 import { DataType, INTRINSICS, Location, TypeFrame, sizeOf } from "../shared";
 import { Err, StckError } from "../errors";
 import { Token, Tokens } from "../lexer";

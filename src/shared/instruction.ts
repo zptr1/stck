@@ -7,6 +7,7 @@ export enum Instr {
   Push,
   Push64,
   PushStr,
+  PushLocal,
   PushMem,
   AsmBlock,
 
@@ -52,7 +53,6 @@ export enum Instr {
   Rot,
   Over,
   Bind,
-  PushBind,
   Unbind,
 
   // Memory
@@ -87,7 +87,7 @@ type _instr = (
   | { kind: Instr.Push64, value: bigint }
   | { kind: Instr.PushStr, id: number, len: number }
   | { kind: Instr.PushMem, offset: number }
-  | { kind: Instr.PushBind, element: number }
+  | { kind: Instr.PushLocal, offset: number }
   | { kind: Instr.AsmBlock, value: string }
   | {
       kind: Instr.Bind | Instr.Unbind,
