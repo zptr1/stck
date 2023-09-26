@@ -4,8 +4,13 @@ This is the changelog for **stck**.
 
 ## [unreleased]
 
+### Changed
+
+- Error messages are now grouped into an enum and are now more consistent
+
 ### Fixed
 
+- Type errors are worded more clearly now
 - `div` and `idiv` erroring in SIGFPE when used multiple times
 
 ## 0.1.1 - 2023-09-24

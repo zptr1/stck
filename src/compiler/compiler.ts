@@ -104,16 +104,16 @@ export class Compiler {
       } else if (instr.kind == Instr.Print) {
         console.log(chalk.cyan.bold("debug:"), chalk.yellow(stack.pop()), "@", formatLoc(loc), "(comptime expr)");
       } else if (instr.kind == Instr.PushMem) {
-        new StckError("invalid compile-time expression")
-          .add(Err.Error, loc, "memories are not allowed here")
+        new StckError(Err.InvalidComptime)
+          .addErr(loc, "memories are not allowed here")
           .throw();
       } else if (instr.kind == Instr.Call) {
-        new StckError("invalid compile-time expression")
-          .add(Err.Error, loc, "procedure calls are not allowed here")
+        new StckError(Err.InvalidComptime)
+          .addErr(loc, "procedure calls are not allowed here")
           .throw();
       } else {
-        new StckError("invalid compile-time expression")
-          .add(Err.Error, loc, `cannot use ${Instr[instr.kind]} here`)
+        new StckError(Err.InvalidComptime)
+          .addErr(loc, `cannot use ${Instr[instr.kind]} here`)
           .throw();
       }
     }
@@ -148,8 +148,8 @@ export class Compiler {
       } else if (expr.type == LiteralType.Int) {
         if (expr.value > i32_MAX || expr.value < i32_MIN) {
           if (expr.value > i64_MAX || expr.value < i64_MIN) {
-            new StckError("invalid literal")
-              .add(Err.Error, expr.loc, `the integer is too big for i64`)
+            new StckError(Err.InvalidExpr)
+              .addErr(expr.loc, `the integer is too big for i64`)
               .throw();
           }
 
@@ -187,17 +187,17 @@ export class Compiler {
         if (proc.inline) {
           const idx = ctx.inlineExpansionStack.findIndex((x) => x.name == proc.name);
           if (idx > -1) {
-            const err = new StckError("recursive inline procedure expansion");
+            const err = new StckError(Err.RecursiveInlineProcExpansion);
             for (let i = idx; i < ctx.inlineExpansionStack.length; i++) {
               const expansion = ctx.inlineExpansionStack[i];
               if (expansion.name == proc.name) {
-                err.add(Err.Note, expansion.loc, `first expansion of ${proc.name}`);
+                err.addNote(expansion.loc, `first expansion of ${proc.name}`);
               } else {
-                err.add(Err.Trace, expansion.loc, `${ctx.inlineExpansionStack[i - 1]?.name} lead to this expansion`);
+                err.addTrace(expansion.loc, `${ctx.inlineExpansionStack[i - 1]?.name} lead to this expansion`);
               }
             }
 
-            err.add(Err.Error, expr.loc, `${proc.name} expanded again here`);
+            err.addErr(expr.loc, `${proc.name} expanded again here`);
             err.throw();
           }
 
@@ -256,8 +256,8 @@ export class Compiler {
           offset: this.memories.get(variable.name)!
         });
       } else if (expr.type == WordType.Unknown) {
-        new StckError("unknown word")
-          .add(Err.Error, expr.loc, "could not determine the type of this word")
+        new StckError(Err.InvalidExpr)
+          .addErr(expr.loc, "unknown word")
           .addHint("likely a compiler bug?")
           .throw();
       } else {
@@ -360,8 +360,8 @@ export class Compiler {
     this.compileBody(memory.body, instr, createContext(memory.loc));
     const size = Number(this.evaluate(memory.loc, instr));
     if (size < 1 || !Number.isSafeInteger(size)) {
-      new StckError("invalid compile-time expression")
-        .add(Err.Error, memory.loc, "invalid memory size")
+      new StckError(Err.InvalidComptime)
+        .addErr(memory.loc, "invalid memory size")
         .throw();
     }
 

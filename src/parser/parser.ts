@@ -26,8 +26,8 @@ export class Parser {
   private nextOf(kind: Tokens) {
     const token = this.next();
     if (!token || token.kind != kind) {
-      new StckError("unexpected token")
-        .add(Err.Error, token?.loc ??  this.lastToken.loc, `expected \`${kind}\``)
+      new StckError(Err.UnexpectedToken)
+        .addErr(token?.loc ??  this.lastToken.loc, `expected \`${kind}\``)
         .throw();
     }
 
@@ -36,28 +36,28 @@ export class Parser {
 
   private checkUniqueDefinition(name: string, loc: Location) {
     if (INTRINSICS.has(name)) {
-      new StckError("duplicated name")
-        .add(Err.Error, loc, "there is already an intrinsic with the same name")
+      new StckError(Err.DuplicatedDefinition)
+        .addErr(loc, "there is already an intrinsic with the same name")
         .throw();
     } else if (this.procs.has(name)) {
-      new StckError("duplicated name")
-        .add(Err.Error, loc, "there is already a procedure with the same name")
-        .add(Err.Note, this.procs.get(name)!.loc, "defined here")
+      new StckError(Err.DuplicatedDefinition)
+        .addErr(loc, "there is already a procedure with the same name")
+        .addNote(this.procs.get(name)!.loc, "defined here")
         .throw();
     } else if (this.consts.has(name)) {
-      new StckError("duplicated name")
-        .add(Err.Error, loc, "there is already a constant with the same name")
-        .add(Err.Note, this.consts.get(name)!.loc, "defined here")
+      new StckError(Err.DuplicatedDefinition)
+        .addErr(loc, "there is already a constant with the same name")
+        .addNote(this.consts.get(name)!.loc, "defined here")
         .throw();
     } else if (this.memories.has(name)) {
-      new StckError("duplicated name")
-        .add(Err.Error, loc, "there is already a memory region with the same name")
-        .add(Err.Note, this.memories.get(name)!.loc, "defined here")
+      new StckError(Err.DuplicatedDefinition)
+        .addErr(loc, "there is already a memory region with the same name")
+        .addNote(this.memories.get(name)!.loc, "defined here")
         .throw();
     } else if (this.vars.has(name)) {
-      new StckError("duplicated name")
-        .add(Err.Error, loc, "there is already a variable with the same name")
-        .add(Err.Note, this.vars.get(name)!.loc, "defined here")
+      new StckError(Err.DuplicatedDefinition)
+        .addErr(loc, "there is already a variable with the same name")
+        .addNote(this.vars.get(name)!.loc, "defined here")
         .throw();
     }
   }
@@ -100,8 +100,8 @@ export class Parser {
     } else if (token.kind == Tokens.Let) {
       return this.parseBinding(token.loc);
     } else {
-      return new StckError("unexpected token")
-        .add(Err.Error, token.loc)
+      return new StckError(Err.UnexpectedToken)
+        .addErr(token.loc)
         .throw();
     }
   }
@@ -118,8 +118,8 @@ export class Parser {
       const token = this.next();
 
       if (!token) {
-        new StckError("unclosed block")
-          .add(Err.Error, loc, "this condition was never closed")
+        new StckError(Err.UnclosedBlock)
+          .addErr(loc, "this condition was never closed")
           .throw();
       } else if (token.kind == Tokens.Do) {
         loc = token.loc;
@@ -133,8 +133,8 @@ export class Parser {
       const token = this.next();
 
       if (!token) {
-        new StckError("unclosed block")
-          .add(Err.Error, loc, "this condition was never closed")
+        new StckError(Err.UnclosedBlock)
+          .addErr(loc, "this condition was never closed")
           .throw();
       } else if (token.kind == Tokens.Else) {
         condition.else = this.parseBody(token.loc);
@@ -165,8 +165,8 @@ export class Parser {
       const token = this.next();
 
       if (!token) {
-        new StckError("unclosed block")
-          .add(Err.Error, loc, "this loop was never closed")
+        new StckError(Err.UnclosedBlock)
+          .addErr(loc, "this loop was never closed")
           .throw();
       } else if (token.kind == Tokens.Do) {
         loop.body = this.parseBody(token.loc);
@@ -190,8 +190,8 @@ export class Parser {
       const token = this.next();
 
       if (!token) {
-        new StckError("unclosed block")
-          .add(Err.Error, loc, "this binding was never closed")
+        new StckError(Err.UnclosedBlock)
+          .addErr(loc, "this binding was never closed")
           .throw();
       } else if (token.kind == Tokens.Do) {
         binding.body = this.parseBody(token.loc);
@@ -199,9 +199,9 @@ export class Parser {
       } else if (token.kind == Tokens.Word) {
         binding.bindings.push(token.value);
       } else {
-        new StckError("unexpected token")
-          .add(Err.Note, loc, "binding starts here")
-          .add(Err.Error, token.loc, "expected a word")
+        new StckError(Err.UnexpectedToken)
+          .addNote(loc, "binding starts here")
+          .addErr(token.loc, "expected a word")
           .throw();
       }
     }
@@ -226,17 +226,17 @@ export class Parser {
           || token.kind == Tokens.While
         )
       ) {
-        new StckError("invalid compile-time expression")
-          .add(Err.Note, loc)
-          .add(Err.Error, token.loc, `cannot use ${token.kind} here`)
+        new StckError(Err.InvalidComptime)
+          .addNote(loc)
+          .addErr(token.loc, `cannot use ${token.kind} here`)
           .throw();
       } else {
         body.push(this.parseExpr(token));
       }
     }
 
-    return new StckError("unclosed block")
-      .add(Err.Error, loc, "this block was never closed")
+    return new StckError(Err.UnclosedBlock)
+      .addErr(loc, "this block was never closed")
       .throw();
   }
 
@@ -268,9 +268,9 @@ export class Parser {
       }
     } else if (token.value == "unknown") {
       if (!unsafe) {
-        return new StckError("invalid type")
-          .add(Err.Note, loc, "type signature starts here")
-          .add(Err.Error, token.loc, "unknown types are not allowed")
+        return new StckError(Err.InvalidType)
+          .addNote(loc, "type signature starts here")
+          .addErr(token.loc, "unknown types are not allowed")
           .addHint("unknown types can be used in unsafe procedures")
           .addHint("please note that unsafe procedures are not recommended to use")
           .throw();
@@ -281,9 +281,9 @@ export class Parser {
       }
     } else if (token.value[0] == "<" && token.value.endsWith(">")) {
       if (!unsafe) {
-        return new StckError("invalid type")
-          .add(Err.Note, loc, "type signature starts here")
-          .add(Err.Error, token.loc, "generic types are not allowed")
+        return new StckError(Err.InvalidType)
+          .addNote(loc, "type signature starts here")
+          .addErr(token.loc, "generic types are not allowed")
           .addHint("generic types can be used in unsafe procedures")
           .addHint("please note that unsafe procedures are not recommended to use")
           .throw();
@@ -297,9 +297,9 @@ export class Parser {
         }
       }
     } else {
-      return new StckError("invalid type")
-        .add(Err.Note, loc, "type signature starts here")
-        .add(Err.Error, token.loc, "unknown word")
+      return new StckError(Err.InvalidType)
+        .addNote(loc, "type signature starts here")
+        .addErr(token.loc, "unknown word")
         .throw();
     }
   }
@@ -317,15 +317,15 @@ export class Parser {
       } else if (token.kind == Tokens.Word) {
         types.push(this.parseType(token, loc, unsafe));
       } else {
-        new StckError("invalid type")
-          .add(Err.Note, loc, "type signature starts here")
-          .add(Err.Error, token.loc, "unexpected token")
+        new StckError(Err.InvalidType)
+          .addNote(loc, "type signature starts here")
+          .addErr(token.loc, "unexpected token")
           .throw();
       }
     }
 
-    return new StckError("unclosed block")
-      .add(Err.Error, loc, "this signature was never closed")
+    return new StckError(Err.UnclosedBlock)
+      .addErr(loc, "this signature was never closed")
       .throw();
   }
 
@@ -361,9 +361,9 @@ export class Parser {
     } else if (token.kind == Tokens.Do) {
       proc.body = this.parseBody(token.loc);
     } else {
-      new StckError("unexpected token")
-        .add(Err.Note, loc, "procedure defined here")
-        .add(Err.Error, token.loc, "unexpected token")
+      new StckError(Err.UnexpectedToken)
+        .addNote(loc, "procedure defined here")
+        .addErr(token.loc, "unexpected token")
         .addHint(`did you forget to add ${chalk.yellow.bold("do")} after the name of the procedure?`)
         .throw();
     }
@@ -389,14 +389,14 @@ export class Parser {
     const [sig, end] = this.parseSignature(name.loc, [Tokens.End]);
 
     if (sig.length < 1) {
-      new StckError("invalid type signature")
-        .add(Err.Note, loc, "variable defined here")
-        .add(Err.Error, end.loc, "expected a type but got nothing")
+      new StckError(Err.InvalidType)
+        .addNote(loc, "variable defined here")
+        .addErr(end.loc, "expected a type but got nothing")
         .throw();
     } else if (sig.length > 1) {
-      new StckError("invalid type signature")
-        .add(Err.Note, loc, "variable defined here")
-        .add(Err.Error, sig[1].loc!, "expected a single type but got multiple")
+      new StckError(Err.InvalidType)
+        .addNote(loc, "variable defined here")
+        .addErr(sig[1].loc!, "expected a single type but got multiple")
         .throw();
     }
 
@@ -436,8 +436,8 @@ export class Parser {
       } else if (token.kind == Tokens.Unsafe) {
         unsafeProc = true;
       } else if (inlineProc || unsafeProc) {
-        new StckError("unexpected token")
-          .add(Err.Error, token.loc, "expected procedure declaration here")
+        new StckError(Err.UnexpectedToken)
+          .addErr(token.loc, "expected procedure declaration here")
           .throw();
       } else if (token.kind == Tokens.Const) {
         this.parseConst(token.loc);
@@ -448,8 +448,8 @@ export class Parser {
       } else if (token.kind == Tokens.Assert) {
         throw new Error("Assertions are not implemented yet");
       } else {
-        new StckError("unexpected token")
-          .add(Err.Error, token.loc, "invalid token at the top level")
+        new StckError(Err.UnexpectedToken)
+          .addErr(token.loc, "invalid token at the top level")
           .throw();
       }
     }

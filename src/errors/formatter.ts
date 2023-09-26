@@ -1,22 +1,22 @@
 import { Context, File, Location, formatLoc, frameToString } from "../shared";
-import { Err, ErrorFile, ErrorSpan } from ".";
+import { Err, ErrSpanKind, ErrorFile, ErrorSpan, errToStr } from ".";
 import chalk, { ChalkInstance } from "chalk";
 import plib from "path";
 
-function errColor(kind: Err) {
-  if (kind == Err.Error) {
+function errColor(kind: ErrSpanKind) {
+  if (kind == ErrSpanKind.Error) {
     return chalk.red.bold;
-  } else if (kind == Err.Warn) {
+  } else if (kind == ErrSpanKind.Warn) {
     return chalk.yellow.bold;
-  } else if (kind == Err.Note) {
+  } else if (kind == ErrSpanKind.Note) {
     return chalk.blue.bold;
   } else {
     return chalk.dim.bold;
   }
 }
 
-function errArrow(kind: Err, size: number) {
-  if (kind == Err.Error || kind == Err.Warn) {
+function errArrow(kind: ErrSpanKind, size: number) {
+  if (kind == ErrSpanKind.Error || kind == ErrSpanKind.Warn) {
     return "^" + "~".repeat(Math.max(size - 1, 0));
   } else {
     return "^" + "-".repeat(Math.max(size - 1, 0));
@@ -28,7 +28,7 @@ export class StckError {
   private _lastFile?: ErrorFile;
 
   constructor(
-    public readonly message: string,
+    public readonly type: Err,
   ) {}
 
   private getLastLoc() {
@@ -38,7 +38,7 @@ export class StckError {
     }
   }
 
-  public add(kind: Err, loc: Location, text?: string) {
+  private add(kind: ErrSpanKind, loc: Location, text?: string) {
     if (!this.files.has(loc.file)) {
       const file: ErrorFile = {
         lines: loc.file.source.split("\n"),
@@ -74,6 +74,22 @@ export class StckError {
     return this;
   }
 
+  public addErr(loc: Location, text?: string) {
+    return this.add(ErrSpanKind.Error, loc, text);
+  }
+
+  public addWarn(loc: Location, text?: string) {
+    return this.add(ErrSpanKind.Warn, loc, text);
+  }
+
+  public addNote(loc: Location, text?: string) {
+    return this.add(ErrSpanKind.Note, loc, text);
+  }
+
+  public addTrace(loc: Location, text?: string) {
+    return this.add(ErrSpanKind.Trace, loc, text);
+  }
+
   public addHint(note: string) {
     this._lastFile!.hints.push(note);
     return this;
@@ -85,7 +101,7 @@ export class StckError {
     offset = 0
   ) {
     for (let i = offset; i < ctx.stack.length; i++) {
-      this.add(Err.Note, ctx.stackLocations[i], fmt(frameToString(ctx.stack[i]), i - offset));
+      this.add(ErrSpanKind.Note, ctx.stackLocations[i], fmt(frameToString(ctx.stack[i]), i - offset));
     }
 
     return this;
@@ -190,7 +206,7 @@ export class StckError {
   public format(): string {
     const out: string[] = [];
 
-    out.push(`${chalk.red.bold("error:")} ${this.message}`);
+    out.push(`${chalk.red.bold(`error:`)} ${errToStr(this.type)}`);
 
     for (const file of this.files.values()) {
       this.formatFile(out, file);

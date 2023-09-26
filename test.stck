@@ -1,5 +1,7 @@
 %include "std"
 
 proc main do
-  "Hello, world\n" puts
+  if 2 2 eq do
+    123
+  else false end
 end

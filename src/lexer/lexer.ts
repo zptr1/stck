@@ -23,8 +23,8 @@ export class Lexer {
   }
 
   private error(message: string): never {
-    return new StckError("invalid syntax")
-      .add(Err.Error, {
+    return new StckError(Err.InvalidSyntax)
+      .addErr({
         file: this.file,
         span: this.reader.span()
       }, message)
