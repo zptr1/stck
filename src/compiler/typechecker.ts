@@ -72,10 +72,10 @@ function generateTypeError(
   ctx: Context, generics: Map<string, TypeFrame>,
   offset: number, expected: string, failedAt: number
 ) {
-  for (let i = offset; i < ctx.stack.length; i++) {
+  for (let i = Math.max(offset, 0); i < ctx.stack.length; i++) {
     const frame = frameToString(insertGenerics(ctx.stack[i], generics));
     if (i == failedAt) {
-      err.addWarn(ctx.stackLocations[i], `expected ${expected} but got ${frame}`);
+      err.addWarn(ctx.stackLocations[i], `got ${frame} but expected ${expected}`);
     } else {
       err.addNote(ctx.stackLocations[i], `${frame} introduced here`);
     }
