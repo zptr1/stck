@@ -4,6 +4,7 @@
 segment readable executable
 
 _start:
+  mov [datastack_start], rsp
   mov rbp, rsp
   mov rsp, callstack_end
   jmp __proc_main
@@ -236,6 +237,10 @@ macro _ret_callp id {
     syscall
   }
 
+  macro _i_dumpstack {
+    call dump_data_stack
+  }
+
 ; Builtins
 ;; Prints a signed integer from rdi
 print:
@@ -285,6 +290,19 @@ print:
   syscall
   add rsp, 40
   ret
+;; Outputs the current data stack
+dump_data_stack:
+  ; note: r12 and r13 are used because print modifies other scratch registers
+  mov r12, [datastack_start]
+  mov r13, rsp
+  add r13, 8
+  .L2:
+    mov rdi, [r13]
+    call print
+    add r13, 8
+  cmp r12, r13
+  jg .L2
+  ret
 ;; This will get called when the stack has overflowed
 stack_overflow:
   mov rax, 1
@@ -297,7 +315,8 @@ stack_overflow:
   syscall
 
 segment readable writeable
-  callstack:     rb 640000
+  datastack_start: rq 1
+  callstack:       rb 640000
   callstack_end:
 
   stack_overflow_msg:       db '[RUNTIME ERROR] Stack overflow', 10

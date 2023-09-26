@@ -6,7 +6,7 @@ proc main do
   gettime_ms randseed
   rand 100 mod
 
-  0 while 2dup eq not do
+  0 while 2dup eq lnot do
     "Your guess: " puts
 
     drop

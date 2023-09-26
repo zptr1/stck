@@ -29,7 +29,7 @@ end
 proc is-digit :: int -> bool do
   dup  '0' gteq
   swap '9' lteq
-  and
+  land
 end
 
 proc parse-uint :: int ptr -> int do

@@ -77,10 +77,11 @@ addIntrinsic("read32",  Instr.Read32,  [DataType.Ptr],               [DataType.I
 addIntrinsic("read64",  Instr.Read32,  [DataType.Ptr],               [DataType.Int]);
 
 // Program
-addIntrinsic("print", Instr.Print, [DataType.Int],               []);
-addIntrinsic("puts",  Instr.Puts,  [DataType.Int, DataType.Ptr], []);
+addIntrinsic("print",       Instr.Print, [DataType.Int],               []);
+addIntrinsic("puts",        Instr.Puts,  [DataType.Int, DataType.Ptr], []);
+addIntrinsic("?stack-data", Instr.DumpStack, [], []);
 
 // Compile-time
-addIntrinsic("<dump-stack>", Instr.Nop, [], []);
+addIntrinsic("?stack-types", Instr.Nop, [], []);
 addIntrinsic("offset",       Instr._CExpr__Offset, [DataType.Int], [DataType.Int]);
 addIntrinsic("reset",        Instr._CExpr__Reset,  [],             [DataType.Int]);

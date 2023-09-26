@@ -4,6 +4,8 @@ For a more in-depth explanation, check out the [documentation](./00_INTRODUCTION
 
 Please note that the language is a work in progress and anything can be changed at any time.
 
+## This reference is a bit outdated, sorry!
+
 # Literals
 
 Name        | Example   | Type        | Description

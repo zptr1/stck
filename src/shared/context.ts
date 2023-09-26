@@ -48,7 +48,7 @@ export function frameToString(frame: TypeFrame): string {
   if (frame.type == DataType.Unknown) {
     return "unknown";
   } else if (frame.type == DataType.Ptr) {
-    return "ptr(?)";
+    return "ptr";
   } else if (frame.type == DataType.Int) {
     return "int";
   } else if (frame.type == DataType.Bool) {

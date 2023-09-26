@@ -4,19 +4,22 @@ This is the changelog for **stck**.
 
 ## [unreleased]
 
+### Added
+
+- Added a debug runtime intrinsic `?stack-data` which outputs the data on the stack when called
+
 ### Changed
 
-- Error messages are now grouped into an enum and are now more consistent
-- `true` and `false` have been moved to the prelude and are now not a special token
-- `true` now uses `-1` as its value, meaning all bitwise operations can now be used for booleans as well.
-
-### Deprecated
-
-- `lnot`, `lor`, `land` and `lxor` procedures from the prelude
+- Error messages are now grouped into a separate enum and are now more consistent
+- Untyped pointers are now displayed as `ptr` instead of `ptr(?)` in the error messages
+- Booleans have been moved to the prelude and are now not a special token
+- The value of `true` has been changed to `-1`
+- The compile-time intrinsic `<dump-stack>` has been renamed to `?stack-types`
+- `<here>` has been renamed to `?here`
 
 ### Fixed
 
-- Type errors are worded more clearly now
+- Fixed wording in some type errors (e. g. "unexpected data" -> "unexpected types")
 - `div` and `idiv` erroring in SIGFPE when used multiple times
 
 ## 0.1.1 - 2023-09-24

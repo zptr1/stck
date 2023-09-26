@@ -73,6 +73,7 @@ export enum Instr {
   Print,
   Puts,
   Halt,
+  DumpStack,
 
   // Compile-time expressions
   _CExpr__Offset,

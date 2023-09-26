@@ -37,7 +37,7 @@ end
 
 /// Logical operations
 inline proc lnot :: bool -> bool do
-  cast(int) not 2 add cast(bool)
+  cast(int) not cast(bool)
 end
 
 inline proc land :: bool bool -> bool do
@@ -53,16 +53,6 @@ inline proc lxor :: bool bool -> bool do
 end
 
 /// Memory
-inline proc !8  :: int ptr do write8  end
-inline proc !16 :: int ptr do write16 end
-inline proc !32 :: int ptr do write32 end
-inline proc !64 :: int ptr do write64 end
-
-inline proc @8  :: ptr -> int do read8  end
-inline proc @16 :: ptr -> int do read16 end
-inline proc @32 :: ptr -> int do read32 end
-inline proc @64 :: ptr -> int do read64 end
-
 inline proc !int  :: int ptr-to int do
   cast(ptr) write64
 end
