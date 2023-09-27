@@ -1,4 +1,3 @@
-// "Wrappers" for common syscalls
 inline proc write  :: int ptr int -> int do sys_write  syscall3 end
 inline proc read   :: int ptr int -> int do sys_read   syscall3 end
 inline proc fstat  :: ptr int     -> int do sys_fstat  syscall2 end
@@ -10,7 +9,7 @@ end
 
 inline proc exit :: int do sys_exit syscall1 drop end
 
-// Time
+/// Time
 const timespec.tv_sec  sizeof(int) offset end
 const timespec.tv_nsec sizeof(u64) offset end
 const sizeof(timespec) reset end
@@ -35,7 +34,7 @@ proc gettime_ns -> int do
   _gettime_buf timespec.tv_nsec ptr+ read64 add
 end
 
-/// Flags for `openat`
+/// Flags for sys_openat
 const O_RDONLY      0 end
 const O_WRONLY      1 end
 const O_RDWR        2 end
@@ -43,7 +42,7 @@ const O_CREAT      64 end
 const O_TRUNC     512 end
 const O_NONBLOCK 2048 end
 
-/// Modes for `openat`
+/// Modes for sys_openat
 const S_IRWXU   00700 end
 const S_IRUSR   00400 end
 const S_IWUSR   00200 end
@@ -59,6 +58,10 @@ const S_IXOTH   00001 end
 const S_ISUID 0004000 end
 const S_ISGID 0002000 end
 const S_ISVTX 0001000 end
+
+/// Flags for sys_getrandom
+const GRND_NONBLOCK 1 end
+const GRND_RANDOM   2 end
 
 /// List of all Linux syscalls.
 const sys_read 0 end
@@ -375,3 +378,22 @@ const sys_process_vm_readv 310 end
 const sys_process_vm_writev 311 end
 const sys_kcmp 312 end
 const sys_finit_module 313 end
+const sys_sched_setattr 314 end
+const sys_sched_getattr 315 end
+const sys_renameat2 316 end
+const sys_seccomp 317 end
+const sys_getrandom 318 end
+const sys_memfd_create 319 end
+const sys_kexec_file_load 320 end
+const sys_bpf 321 end
+const sys_execveat 322 end
+const sys_userfaultfd 323 end
+const sys_membarrier 324 end
+const sys_mlock2 325 end
+const sys_copy_file_range 326 end
+const sys_preadv2 327 end
+const sys_pwritev2 328 end
+const sys_pkey_mprotect 329 end
+const sys_pkey_alloc 330 end
+const sys_pkey_free 331 end
+const sys_statx 332 end

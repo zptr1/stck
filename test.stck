@@ -1,5 +1,10 @@
 %include "std"
 
-proc main do
+var rand-value int end
 
+proc main do
+  while true do
+    GRND_RANDOM sizeof(int) rand-value sys_getrandom syscall3 drop
+    rand-value @int print
+  end
 end
