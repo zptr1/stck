@@ -4,6 +4,7 @@ import chalk from "chalk";
 
 export enum Err {
   EmptyFile,
+  NoMainProcedure,
   UnresolvedImport,
 
   InvalidSyntax,
@@ -48,6 +49,8 @@ export interface ErrorFile {
 export function errToStr(err: Err): string {
   if (err == Err.EmptyFile) {
     return "empty file";
+  } else if (err == Err.NoMainProcedure) {
+    return "no main procedure";
   } else if (err == Err.UnresolvedImport) {
     return "unresolved import";
   } else if (err == Err.InvalidSyntax) {

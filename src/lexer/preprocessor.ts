@@ -21,7 +21,7 @@ export class Preprocessor {
     private readonly tokens: Token[]
   ) {
     if (tokens.length == 0) {
-      new StckError(Err.EmptyFile).throw();
+      throw new StckError(Err.EmptyFile);
     }
 
     tokens.reverse();
@@ -38,16 +38,14 @@ export class Preprocessor {
 
   private nextOf(kind: Tokens): Token {
     if (!this.tokens.length) {
-      new StckError(Err.UnexpectedToken)
-        .addErr(this.lastToken.loc, `expected ${kind} but got EOF`)
-        .throw();
+      throw new StckError(Err.UnexpectedToken)
+        .addErr(this.lastToken.loc, `expected ${kind} but got EOF`);
     }
 
     const token = this.next();
     if (token.kind != kind) {
-      new StckError(Err.UnexpectedToken)
-        .addErr(token.loc, `expected ${kind}`)
-        .throw();
+      throw new StckError(Err.UnexpectedToken)
+        .addErr(token.loc, `expected ${kind}`);
     }
 
     return token;
@@ -57,7 +55,7 @@ export class Preprocessor {
     if (this.includedFiles.has(path)) return;
     this.includedFiles.add(path);
 
-    const tokens = new Lexer(file.child(path)).collect();
+    const tokens = new Lexer(file.child(path)).lex();
 
     // note: this.tokens is reversed
     for (let i = tokens.length - 1; i >= 0; i--) {
@@ -79,7 +77,7 @@ export class Preprocessor {
       }
 
       err.addErr(loc, `${name} expanded again here`);
-      err.throw();
+      throw err;
     }
 
     this.macroExpansionStack.push({ name, loc });
@@ -103,10 +101,9 @@ export class Preprocessor {
         // relative import (to the current file)
         const path = plib.resolve(plib.join(token.loc.file.path, "..", raw));
         if (!exists(path)) {
-          new StckError(Err.UnresolvedImport)
-            .addErr(token.loc, "could not find this file")
-            .addHint(`import interpreted as ${chalk.yellow(path)}`)
-            .throw();
+          throw new StckError(Err.UnresolvedImport)
+            .addErr(token.loc, "import failed")
+            .addHint(`file not found: ${chalk.yellow(path)}`);
         }
 
         this.include(path, token.loc.file);
@@ -114,10 +111,9 @@ export class Preprocessor {
         // absolute import
         const path = plib.resolve(raw);
         if (!exists(path)) {
-          new StckError(Err.UnresolvedImport)
-            .addErr(token.loc, "could not find this file")
-            .addHint(`import interpreted as ${chalk.yellow(path)}`)
-            .throw();
+          throw new StckError(Err.UnresolvedImport)
+            .addErr(token.loc, "import failed")
+            .addHint(`file not found: ${chalk.yellow(path)}`);
         }
 
         this.include(path, token.loc.file);
@@ -130,10 +126,9 @@ export class Preprocessor {
 
         const path = paths.find((x) => exists(x));
         if (!path) {
-          return new StckError(Err.UnresolvedImport)
-            .addErr(token.loc, "could not find this file")
-            .addHint(`import interpreted as ${chalk.yellow(path)}`)
-            .throw();
+          throw new StckError(Err.UnresolvedImport)
+            .addErr(token.loc, "import failed")
+            .addHint(`file not found: ${chalk.yellow(path)}`);
         }
 
         this.include(path, token.loc.file);
@@ -164,9 +159,8 @@ export class Preprocessor {
       }
     }
 
-    new StckError(Err.UnclosedBlock)
-      .addErr(loc, "this block was never closed")
-      .throw();
+    throw new StckError(Err.UnclosedBlock)
+      .addErr(loc, "this block was never closed");
   }
 
   public preprocess(): Token[] {

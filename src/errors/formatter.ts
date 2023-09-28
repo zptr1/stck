@@ -194,11 +194,4 @@ export class StckError {
 
     return out.join("\n");
   }
-
-  public throw(): never {
-    console.error();
-    console.error(this.format());
-    console.error();
-    process.exit(1);
-  }
 }

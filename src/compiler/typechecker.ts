@@ -31,7 +31,7 @@ function handleSignature(
       } ${suffix}`);
 
       onErr(err);
-      err.throw();
+      throw err;
     } else if (!typeFrameEquals(ins[i], cmp[i], generics)) {
       const err = new StckError(Err.UnexpectedStackTypes);
       generateTypeError(
@@ -43,7 +43,7 @@ function handleSignature(
 
       err.addErr(loc, `unexpected types ${suffix}`);
       onErr(err);
-      err.throw();
+      throw err;
     }
   }
 
@@ -53,7 +53,7 @@ function handleSignature(
 
     err.addErr(loc, `unhandled types ${suffix}`);
     onErr(err);
-    err.throw();
+    throw err;
   }
 
   if (modifyStack) {
@@ -144,10 +144,9 @@ export class TypeChecker {
       } else if (expr.type == LiteralType.Bool) {
         ctx.stack.push({ type: DataType.Bool });
       } else if (expr.type == LiteralType.Assembly) {
-        new StckError(Err.InvalidExpr)
+        throw new StckError(Err.InvalidExpr)
           .addErr(expr.loc, "assembly blocks cannot be used in safe procedures")
-          .addHint("you can add `unsafe` before the procedure to make it unsafe (not recommended)")
-          .throw();
+          .addHint("you can add `unsafe` before the procedure to make it unsafe (not recommended)");
       } else {
         assertNever(expr.type);
       }
@@ -180,9 +179,8 @@ export class TypeChecker {
       } else if (this.program.consts.has(expr.value)) {
         const constant = this.program.consts.get(expr.value)!;
         if (constant.type.type == DataType.Unknown) {
-          new StckError(Err.InvalidExpr)
-            .addErr(expr.loc, "the constant was used before it was defined")
-            .throw();
+          throw new StckError(Err.InvalidExpr)
+            .addErr(expr.loc, "the constant was used before it was defined");
         }
 
         expr.type = WordType.Constant;
@@ -200,35 +198,33 @@ export class TypeChecker {
         });
         ctx.stackLocations.push(expr.loc);
       } else {
-        new StckError(Err.InvalidExpr)
-          .addErr(expr.loc, "unknown word")
-          .throw();
+        throw new StckError(Err.InvalidExpr)
+          .addErr(expr.loc, "unknown word");
       }
     } else if (expr.kind == AstKind.If) {
-      this.validateBody(expr.condition, ctx);
+      const clone = cloneContext(ctx);
+      this.validateBody(expr.condition, clone);
       handleSignature(
-        expr.loc, ctx, [{ type: DataType.Bool }], [],
+        expr.loc, clone, [{ type: DataType.Bool }], [],
         false, true, "for the condition"
       );
 
       if (expr.elseBranch) {
         // if and else - both branches must result in the same types on the stack
-        const clone = cloneContext(ctx);
-
         this.validateBody(expr.body, ctx);
         this.validateBody(expr.else, clone);
 
         handleSignature(
-          expr.loc, clone, ctx.stack, [], true, false, "for the second branch of the condition",
+          expr.elseBranch, clone, ctx.stack, [], true, false,
+          "for the second branch of the condition",
           (err) => {
-            err.addTrace(expr.elseBranch!, "second branch starts here");
+            err.addTrace(expr.loc, "condition starts here");
             err.addStackElements(ctx, (f) => `${f} introduced here`);
             err.addHint("both branches of the condition must result in the same types on the stack");
           }
         );
       } else {
         // only if - the branch must not modify the amount of elements or their types on the stack
-        const clone = cloneContext(ctx);
         this.validateBody(expr.body, clone);
         handleSignature(
           expr.loc, clone, ctx.stack, [], true, false, "after the condition",
@@ -252,25 +248,25 @@ export class TypeChecker {
       );
     } else if (expr.kind == AstKind.Let) {
       if (ctx.stack.length < expr.bindings.length) {
-        new StckError(Err.InsufficientStackTypes)
+        throw new StckError(Err.InsufficientStackTypes)
           .addStackElements(ctx, (e) => `${e} introduced here`)
           .addErr(
             expr.loc,
             expr.bindings.length > 1
               ? `takes ${expr.bindings.length} elements but got ${ctx.stack.length}`
               : "takes an element but got nothing"
-          ).throw();
+          );
       }
 
       for (let i = expr.bindings.length - 1; i >= 0; i--) {
         const binding = expr.bindings[i];
 
         if (ctx.bindings.has(binding)) {
-          new StckError(Err.DuplicatedDefinition)
+          throw new StckError(Err.DuplicatedDefinition)
             .addErr(
               expr.loc,
               `\`${binding}\` is already bound to ${frameToString(ctx.bindings.get(binding)!)}`
-            ).throw();
+            );
         } else {
           const frame = ctx.stack.pop()!;
           ctx.stackLocations.pop();
@@ -281,14 +277,14 @@ export class TypeChecker {
       this.validateBody(expr.body, ctx);
     } else if (expr.kind == AstKind.Cast) {
       if (ctx.stack.length < expr.types.length) {
-        new StckError(Err.InsufficientStackTypes)
+        throw new StckError(Err.InsufficientStackTypes)
           .addStackElements(ctx, (e) => `${e} introduced here`)
           .addErr(
             expr.loc,
             expr.types.length > 1
               ? `casts ${expr.types.length} elements but got ${ctx.stack.length}`
               : "casts an element but got nothing"
-          ).throw();
+          );
       }
 
       ctx.stack.splice(-expr.types.length, expr.types.length);
@@ -322,9 +318,8 @@ export class TypeChecker {
         } else if (this.program.vars.has(expr.value)) {
           expr.type = WordType.Var;
         } else {
-          new StckError(Err.InvalidExpr)
-            .addErr(expr.loc, "unknown word")
-            .throw();
+          throw new StckError(Err.InvalidExpr)
+            .addErr(expr.loc, "unknown word");
         }
       } else if (expr.kind == AstKind.If) {
         this.inferUnsafeBody(expr.condition, bindings);
