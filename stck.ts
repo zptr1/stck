@@ -9,6 +9,7 @@ import { File } from "./src/shared";
 import minimist from "minimist";
 import chalk from "chalk";
 import plib from "path";
+import { StckError } from "./src/errors";
 
 const ERROR = chalk.red.bold("[ERROR]");
 const INFO  = chalk.bold.green("[INFO]");
@@ -40,32 +41,66 @@ function printHelp(): never {
 }
 
 function cmd(command: string[]) {
-  try {
-    const cmd = Bun.spawnSync({ cmd: command });
+  const cmd = Bun.spawnSync({ cmd: command });
 
-    if (cmd.exitCode != 0) {
-      console.error(chalk.bold.white("[CMD]"), command.join(" "));
-      console.error(ERROR, chalk.bold("Command failed"));
-
-      const lines = cmd.stderr.toString().trim().split("\n");
-      for (const line of lines) {
-        console.error(chalk.red("[ERROR]"), line);
-      }
-
-      process.exit(1);
-    }
-  } catch (err: any) {
+  if (cmd.exitCode != 0) {
     console.error(chalk.bold.white("[CMD]"), command.join(" "));
-    console.error(ERROR, "Command failed");
-    console.error(ERROR, err.toString());
+    console.error(ERROR, chalk.bold("Command failed"));
+
+    const lines = cmd.stderr.toString().trim().split("\n");
+    for (const line of lines) {
+      console.error(chalk.red("[ERROR]"), line);
+    }
+
     process.exit(1);
+  }
+}
+
+function exec(path: string, outPath: string, target: string, action: string) {
+  // OOP in a nutshell
+  const ast = new Parser(
+    new Preprocessor(
+      new Lexer(File.read(path)).lex()
+    ).preprocess()
+  ).parse();
+
+  new TypeChecker(ast).typecheck();
+  const ir = new Compiler(ast).compile();
+
+  if (target == "fasm") {
+    const path = action == "run"
+      ? plib.join(tmpdir(), "stck-tmp")
+      : outPath;
+
+    writeFileSync(path + ".asm", codegenFasm(ir).join("\n"));
+    cmd(["fasm", path + ".asm"]);
+
+    if (action == "run") {
+      console.log(INFO, "Running");
+
+      Bun.spawn({
+        cmd: [path], stdio: ["inherit", "inherit", "inherit"],
+        onExit(_, code, signal) {
+          if (typeof signal == "string") {
+            console.error(ERROR, "Process exited with", chalk.bold(signal));
+            process.exit(code ?? 1);
+          } else {
+            process.exit(code ?? 0);
+          }
+        },
+      });
+    } else {
+      console.log(INFO, "Compiled to", chalk.bold(path));
+    }
+  } else {
+    throw new Error(`this target (${target}) is not implemented yet`);
   }
 }
 
 function main() {
   const args = minimist(process.argv.slice(2));
 
-  const action = args._[0] as ("run" | "build" | "check");
+  const action = args._[0];
   if (action != "run" && action != "build" && action != "check")
     printHelp();
 
@@ -74,7 +109,7 @@ function main() {
   else if (!existsSync(path) || !statSync(path).isFile())
     panic("File not found:", path);
 
-  // TODO: Providing a custom file extension will still append .stbin or .asm
+  // TODO: Providing a custom file extension will append .asm instead of replacing it
   const outPath = args._[2] || path.replace(/(\.stck)?$/, "");
   if (!outPath) printHelp();
   else if (!existsSync(plib.dirname(outPath)))
@@ -84,60 +119,17 @@ function main() {
   if (!TARGET_OPTIONS.includes(target))
     panic("Available targets:", TARGET_OPTIONS.join(", "));
 
-  const file = File.read(plib.resolve(path));
-
-  const tokens = new Lexer(file).collect();
-  const preprocessed = new Preprocessor(tokens).preprocess();
-  const program = new Parser(preprocessed).parse();
-
-  new TypeChecker(program).typecheck();
-
-  if (!program.procs.has("main")) {
-    console.error(ERROR, "No main procedure");
-    return;
-  } else if (program.procs.get("main")?.unsafe) {
-    console.warn(WARN, "Unsafe main procedure");
-  }
-
-  if (action == "check") {
-    console.log(INFO, "Typechecking successful");
-    return;
-  }
-
-  const prog = new Compiler(program).compile();
-
-  if (target == "fasm") {
-    if (platform() != "linux") {
-      console.warn(WARN, `This platform (${platform()}) might not be supported`);
-    }
-
-    const out = codegenFasm(prog);
-    const path = action == "run"
-      ? plib.join(tmpdir(), "stck-temp")
-      : outPath;
-
-    writeFileSync(path + ".asm", out.join("\n"));
-    cmd(["fasm", path + ".asm"]);
-
-    if (action == "run") {
-      Bun.spawn({
-        cmd: [path], stdio: ["inherit", "inherit", "inherit"],
-        onExit(_, code, sig) {
-          if (typeof sig == "string") {
-            console.error(ERROR, "Process exited with", chalk.bold(sig));
-            process.exit(code ?? 1);
-          } else {
-            process.exit(code || 0);
-          }
-        }
-      });
+  try {
+    exec(plib.resolve(path), plib.resolve(outPath), target, action);
+  } catch (err) {
+    if (err instanceof StckError) {
+      console.error();
+      console.error(err.format());
+      console.error();
+      process.exit(1);
     } else {
-      console.log(INFO, "Compiled to", chalk.bold(plib.resolve(path)));
+      throw err;
     }
-  } else if (target == "bytecode") {
-    panic("Bytecode has been temporarily removed, sorry! Will be added back soon");
-  } else {
-    throw new Error("unreachable");
   }
 }
 
