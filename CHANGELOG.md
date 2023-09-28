@@ -4,9 +4,12 @@ This is the changelog for **stck**.
 
 ## [unreleased]
 
+## 0.1.2 - 2023-09-28
+
 ### Added
 
 - Added a debug runtime intrinsic `dump-stack` which outputs the data on the stack when called
+- Added missing syscalls to `std/sys/linux`
 
 ### Changed
 
@@ -14,11 +17,12 @@ This is the changelog for **stck**.
 - Untyped pointers are now displayed as `ptr` instead of `ptr(?)` in the error messages
 - Booleans have been moved to the prelude and are now not a special token
 - The compile-time intrinsic `<dump-stack>` has been renamed to `?stack-types`
-- `<here>` has been renamed to `?here`
+- Did some improvements to the lexer. Should be quite faster now
 
 ### Removed
 
 - Removed the `--verbose` flag from the CLI
+- Removed `?here`
 
 ### Fixed
 
