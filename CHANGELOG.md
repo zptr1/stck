@@ -8,12 +8,14 @@ This is the changelog for **stck**.
 
 ### Added
 
-- Added a debug runtime intrinsic `dump-stack` which outputs the data on the stack when called
+- Added a debug intrinsic `dump-stack` which outputs the data on the stack when called at runtime
 - Added missing syscalls to `std/sys/linux`
+- Added a `str-chop-left` procedure to `std/str`
+- Added comments to procedures from the standard library
 
 ### Changed
 
-- Error messages are now grouped into a separate enum and are now more consistent
+- Error messages are now more consistent/accurate/clearer
 - Untyped pointers are now displayed as `ptr` instead of `ptr(?)` in the error messages
 - Booleans have been moved to the prelude and are now not a special token
 - The compile-time intrinsic `<dump-stack>` has been renamed to `?stack-types`

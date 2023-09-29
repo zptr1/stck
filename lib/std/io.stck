@@ -5,6 +5,7 @@ const stdout 1 end
 const stderr 2 end
 
 memory _putch_buf 1 end
+/// Writes a character to the standard output
 inline proc putch :: int do
   _putch_buf write8
   1 _putch_buf puts
@@ -13,6 +14,7 @@ end
 // TODO: Local memory regions
 memory _putu_buf 32 end
 
+/// Writes an unsigned integer to stdout without a newline
 proc putu :: int do
   if dup 0 eq do
     "0" puts drop
@@ -36,6 +38,7 @@ proc putu :: int do
   end
 end
 
+/// Writes a signed integer to stdout without a newline
 proc puti :: int do
   if dup 0 lt do
     "-" puts
@@ -43,6 +46,7 @@ proc puti :: int do
   else putu end
 end
 
+/// Writes the string to the stderr
 inline proc eputs :: int ptr do
   stderr write drop
 end

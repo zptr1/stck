@@ -3,16 +3,19 @@ var lcg_seed int end
 const LCG_MULTIPLIER 6364136223846793005 end
 const LCG_INCREMENT  1442695040888963407 end
 
+/// Returns a random 64-bit integer
 proc rand -> int do
   lcg_seed @int
   LCG_MULTIPLIER mul LCG_INCREMENT add
   dup lcg_seed !int
 end
 
+/// Initializes the seed for the random number generation
 inline proc randseed :: int do
   lcg_seed !int
 end
 
+/// Generates a random integer within the provided range
 inline proc randrange :: int int -> int do
   over sub rand swap mod add
 end

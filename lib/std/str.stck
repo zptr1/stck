@@ -2,6 +2,15 @@ const Str.len     sizeof(int) offset end
 const Str.data    sizeof(ptr) offset end
 const sizeof(Str) reset end
 
+/// Converts a C-string to a string.
+/// Does not modify the data of the string
+proc cstr-to-str :: ptr -> int ptr do
+  0 while 2dup ptr+ read8 0 neq do
+    1 add
+  end swap
+end
+
+/// Checks whether both strings are equal
 proc streq :: int ptr int ptr -> bool do
   let len ptr1 len2 ptr2 do
     if len len2 eq do
@@ -20,18 +29,38 @@ proc streq :: int ptr int ptr -> bool do
   end
 end
 
-proc cstr-to-str :: ptr -> int ptr do
-  0 while 2dup ptr+ read8 0 neq do
-    1 add
-  end swap
-end
-
-proc is-digit :: int -> bool do
+/// Checks whether a character is a digit (0123456789)
+inline proc is-digit :: int -> bool do
   dup  '0' gteq
   swap '9' lteq
   land
 end
 
+/// Checks whether a character is a whitespace
+inline proc is-whitespace :: int -> bool do
+  // tab 0x9, newline 0xA, carriage return 0xD, space 0x20
+  dup  '\t' gteq
+  swap ' '  lteq
+  land
+end
+
+/// Skips all whitespace at the beginning of the string
+/// Does not modify the string
+proc str-trim-left :: int ptr -> int ptr do
+  let len data do
+    0 while
+      if dup len lt do
+        data over ptr+ read8 is-whitespace
+      else false end
+    do 1 add end
+
+    len over sub
+    data rot ptr+
+  end
+end
+
+/// Parses a string as an unsigned integer
+/// Any non-digit character is ignored
 proc parse-uint :: int ptr -> int do
   let len data do
     0 0 // out inc
@@ -40,12 +69,13 @@ proc parse-uint :: int ptr -> int do
       if dup is-digit do
         '0' sub rot 10 mul add swap
       else drop end
-
       1 add
     end drop
   end
 end
 
+/// Parses a string as a signed integer
+/// Any non-digit character is ignored
 proc parse-int :: int ptr -> int do
   if dup read8 '-' eq do
     1 ptr+ swap 1 sub swap
