@@ -3,33 +3,12 @@ import { IRProgram } from "./ir";
 import { ROOT_DIR } from "..";
 import plib from "path";
 
-function normalizeWord(word: string): string {
-  let n = "";
-  for (let i = 0; i < word.length; i++) {
-    const ch = word.charCodeAt(i);
-
-    // ch='0'..='9' || ch='A'..='Z' || ch='a'..='z'
-    if (
-      (ch >= 0x30 && ch <= 0x39)
-      || (ch >= 0x41 && ch <= 0x5A)
-      || (ch >= 0x61 && ch <= 0x7A)
-    ) {
-      n += String.fromCharCode(ch);
-    } else {
-      n += "_";
-    }
-  }
-
-  return n;
-}
-
-/** Encodes a string to a format like "'Hello World',10" for assembly */
-function strEncodeAsm(str: string): string {
+function formatStr(str: string): string {
   const parts: (string | number)[] = [];
   let part = "";
   for (let i = 0; i < str.length; i++) {
     const ch = str.charCodeAt(i);
-    if (ch < 0x20 || ch == 0xAD || (ch >= 0x7F && ch <= 0xA0)) {
+    if (ch < 0x20 || ch == 0x27 || ch == 0xAD || (ch >= 0x7F && ch <= 0xA0)) {
       if (part) {
         parts.push(`'${part}'`);
         part = "";
@@ -59,30 +38,27 @@ export function codegenFasm(prog: IRProgram): string[] {
 
   const pushIdent = (s: string) => out.push("\t" + s);
   let lastInstr: Instruction = null as any;
-  let currentProc: string = "";
+  let currentProc: number = -1;
 
   for (const instr of prog.instr) {
     if (instr.kind == Instr.EnterProc) {
-      // TODO: normalizeWord repalces any invalid characters with underscores, which could result in duplicate label names
-      //       either make it add an increment in case of a duplicate,
-      //       or just use an increment like it did previouly (e. g. 'proc_0')
-      out.push(`__proc_${normalizeWord(instr.name)}:`);
-      pushIdent("_swap rsp,rbp");
-      currentProc = instr.name;
+      out.push(`__proc_${instr.id}: ; ${instr.name}`);
+      pushIdent("swap_reg rsp,rbp");
+      currentProc = instr.id;
     } else if (instr.kind == Instr.Ret) {
-      if (currentProc == "main") {
+      if (currentProc == 0) {
         pushIdent("mov rax, 60");
         pushIdent("mov rdi, 0");
         pushIdent("syscall");
       } else if (lastInstr.kind == Instr.Call) {
         out.pop();
-        pushIdent(`_ret_callp __proc_${normalizeWord(lastInstr.name)}`);
+        pushIdent(`ret_call_proc __proc_${lastInstr.id}`);
       } else {
-        pushIdent("_swap rsp,rbp");
+        pushIdent("swap_reg rsp,rbp");
         pushIdent("ret");
       }
     } else if (instr.kind == Instr.Call) {
-      pushIdent(`_callp __proc_${normalizeWord(instr.name)}`);
+      pushIdent(`call_proc __proc_${instr.id}`);
     } else if (instr.kind == Instr.Label) {
       pushIdent(`.L${instr.label}:`);
     } else if (instr.kind == Instr.Nop) {
@@ -90,8 +66,7 @@ export function codegenFasm(prog: IRProgram): string[] {
     } else if (instr.kind == Instr.Push) {
       pushIdent(`push ${instr.value}`);
     } else if (instr.kind == Instr.Push64) {
-      pushIdent(`mov rax,${instr.value}`);
-      pushIdent(`push rax`);
+      pushIdent(`push64 ${instr.value}`);
     } else if (instr.kind == Instr.PushStr) {
       if (instr.len > 0) {
         pushIdent(`push ${instr.len}`);
@@ -101,6 +76,7 @@ export function codegenFasm(prog: IRProgram): string[] {
       pushIdent(`push mem+${instr.offset}`);
     } else if (instr.kind == Instr.AsmBlock) {
       for (const line of instr.value.split("\n")) {
+        if (line)
         out.push("\t" + line);
       }
     } else if (instr.kind == Instr.PushLocal) {
@@ -108,7 +84,7 @@ export function codegenFasm(prog: IRProgram): string[] {
     } else if (instr.kind == Instr.Bind) {
       pushIdent(`sub rbp, ${8 * instr.count}`);
       for (let i = instr.count - 1; i >= 0; i--) {
-        pushIdent(` _c_bind ${i * 8}`);
+        pushIdent(`bind_local ${i * 8}`);
       }
     } else if (instr.kind == Instr.Unbind) {
       pushIdent(`add rbp, ${8 * instr.count}`);
@@ -138,7 +114,7 @@ export function codegenFasm(prog: IRProgram): string[] {
           : null
         } .L${instr.label}`);
       } else {
-        pushIdent(`_c_jmpifnot .L${instr.label}`);
+        pushIdent(`jmpifnot .L${instr.label}`);
       }
     } else if (instr.kind == Instr.Dup) {
       if (
@@ -150,7 +126,7 @@ export function codegenFasm(prog: IRProgram): string[] {
         const ins = out.pop()!;
         out.push(ins, ins);
       } else {
-        pushIdent("_i_dup");
+        pushIdent("intrinsic_dup");
       }
     } else if (instr.kind == Instr.Drop) {
       if (
@@ -168,12 +144,12 @@ export function codegenFasm(prog: IRProgram): string[] {
       if (lastInstr.kind == Instr.Swap) {
         out.pop();
       } else {
-        pushIdent("_i_swap");
+        pushIdent("intrinsic_swap");
       }
     } else if (instr.kind == Instr._CExpr__Offset || instr.kind == Instr._CExpr__Reset) {
       throw new Error(`Invalid instruction ${Instr[instr.kind]}`);
     } else {
-      pushIdent(`_i_${Instr[instr.kind].toLowerCase()}`);
+      pushIdent(`intrinsic_${Instr[instr.kind].toLowerCase()}`);
     }
 
     lastInstr = instr;
@@ -186,8 +162,8 @@ export function codegenFasm(prog: IRProgram): string[] {
     pushIdent(`mem rb ${prog.memorySize}`);
   }
 
-  for (const [str, id] of prog.strings) {
-    pushIdent(`str${id} db ${strEncodeAsm(str)}`);
+  for (let i = 0; i < prog.strings.length; i++) {
+    pushIdent(`str${i} db ${formatStr(prog.strings[i])}`);
   }
 
   return out;

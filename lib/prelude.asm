@@ -7,38 +7,43 @@ _start:
   mov [datastack_start], rsp
   mov rbp, rsp
   mov rsp, callstack_end
-  jmp __proc_main
+  jmp __proc_0
 
-macro _swap a,b {
+macro swap_reg a,b {
   mov rax, a
   mov a, b
   mov b, rax
 }
 
-macro _callp id {
+macro call_proc id {
   cmp rbp, callstack
   jnge stack_overflow
-  _swap rsp, rbp
+  swap_reg rsp, rbp
   call id
-  _swap rsp, rbp
+  swap_reg rsp, rbp
 }
 
-macro _ret_callp id {
-  _swap rsp, rbp
+macro ret_call_proc id {
+  swap_reg rsp, rbp
   jmp id
 }
 
-; Control Flow
-  macro _c_jmpifnot Lb {
-    pop rax
-    test rax, rax
-    jz Lb
-  }
+macro push64 int {
+  mov rax, int
+  push rax
+}
 
-  macro _c_bind i {
-    pop rax
-    mov [rbp+i], rax
-  }
+macro jmpifnot Lb {
+  pop rax
+  test rax, rax
+  jz Lb
+}
+
+macro bind_local i {
+  pop rax
+  mov [rbp+i], rax
+}
+
 ; Intrinsics
 ;; Math
   macro __i_pop_infix {
@@ -52,36 +57,36 @@ macro _ret_callp id {
     push rax
   }
 
-  macro _i_add { __i_infix add  }
-  macro _i_sub { __i_infix sub  }
+  macro intrinsic_add { __i_infix add  }
+  macro intrinsic_sub { __i_infix sub  }
 
-  macro _i_mul  {
+  macro intrinsic_mul  {
     __i_pop_infix
     mul rbx
     push rax
   }
 
-  macro _i_imul {
+  macro intrinsic_imul {
     __i_pop_infix
     imul rbx
     push rax
   }
 
-  macro _i_div {
+  macro intrinsic_div {
     __i_pop_infix
     xor rdx, rdx
     div rbx
     push rax
   }
 
-  macro _i_mod {
+  macro intrinsic_mod {
     __i_pop_infix
     xor rdx, rdx
     div rbx
     push rdx
   }
 
-  macro _i_divmod {
+  macro intrinsic_divmod {
     __i_pop_infix
     xor rdx, rdx
     div rbx
@@ -89,21 +94,21 @@ macro _ret_callp id {
     push rdx
   }
 
-  macro _i_idiv {
+  macro intrinsic_idiv {
     __i_pop_infix
     xor rdx, rdx
     idiv rbx
     push rax
   }
 
-  macro _i_imod {
+  macro intrinsic_imod {
     __i_pop_infix
     xor rdx, rdx
     idiv rbx
     push rdx
   }
 
-  macro _i_idivmod {
+  macro intrinsic_idivmod {
     __i_pop_infix
     xor rdx, rdx
     idiv rbx
@@ -112,24 +117,24 @@ macro _ret_callp id {
   }
 
 ;; Bitwise
-  macro _i_or  { __i_infix or  }
-  macro _i_and { __i_infix and }
-  macro _i_xor { __i_infix xor }
-  macro _i_shl {
+  macro intrinsic_or  { __i_infix or  }
+  macro intrinsic_and { __i_infix and }
+  macro intrinsic_xor { __i_infix xor }
+  macro intrinsic_shl {
     pop rcx
     pop rbx
     shl rbx, cl
     push rbx
   }
 
-  macro _i_shr {
+  macro intrinsic_shr {
     pop rcx
     pop rbx
     shr rbx, cl
     push rbx
   }
 
-  macro _i_not {
+  macro intrinsic_not {
     not qword [rsp]
   }
 
@@ -146,48 +151,48 @@ macro _ret_callp id {
     push rax
   }
 
-  macro _i_eq {
+  macro intrinsic_eq {
     __i_cmp
     __i_cmp_set e
   }
 
-  macro _i_neq {
+  macro intrinsic_neq {
     __i_cmp
     __i_cmp_set ne
   }
 
-  macro _i_lt {
+  macro intrinsic_lt {
     __i_cmp
     __i_cmp_set l
   }
 
-  macro _i_gt {
+  macro intrinsic_gt {
     __i_cmp
     __i_cmp_set g
   }
 
-  macro _i_lteq {
+  macro intrinsic_lteq {
     __i_cmp
     __i_cmp_set le
   }
 
-  macro _i_gteq {
+  macro intrinsic_gteq {
     __i_cmp
     __i_cmp_set ge
   }
 
 ;; Stack
-  macro _i_dup  { push qword [rsp] }
-  macro _i_over { push qword [rsp+8] }
+  macro intrinsic_dup  { push qword [rsp] }
+  macro intrinsic_over { push qword [rsp+8] }
 
-  macro _i_swap {
+  macro intrinsic_swap {
     pop rax
     pop rbx
     push rax
     push rbx
   }
 
-  macro _i_rot {
+  macro intrinsic_rot {
     pop rax
     pop rbx
     pop rcx
@@ -209,27 +214,27 @@ macro _ret_callp id {
     push rbx
   }
 
-  macro _i_write8  { __i_write bl  }
-  macro _i_write16 { __i_write bx  }
-  macro _i_write32 { __i_write ebx }
-  macro _i_write64 { __i_write rbx }
+  macro intrinsic_write8  { __i_write bl  }
+  macro intrinsic_write16 { __i_write bx  }
+  macro intrinsic_write32 { __i_write ebx }
+  macro intrinsic_write64 { __i_write rbx }
 
-  macro _i_read8  { __i_read bl  }
-  macro _i_read16 { __i_read bx  }
-  macro _i_read32 { __i_read ebx }
-  macro _i_read64 {
+  macro intrinsic_read8  { __i_read bl  }
+  macro intrinsic_read16 { __i_read bx  }
+  macro intrinsic_read32 { __i_read ebx }
+  macro intrinsic_read64 {
     pop rax
     ; no need for `xor`
     mov rbx, [rax]
     push rbx
   }
 ;; Misc
-  macro _i_print {
+  macro intrinsic_print {
     pop rdi
     call print
   }
 
-  macro _i_puts {
+  macro intrinsic_puts {
     mov rax, 1
     mov rdi, 1
     pop rsi
@@ -237,7 +242,7 @@ macro _ret_callp id {
     syscall
   }
 
-  macro _i_dumpstack {
+  macro intrinsic_dumpstack {
     call dump_data_stack
   }
 

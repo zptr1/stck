@@ -9,7 +9,9 @@ export class Compiler {
   public readonly instr: Instruction[] = [];
   public readonly consts: Map<string, bigint | null> = new Map();
   public readonly memories: Map<string, number> = new Map();
-  public readonly strings: Map<string, number> = new Map();
+
+  private readonly stringIds: Map<string, number> = new Map();
+  private readonly procIds: Map<string, number> = new Map();
 
   private readonly labels: Map<number, number> = new Map();
   private readonly compiledProcs: Set<string> = new Set();
@@ -33,6 +35,12 @@ export class Compiler {
 
       return id;
     }
+  }
+
+  private getProcId(name: string): number {
+    if (!this.procIds.has(name))
+      this.procIds.set(name, this.procIds.size);
+    return this.procIds.get(name)!;
   }
 
   private cexprCounter: bigint = 0n;
@@ -120,22 +128,22 @@ export class Compiler {
   private compileExpr(expr: Expr, ctx: CompilerContext, out: Instruction[]) {
     if (expr.kind == AstKind.Literal) {
       if (expr.type == LiteralType.Str) {
-        if (!this.strings.has(expr.value))
-          this.strings.set(expr.value, this.strings.size);
+        if (!this.stringIds.has(expr.value))
+          this.stringIds.set(expr.value, this.stringIds.size);
 
         out.push({
           kind: Instr.PushStr,
-          id: this.strings.get(expr.value)!,
+          id: this.stringIds.get(expr.value)!,
           len: expr.value.length
         });
       } else if (expr.type == LiteralType.CStr) {
         expr.value += "\x00";
-        if (!this.strings.has(expr.value))
-          this.strings.set(expr.value, this.strings.size);
+        if (!this.stringIds.has(expr.value))
+          this.stringIds.set(expr.value, this.stringIds.size);
 
         out.push({
           kind: Instr.PushStr,
-          id: this.strings.get(expr.value)!,
+          id: this.stringIds.get(expr.value)!,
           // Empty strings are disallowed by the lexer,
           // so we can use this trick to tell that it is a C-string
           // without a separate instruction type
@@ -210,7 +218,7 @@ export class Compiler {
 
           out.push({
             kind: Instr.Call,
-            name: expr.value
+            id: this.getProcId(expr.value)
           });
         }
       } else if (expr.type == WordType.Constant) {
@@ -334,7 +342,8 @@ export class Compiler {
     this.compiledProcs.add(proc.name);
     this.instr.push({
       kind: Instr.EnterProc,
-      name: proc.name
+      name: proc.name,
+      id: this.getProcId(proc.name)
     });
 
     this.compileBody(proc.body, this.instr, createContext(proc.loc));
@@ -378,7 +387,7 @@ export class Compiler {
 
     return {
       instr: this.instr,
-      strings: this.strings,
+      strings: Array.from(this.stringIds.keys()),
       memorySize: this.memoryOffset
     }
   }

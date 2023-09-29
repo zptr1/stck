@@ -81,7 +81,7 @@ export enum Instr {
 }
 
 type _instr = (
-  | { kind: Instr.EnterProc, name: string }
+  | { kind: Instr.EnterProc, name: string, id: number }
   | { kind: Instr.Label, label: number }
   | { kind: Instr.Push, value: number }
   | { kind: Instr.Push64, value: bigint }
@@ -97,7 +97,7 @@ type _instr = (
       kind: Instr.Jmp | Instr.JmpIf | Instr.JmpIfNot,
       label: number
     }
-  | { kind: Instr.Call, name: string }
+  | { kind: Instr.Call, id: number }
   | { kind: Instr.Halt, code: number }
 );
 

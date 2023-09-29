@@ -8,7 +8,7 @@ export interface CompilerContext {
 
 export interface IRProgram {
   instr: Instruction[];
-  strings: Map<string, number>;
+  strings: string[];
   memorySize: number;
 }
 
