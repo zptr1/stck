@@ -137,6 +137,13 @@ export function codegenFasm(prog: IRProgram): string[] {
         || lastInstr.kind == Instr.PushLocal
       ) {
         out.pop();
+      } else if (
+        lastInstr.kind == Instr.Swap
+      ) {
+        out.pop();
+        pushIdent("pop rax");
+        pushIdent("add rsp, 8");
+        pushIdent("push rax");
       } else {
         pushIdent("add rsp, 8");
       }
