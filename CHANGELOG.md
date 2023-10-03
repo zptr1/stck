@@ -4,6 +4,16 @@ This is the changelog for **stck**.
 
 ## [unreleased]
 
+### Added
+
+- Added `std/mem` and `std/math` to the standard library
+- Codegen optimizations for stack operations such as `swap drop`
+- Added a new `return` keyword
+
+### Changed
+
+- Moved `std/rand` to `std/math`
+
 ## 0.1.2 - 2023-09-28
 
 ### Added
