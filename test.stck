@@ -1,10 +1,10 @@
 %include "std"
 
-var rand-value int end
-
 proc main do
-  while true do
-    GRND_RANDOM sizeof(int) rand-value sys_getrandom syscall3 drop
-    rand-value @int print
-  end
+  return
+  0 while true do
+    "sqrt(" puts dup putu "^2) = " puts
+    dup dup mul sqrt print
+    1 add
+  end drop
 end

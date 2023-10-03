@@ -20,4 +20,15 @@ inline proc randrange :: int int -> int do
   over sub rand swap mod add
 end
 
-// TODO: Add more algorithms and random-related functions
+/// Gets an approximate square root of an integer
+proc sqrt :: int -> int do
+  let n do
+    0 1 1
+    while dup n lteq do
+      over add
+      rot 1 add
+      rot 2 add
+      rot
+    end drop drop
+  end
+end

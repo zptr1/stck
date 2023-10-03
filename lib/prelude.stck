@@ -6,7 +6,7 @@
 %macro cast(ptr)  cast ptr  end %end
 %macro cast(bool) cast bool end %end
 
-/// Types
+/// Constants
 const true  1 cast(bool) end
 const false 0 cast(bool) end
 
