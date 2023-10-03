@@ -109,7 +109,7 @@ export class Compiler {
         stack.push(this.cexprCounter);
         this.cexprCounter = 0n;
       } else if (instr.kind == Instr.Print) {
-        console.log(chalk.cyan.bold("debug:"), chalk.yellow(stack.pop()), "@", formatLoc(loc), "(comptime expr)");
+        console.log(chalk.cyan.bold("comptime:"), chalk.yellow.bold(stack.pop()), chalk.dim("@", formatLoc(loc)));
       } else if (instr.kind == Instr.PushMem) {
         throw new StckError(Err.InvalidComptime)
           .addErr(loc, "memories are not allowed here");
@@ -262,6 +262,8 @@ export class Compiler {
         throw new StckError(Err.InvalidExpr)
           .addErr(expr.loc, "unknown word")
           .addHint("likely a compiler bug?");
+      } else if (expr.type == WordType.Return) {
+        out.push({ kind: Instr.Ret });
       } else {
         assertNever(expr.type);
       }

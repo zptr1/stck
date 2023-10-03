@@ -80,6 +80,12 @@ export class Parser {
         type: WordType.Unknown,
         value: token.value
       }
+    } else if (token.kind == Tokens.Return) {
+      return {
+        kind: AstKind.Word, loc: token.loc,
+        type: WordType.Return,
+        value: token.value
+      }
     } else if (token.kind == Tokens.Cast) {
       return {
         kind: AstKind.Cast, loc: token.loc,

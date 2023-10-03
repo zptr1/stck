@@ -25,23 +25,31 @@ export interface Context {
   stack: TypeFrame[];
   stackLocations: Location[];
   bindings: Map<string, TypeFrame>;
+  returnTypes: TypeFrame[] | undefined;
   // ...
 }
 
 export function createContext(
   stack: TypeFrame[] = [],
   stackLocations: Location[] = [],
-  bindings: Map<string, TypeFrame> = new Map()
+  bindings: Map<string, TypeFrame> = new Map(),
+  returnTypes?: TypeFrame[]
 ): Context {
   return {
     stack,
     stackLocations,
-    bindings
+    bindings,
+    returnTypes
   }
 }
 
 export function cloneContext(ctx: Context): Context {
-  return createContext(structuredClone(ctx.stack), ctx.stackLocations.slice(), ctx.bindings);
+  return createContext(
+    structuredClone(ctx.stack),
+    ctx.stackLocations.slice(),
+    ctx.bindings,
+    ctx.returnTypes
+  );
 }
 
 export function frameToString(frame: TypeFrame): string {

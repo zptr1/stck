@@ -152,9 +152,18 @@ export class TypeChecker {
       }
     } else if (expr.kind == AstKind.Word) {
       if (expr.value == "<dump-stack>") {
+        expr.type = WordType.Intrinsic;
         console.log(chalk.cyan.bold("debug:"), "Current types on the stack");
         for (let i = 0; i < ctx.stack.length; i++) {
           console.log("..... ", chalk.bold(frameToString(ctx.stack[i])), "@", formatLoc(ctx.stackLocations[i]));
+        }
+      } else if (expr.type == WordType.Return) {
+        if (ctx.returnTypes) {
+          expr.type = WordType.Return;
+          handleSignature(expr.loc, ctx, ctx.returnTypes, [], true, false, "after the procedure");
+        } else {
+          throw new StckError(Err.InvalidExpr)
+            .addErr(expr.loc, "cannot use return here");
         }
       } else if (INTRINSICS.has(expr.value)) {
         const intrinsic = INTRINSICS.get(expr.value)!;
@@ -202,15 +211,15 @@ export class TypeChecker {
           .addErr(expr.loc, "unknown word");
       }
     } else if (expr.kind == AstKind.If) {
-      const clone = cloneContext(ctx);
-      this.validateBody(expr.condition, clone);
+      this.validateBody(expr.condition, ctx);
       handleSignature(
-        expr.loc, clone, [{ type: DataType.Bool }], [],
+        expr.loc, ctx, [{ type: DataType.Bool }], [],
         false, true, "for the condition"
       );
 
       if (expr.elseBranch) {
         // if and else - both branches must result in the same types on the stack
+        const clone = cloneContext(ctx);
         this.validateBody(expr.body, ctx);
         this.validateBody(expr.else, clone);
 
@@ -225,6 +234,7 @@ export class TypeChecker {
         );
       } else {
         // only if - the branch must not modify the amount of elements or their types on the stack
+        const clone = cloneContext(ctx);
         this.validateBody(expr.body, clone);
         handleSignature(
           expr.loc, clone, ctx.stack, [], true, false, "after the condition",
@@ -345,6 +355,9 @@ export class TypeChecker {
 
   private validateProc(proc: Proc) {
     const ctx = createContext();
+    if (!proc.inline) {
+      ctx.returnTypes = proc.signature.ins;
+    }
 
     for (const frame of proc.signature.ins) {
       ctx.stack.push(frame);

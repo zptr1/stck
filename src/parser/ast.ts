@@ -20,6 +20,7 @@ export enum WordType {
   Var,
   Constant,
   Binding,
+  Return,
 }
 
 export enum LiteralType {
