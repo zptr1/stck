@@ -3,6 +3,7 @@ import { Location } from "../shared";
 export const KEYWORDS = new Set([
   "%macro",
   "%end",
+  "%del",
   "%include",
   "proc",
   "unsafe",
@@ -34,6 +35,7 @@ export enum Tokens {
   // Preprocessor Directives
   Macro = "%macro",
   EndPre = "%end",
+  Del = "%del",
   Include = "%include",
   // Keywords
   Proc = "proc",

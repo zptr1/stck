@@ -135,10 +135,12 @@ export class Preprocessor {
       }
     } else if (token.kind == Tokens.Macro) {
       this.readMacro(this.nextOf(Tokens.Word).value, token.loc);
+    } else if (token.kind == Tokens.Del) {
+      this.macros.delete(this.nextOf(Tokens.Word).value);
     } else if (token.kind == Tokens.EOF) {
       this.macroExpansionStack.pop();
     } else if (token.kind == Tokens.Word && this.macros.has(token.value)) {
-        this.expandMacro(token.value, this.macros.get(token.value)!, token.loc);
+      this.expandMacro(token.value, this.macros.get(token.value)!, token.loc);
     } else {
       out.push(token);
     }
