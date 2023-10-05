@@ -116,6 +116,19 @@ macro bind_local i {
     push rdx
   }
 
+  macro intrinsic_min {
+    __i_pop_infix
+    cmp rax, rbx
+    cmovg rax, rbx
+    push rax
+  }
+
+  macro intrinsic_max {
+    __i_pop_infix
+    cmp rax, rbx
+    cmovl rax, rbx
+    push rax
+  }
 ;; Bitwise
   macro intrinsic_or  { __i_infix or  }
   macro intrinsic_and { __i_infix and }

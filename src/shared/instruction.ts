@@ -29,6 +29,8 @@ export enum Instr {
   IDiv,
   IMod,
   IDivMod,
+  Min,
+  Max,
 
   // Comparison
   Eq,

@@ -43,6 +43,9 @@ addIntrinsic("idiv",    Instr.IDiv,    [DataType.Int, DataType.Int], [DataType.I
 addIntrinsic("imod",    Instr.IMod,    [DataType.Int, DataType.Int], [DataType.Int]);
 addIntrinsic("idivmod", Instr.IDivMod, [DataType.Int, DataType.Int], [DataType.Int, DataType.Int]);
 
+addIntrinsic("max",  Instr.Max,  [DataType.Int, DataType.Int], [DataType.Int]);
+addIntrinsic("min",  Instr.Min,  [DataType.Int, DataType.Int], [DataType.Int]);
+
 // Comparison
 addIntrinsic("eq",   Instr.Eq,   [DataType.Int, DataType.Int], [DataType.Bool]);
 addIntrinsic("neq",  Instr.Neq,  [DataType.Int, DataType.Int], [DataType.Bool]);
