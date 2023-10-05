@@ -1,7 +1,6 @@
 %include "std"
 
 proc main do
-  return
   0 while true do
     "sqrt(" puts dup putu "^2) = " puts
     dup dup mul sqrt print

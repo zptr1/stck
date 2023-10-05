@@ -1,16 +1,15 @@
-// Using the https://en.wikipedia.org/wiki/Linear_congruential_generator algorithm
 var lcg_seed int end
 const LCG_MULTIPLIER 6364136223846793005 end
 const LCG_INCREMENT  1442695040888963407 end
 
-/// Returns a random 64-bit integer
+/// Returns a random 64-bit integer using the linear congruential generator algorithm
 proc rand -> int do
   lcg_seed @int
   LCG_MULTIPLIER mul LCG_INCREMENT add
   dup lcg_seed !int
 end
 
-/// Initializes the seed for the random number generation
+/// Initializes the seed for the random integer generation
 inline proc randseed :: int do
   lcg_seed !int
 end
@@ -20,7 +19,49 @@ inline proc randrange :: int int -> int do
   over sub rand swap mod add
 end
 
-/// Gets an approximate square root of an integer
+/// Returns the absolute value of a 64-bit integer
+inline proc abs :: int -> int do
+  if dup 0 lt do neg end
+end
+
+/// Returns the amount of leading zero bits in the 64-bit integer
+unsafe proc clz :: int -> int do
+  asm
+    pop rax
+    bsr rax, rax
+    xor rax, 63
+    push rax
+  end
+end
+
+/// Returns a factorial of an integer
+proc factorial :: int -> int do
+  let n do
+    1 0 while dup n lt do
+      1 add swap over mul swap
+    end drop
+  end
+end
+
+/// Negates an integer
+inline proc neg :: int -> int do
+  not 1 add
+end
+
+/// Raises an integer to a given power
+proc pow :: int int -> int do
+  if dup 2 eq do
+    drop dup mul
+  else
+    let a n do
+      a 1 while dup n lt do
+        1 add swap a mul swap
+      end drop
+    end
+  end
+end
+
+/// Returns an approximate square root of an integer
 proc sqrt :: int -> int do
   let n do
     0 1 1

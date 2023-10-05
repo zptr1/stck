@@ -9,6 +9,8 @@ This is the changelog for **stck**.
 - Added `std/mem` and `std/math` to the standard library
 - Codegen optimizations for stack operations such as `swap drop`
 - Added a new `return` keyword
+- Added `min` and `max` intrinsics
+- Added a `%del` preprocessor directive to remove already defined macros
 
 ### Changed
 
