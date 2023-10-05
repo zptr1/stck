@@ -18,3 +18,48 @@ inline proc u64cpy :: ptr ptr do swap read64 swap write64 end
 inline proc intcpy  :: ptr-to int  ptr-to int  do swap @int  swap !int  end
 inline proc ptrcpy  :: ptr-to ptr  ptr-to ptr  do swap @ptr  swap !ptr  end
 inline proc boolcpy :: ptr-to bool ptr-to bool do swap @bool swap !bool end
+
+/// Duplicate two elements on top of the stack (same as `over over`)
+unsafe inline proc 2dup :: <a> <b> -> <a> <b> <a> <b> do
+  over over
+end
+
+/// Duplicate the third element on top of the stack
+unsafe inline proc under :: <a> <b> <c> -> <a> <b> <c> <a> do
+  asm
+    push qword [rsp+16]
+  end
+end
+
+/// Same as `rot rot`
+unsafe inline proc -rot :: <a> <b> <c> -> <c> <a> <b> do
+  asm
+    pop rcx
+    pop rbx
+    pop rax
+    push rax
+    push rcx
+    push rbx
+  end
+end
+
+/// Same as `swap over`
+unsafe inline proc tuck :: <a> <b> -> <b> <a> <b> do
+  asm
+    pop rbx
+    pop rax
+    push rbx
+    push rax
+    push rbx
+  end
+end
+
+/// Swaps the top element with the third element on top of the stack
+unsafe inline proc swop :: <a> <b> <c> -> <c> <b> <a> do
+  asm
+    mov rax, [rsp]
+    mov rbx, [rsp+16]
+    mov [rsp], rbx
+    mov [rsp+16], rax
+  end
+end

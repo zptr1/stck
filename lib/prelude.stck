@@ -19,11 +19,6 @@ const sizeof(int)  sizeof(u64) end
 const sizeof(ptr)  sizeof(u64) end
 const sizeof(bool) sizeof(u8)  end
 
-/// Stack operations
-unsafe inline proc 2dup :: <a> <b> -> <a> <b> <a> <b> do
-  over over
-end
-
 /// Pointer operations
 inline proc ptr+ :: ptr int -> ptr do
   cast int int end

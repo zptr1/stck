@@ -9,18 +9,27 @@ end
 
 inline proc exit :: int do sys_exit syscall1 drop end
 
-/// Time
+var _getrand_buf int end
+
+/// Get a cryptographically secure 32-bit integer
+inline proc getrandom -> int do
+  GRND_RANDOM sizeof(int) _getrand_buf sys_getrandom syscall3 drop
+  _getrand_buf @int
+end
+
 const timespec.tv_sec  sizeof(int) offset end
 const timespec.tv_nsec sizeof(u64) offset end
 const sizeof(timespec) reset end
 
 memory _gettime_buf sizeof(timespec) end
 
+/// Get the current unix timestamp in seconds
 proc gettime_s -> int do
   _gettime_buf 0 sys_clock_gettime syscall2 drop
   _gettime_buf timespec.tv_sec ptr+ read64
 end
 
+/// Get the current unix timestamp in milliseconds
 proc gettime_ms -> int do
   _gettime_buf 0 sys_clock_gettime syscall2 drop
   _gettime_buf timespec.tv_sec  ptr+ read64 1000    mul
@@ -28,6 +37,7 @@ proc gettime_ms -> int do
   add
 end
 
+/// Get the current unix timestamp in nanoseconds
 proc gettime_ns -> int do
   _gettime_buf 0 sys_clock_gettime syscall2 drop
   _gettime_buf timespec.tv_sec  ptr+ read64 1000000000 mul
@@ -63,7 +73,7 @@ const S_ISVTX 0001000 end
 const GRND_NONBLOCK 1 end
 const GRND_RANDOM   2 end
 
-/// List of all Linux syscalls.
+/// List of all Linux syscalls
 const sys_read 0 end
 const sys_write 1 end
 const sys_open 2 end
