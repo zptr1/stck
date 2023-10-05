@@ -3,27 +3,6 @@ import { IRProgram } from "./ir";
 import { ROOT_DIR } from "..";
 import plib from "path";
 
-function formatStr(str: string): string {
-  const parts: (string | number)[] = [];
-  let part = "";
-  for (let i = 0; i < str.length; i++) {
-    const ch = str.charCodeAt(i);
-    if (ch < 0x20 || ch == 0x27 || ch == 0xAD || (ch >= 0x7F && ch <= 0xA0)) {
-      if (part) {
-        parts.push(`'${part}'`);
-        part = "";
-      }
-      parts.push(ch);
-    } else {
-      part += String.fromCharCode(ch);
-    }
-  }
-
-  if (part) parts.push(`'${part}'`);
-
-  return parts.join(",");
-}
-
 export function codegenFasm(prog: IRProgram): string[] {
   const out: string[] = [];
 
@@ -68,9 +47,8 @@ export function codegenFasm(prog: IRProgram): string[] {
     } else if (instr.kind == Instr.Push64) {
       pushIdent(`push64 ${instr.value}`);
     } else if (instr.kind == Instr.PushStr) {
-      if (instr.len > 0) {
+      if (instr.len != -1) // not a C-string
         pushIdent(`push ${instr.len}`);
-      }
       pushIdent(`push str${instr.id}`);
     } else if (instr.kind == Instr.PushMem) {
       pushIdent(`push mem+${instr.offset}`);
@@ -170,7 +148,7 @@ export function codegenFasm(prog: IRProgram): string[] {
   }
 
   for (let i = 0; i < prog.strings.length; i++) {
-    pushIdent(`str${i} db ${formatStr(prog.strings[i])}`);
+    pushIdent(`str${i} db ${prog.strings[i].split("").map((x) => x.charCodeAt(0)).join(",") || "''"}`);
   }
 
   return out;

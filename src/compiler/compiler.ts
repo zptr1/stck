@@ -144,10 +144,7 @@ export class Compiler {
         out.push({
           kind: Instr.PushStr,
           id: this.stringIds.get(expr.value)!,
-          // Empty strings are disallowed by the lexer,
-          // so we can use this trick to tell that it is a C-string
-          // without a separate instruction type
-          len: 0
+          len: -1
         });
       } else if (expr.type == LiteralType.Int) {
         if (expr.value > i32_MAX || expr.value < i32_MIN) {

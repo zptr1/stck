@@ -64,9 +64,6 @@ export class Lexer {
     }
 
     this.cursor++;
-    if (!value)
-      this.error("empty string");
-
     return value;
   }
 
