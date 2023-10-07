@@ -25,13 +25,13 @@ export function codegenFasm(prog: IRProgram): string[] {
       pushIdent("swap_reg rsp,rbp");
       currentProc = instr.id;
     } else if (instr.kind == Instr.Ret) {
-      if (lastInstr.kind == Instr.Call) {
-        out.pop();
-        pushIdent(`ret_call_proc __proc_${lastInstr.id}`);
-      } else if (currentProc == 0) {
+      if (currentProc == 0) {
         pushIdent("mov rax, 60");
         pushIdent("mov rdi, 0");
         pushIdent("syscall");
+      } else if (lastInstr.kind == Instr.Call) {
+        out.pop();
+        pushIdent(`ret_call_proc __proc_${lastInstr.id}`);
       } else {
         pushIdent("swap_reg rsp,rbp");
         pushIdent("ret");
