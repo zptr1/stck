@@ -21,7 +21,7 @@ function panic(...data: any[]): never {
 }
 
 function printHelp(): never {
-  console.error(chalk.bold("stck v0.0.2"));
+  console.error(chalk.bold("stck"));
   console.error(chalk.red("usage:"));
   console.error(" ", chalk.bold("stck run"), chalk.yellow.bold("<file>"));
   console.error("   ", "Run a program");
