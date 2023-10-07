@@ -170,6 +170,7 @@ export class Lexer {
           loc: this.span()
         });
       } else if (peek == "c" && this.source[this.cursor + 1] == '"') {
+        this.cursor++;
         tokens.push({
           kind: Tokens.CStr,
           value: this.readString(),
