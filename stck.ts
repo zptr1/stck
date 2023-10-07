@@ -1,21 +1,19 @@
 #!bun
 
-import { Compiler, TypeChecker, codegenFasm } from "./src/compiler";
 import { existsSync, statSync, writeFileSync } from "fs";
+import { Compiler, TypeChecker } from "./src/compiler";
 import { Lexer, Preprocessor } from "./src/lexer";
-import { tmpdir, platform } from "os";
+import { codegenFasm } from "./src/codegen/fasm";
+import { StckError } from "./src/errors";
 import { Parser } from "./src/parser";
 import { File } from "./src/shared";
 import minimist from "minimist";
+import { tmpdir } from "os";
 import chalk from "chalk";
 import plib from "path";
-import { StckError } from "./src/errors";
 
-const ERROR = chalk.red.bold("[ERROR]");
-const INFO  = chalk.bold.green("[INFO]");
-const WARN  = chalk.yellow.bold("[WARN]");
-
-const TARGET_OPTIONS = ["bytecode", "fasm"];
+// TODO: I'm thinking about removing the bytecode target
+const TARGET_OPTIONS = ["bytecode", "fasm"] as const;
 
 function panic(...data: any[]): never {
   console.error(...data);
@@ -23,20 +21,20 @@ function panic(...data: any[]): never {
 }
 
 function printHelp(): never {
-  console.log(chalk.bold("stck v0.0.2"));
-  console.log(chalk.red("usage:"));
-  console.log(" ", chalk.bold("stck run"), chalk.yellow.bold("<file>"));
-  console.log("   ", "Run a program");
-  console.log(" ", chalk.bold("stck build"), chalk.yellow.bold("<file>"), chalk.yellow.dim("[output]"));
-  console.log("   ", "Build a program");
-  console.log(" ", chalk.bold("stck check"), chalk.yellow.bold("<file>"));
-  console.log("   ", "Typecheck a program without running or compiling it");
-  console.log();
-  console.log(chalk.gray("options:"));
-  console.log(" ", chalk.bold("--target, -t"), chalk.yellow.bold("<target>"));
-  console.log("   ", "Change the compilation target");
-  console.log("   ", "Available targets:", chalk.bold(TARGET_OPTIONS.join(", ")));
-  console.log();
+  console.error(chalk.bold("stck v0.0.2"));
+  console.error(chalk.red("usage:"));
+  console.error(" ", chalk.bold("stck run"), chalk.yellow.bold("<file>"));
+  console.error("   ", "Run a program");
+  console.error(" ", chalk.bold("stck build"), chalk.yellow.bold("<file>"), chalk.yellow.dim("[output]"));
+  console.error("   ", "Build a program");
+  console.error(" ", chalk.bold("stck check"), chalk.yellow.bold("<file>"));
+  console.error("   ", "Typecheck a program without running or compiling it");
+  console.error();
+  console.error(chalk.gray("options:"));
+  console.error(" ", chalk.bold("--target, -t"), chalk.yellow.bold("<target>"));
+  console.error("   ", "Change the compilation target");
+  console.error("   ", "Available targets:", chalk.bold(TARGET_OPTIONS.join(", ")));
+  console.error();
   process.exit(1);
 }
 
@@ -45,7 +43,7 @@ function cmd(command: string[]) {
 
   if (cmd.exitCode != 0) {
     console.error(chalk.bold.white("[CMD]"), command.join(" "));
-    console.error(ERROR, chalk.bold("Command failed"));
+    console.error(chalk.red.bold("[ERROR]"), chalk.bold("Command failed"));
 
     const lines = cmd.stderr.toString().trim().split("\n");
     for (const line of lines) {
@@ -57,7 +55,6 @@ function cmd(command: string[]) {
 }
 
 function exec(path: string, outPath: string, target: string, action: string) {
-  // OOP in a nutshell
   const ast = new Parser(
     new Preprocessor(
       new Lexer(File.read(path)).lex()
@@ -72,25 +69,22 @@ function exec(path: string, outPath: string, target: string, action: string) {
       ? plib.join(tmpdir(), "stck-tmp")
       : outPath;
 
+    // TODO: Make `codegenFasm` a generator and use bun's API to append to a file
     writeFileSync(path + ".asm", codegenFasm(ir).join("\n"));
     cmd(["fasm", path + ".asm"]);
 
     if (action == "run") {
-      console.log(INFO, "Running");
-
       Bun.spawn({
         cmd: [path], stdio: ["inherit", "inherit", "inherit"],
         onExit(_, code, signal) {
           if (typeof signal == "string") {
-            console.error(ERROR, "Process exited with", chalk.bold(signal));
+            console.error(`\n${chalk.redBright.bold(signal)}`);
             process.exit(code ?? 1);
           } else {
             process.exit(code ?? 0);
           }
         },
       });
-    } else {
-      console.log(INFO, "Compiled to", chalk.bold(path));
     }
   } else {
     throw new Error(`this target (${target}) is not implemented yet`);

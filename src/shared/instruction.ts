@@ -2,8 +2,6 @@ export enum Instr {
   Nop,
   Label,
 
-  EnterProc,
-
   Push,
   Push64,
   PushStr,
@@ -83,20 +81,17 @@ export enum Instr {
 }
 
 type _instr = (
-  | { kind: Instr.EnterProc, name: string, id: number }
-  | { kind: Instr.Label, label: number }
-  | { kind: Instr.Push, value: number }
-  | { kind: Instr.Push64, value: bigint }
+  | { kind: Instr.Push | Instr.Push64, value: bigint }
   | { kind: Instr.PushStr, id: number, len: number }
   | { kind: Instr.PushMem, offset: number }
   | { kind: Instr.PushLocal, offset: number }
   | { kind: Instr.AsmBlock, value: string }
   | {
-      kind: Instr.Bind | Instr.Unbind,
-      count: number
-    }
+    kind: Instr.Bind | Instr.Unbind,
+    count: number
+  }
   | {
-      kind: Instr.Jmp | Instr.JmpIf | Instr.JmpIfNot,
+      kind: Instr.Jmp | Instr.JmpIf | Instr.JmpIfNot | Instr.Label,
       label: number
     }
   | { kind: Instr.Call, id: number }

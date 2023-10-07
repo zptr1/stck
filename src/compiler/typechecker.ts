@@ -103,7 +103,6 @@ function typeFrameEquals(frame: TypeFrame, cmp: TypeFrame, generics: Map<string,
       && typeFrameEquals(frame.value, cmp.value, generics)
     )
   } else if (frame.type == DataType.Unknown || cmp.type == DataType.Unknown) {
-    // TODO: ?
     return true;
   } else {
     return frame.type == cmp.type;
@@ -141,8 +140,6 @@ export class TypeChecker {
         ctx.stack.push({ type: DataType.Ptr });
       } else if (expr.type == LiteralType.Int) {
         ctx.stack.push({ type: DataType.Int });
-      } else if (expr.type == LiteralType.Bool) {
-        ctx.stack.push({ type: DataType.Bool });
       } else if (expr.type == LiteralType.Assembly) {
         throw new StckError(Err.InvalidExpr)
           .addErr(expr.loc, "assembly blocks cannot be used in safe procedures")

@@ -1,9 +1,5 @@
 %include "std"
 
 proc main do
-  0 while true do
-    "sqrt(" puts dup putu "^2) = " puts
-    dup dup mul sqrt print
-    1 add
-  end drop
+  "Hello, World!\n" puts
 end

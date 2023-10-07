@@ -1,82 +1,68 @@
+import type { IRProgram } from "../compiler/ir";
 import { Instr, Instruction } from "../shared";
-import { IRProgram } from "./ir";
 import { ROOT_DIR } from "..";
 import plib from "path";
 
-export function codegenFasm(prog: IRProgram): string[] {
-  const out: string[] = [];
+// TODO: Make these functions generators, although this would also require changing how optimizations work
+// TODO: Maybe introduce more IR instructions and add an optimization stage that would generate an optimized list of instructions
 
-  out.push(
-    ";; Compiled with stck v0.1.0\n",
-    "format ELF64 executable 3",
-    `include "${plib.join(ROOT_DIR, "lib/prelude.asm")}"`,
-    ""
-  );
+function codegenProc(id: number, instructions: Instruction[], out: string[]) {
+  let lastInstr: Instruction = { kind: Instr.Nop };
+  out.push(`__proc_${id}:`);
+  out.push("swap_reg rsp,rbp");
 
-  out.push("segment readable executable");
-
-  const pushIdent = (s: string) => out.push("\t" + s);
-  let lastInstr: Instruction = null as any;
-  let currentProc: number = -1;
-
-  for (const instr of prog.instr) {
-    if (instr.kind == Instr.EnterProc) {
-      out.push(`__proc_${instr.id}: ; ${instr.name}`);
-      pushIdent("swap_reg rsp,rbp");
-      currentProc = instr.id;
-    } else if (instr.kind == Instr.Ret) {
-      if (currentProc == 0) {
-        pushIdent("mov rax, 60");
-        pushIdent("mov rdi, 0");
-        pushIdent("syscall");
+  for (const instr of instructions) {
+    if (instr.kind == Instr.Ret) {
+      if (id == 0) {
+        out.push("mov rax, 60");
+        out.push("mov rdi, 0");
+        out.push("syscall");
       } else if (lastInstr.kind == Instr.Call) {
         out.pop();
-        pushIdent(`ret_call_proc __proc_${lastInstr.id}`);
+        out.push(`ret_call_proc __proc_${lastInstr.id}`);
       } else {
-        pushIdent("swap_reg rsp,rbp");
-        pushIdent("ret");
+        out.push("swap_reg rsp,rbp");
+        out.push("ret");
       }
     } else if (instr.kind == Instr.Call) {
-      pushIdent(`call_proc __proc_${instr.id}`);
+      out.push(`call_proc __proc_${instr.id}`);
     } else if (instr.kind == Instr.Label) {
-      pushIdent(`.L${instr.label}:`);
+      out.push(`.L${instr.label}:`);
     } else if (instr.kind == Instr.Nop) {
-      pushIdent("nop");
+      out.push("nop");
     } else if (instr.kind == Instr.Push) {
-      pushIdent(`push ${instr.value}`);
+      out.push(`push ${instr.value}`);
     } else if (instr.kind == Instr.Push64) {
-      pushIdent(`push64 ${instr.value}`);
+      out.push(`push64 ${instr.value}`);
     } else if (instr.kind == Instr.PushStr) {
       if (instr.len != -1) // not a C-string
-        pushIdent(`push ${instr.len}`);
-      pushIdent(`push str${instr.id}`);
+        out.push(`push ${instr.len}`);
+      out.push(`push str${instr.id}`);
     } else if (instr.kind == Instr.PushMem) {
-      pushIdent(`push mem+${instr.offset}`);
+      out.push(`push mem+${instr.offset}`);
     } else if (instr.kind == Instr.AsmBlock) {
-      for (const line of instr.value.split("\n")) {
-        if (line)
-        out.push("\t" + line);
-      }
+      out.push(instr.value.trim());
     } else if (instr.kind == Instr.PushLocal) {
-      pushIdent(`push qword [rbp+${instr.offset}]`)
+      out.push(`push qword [rbp+${instr.offset}]`)
     } else if (instr.kind == Instr.Bind) {
-      pushIdent(`sub rbp, ${8 * instr.count}`);
+      out.push(`sub rbp, ${8 * instr.count}`);
       for (let i = instr.count - 1; i >= 0; i--) {
-        pushIdent(`bind_local ${i * 8}`);
+        out.push(`bind_local ${i * 8}`);
       }
     } else if (instr.kind == Instr.Unbind) {
-      pushIdent(`add rbp, ${8 * instr.count}`);
+      out.push(`add rbp, ${8 * instr.count}`);
     } else if (instr.kind == Instr.Jmp) {
-      pushIdent(`jmp .L${instr.label}`);
+      out.push(`jmp .L${instr.label}`);
     } else if (instr.kind == Instr.JmpIfNot) {
-      // NOTE: All comprasion operations must be grouped together for this to work properly
+      // NOTE: All comprasion operations must be grouped together,
+      //       starting with Eq and ending with GtEq
       if (
         lastInstr.kind >= Instr.Eq
         && lastInstr.kind <= Instr.GtEq
       ) {
         out.pop();
-        pushIdent("__i_cmp");
-        pushIdent(`${
+        out.push("__i_cmp");
+        out.push(`${
           lastInstr.kind == Instr.Eq
             ? "jne"
           : lastInstr.kind == Instr.Neq
@@ -92,7 +78,7 @@ export function codegenFasm(prog: IRProgram): string[] {
           : null
         } .L${instr.label}`);
       } else {
-        pushIdent(`jmpifnot .L${instr.label}`);
+        out.push(`jmpifnot .L${instr.label}`);
       }
     } else if (instr.kind == Instr.Dup) {
       if (
@@ -104,7 +90,7 @@ export function codegenFasm(prog: IRProgram): string[] {
         const ins = out.pop()!;
         out.push(ins, ins);
       } else {
-        pushIdent("intrinsic_dup");
+        out.push("intrinsic_dup");
       }
     } else if (instr.kind == Instr.Drop) {
       if (
@@ -119,36 +105,48 @@ export function codegenFasm(prog: IRProgram): string[] {
         lastInstr.kind == Instr.Swap
       ) {
         out.pop();
-        pushIdent("pop rax");
-        pushIdent("add rsp, 8");
-        pushIdent("push rax");
+        out.push("pop rax");
+        out.push("add rsp, 8");
+        out.push("push rax");
       } else {
-        pushIdent("add rsp, 8");
+        out.push("add rsp, 8");
       }
     } else if (instr.kind == Instr.Swap) {
       if (lastInstr.kind == Instr.Swap) {
         out.pop();
       } else {
-        pushIdent("intrinsic_swap");
+        out.push("intrinsic_swap");
       }
     } else if (instr.kind == Instr._CExpr__Offset || instr.kind == Instr._CExpr__Reset) {
       throw new Error(`Invalid instruction ${Instr[instr.kind]}`);
     } else {
-      pushIdent(`intrinsic_${Instr[instr.kind].toLowerCase()}`);
+      out.push(`intrinsic_${Instr[instr.kind].toLowerCase()}`);
     }
 
     lastInstr = instr;
   }
+}
 
-  out.push("");
+export function codegenFasm(prog: IRProgram): string[] {
+  const out: string[] = [
+    ";; Compiled with STCK\n",
+    "format ELF64 executable 3",
+    `include "${plib.join(ROOT_DIR, "lib/prelude.asm")}"`
+  ];
+
+  out.push("segment readable executable\n");
+
+  for (const [id, instr] of prog.procs) {
+    codegenProc(id, instr, out);
+  }
+
   out.push("segment readable writeable");
-
   if (prog.memorySize) {
-    pushIdent(`mem rb ${prog.memorySize}`);
+    out.push(`mem rb ${prog.memorySize}`);
   }
 
   for (let i = 0; i < prog.strings.length; i++) {
-    pushIdent(`str${i} db ${prog.strings[i].split("").map((x) => x.charCodeAt(0)).join(",") || "''"}`);
+    out.push(`str${i} db ${prog.strings[i].split("").map((x) => x.charCodeAt(0)).join(",") || "''"}`);
   }
 
   return out;

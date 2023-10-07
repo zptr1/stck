@@ -3,11 +3,12 @@ import { ExpansionStackElement, Instruction, Location } from "../shared";
 export interface CompilerContext {
   inlineExpansionStack: ExpansionStackElement[];
   bindings: Map<string, number>;
-  loc: Location
+  loc: Location;
+  labelCount: number;
 }
 
 export interface IRProgram {
-  instr: Instruction[];
+  procs: Map<number, Instruction[]>;
   strings: string[];
   memorySize: number;
 }
@@ -16,6 +17,7 @@ export function createContext(loc: Location): CompilerContext {
   return {
     inlineExpansionStack: [],
     bindings: new Map(),
-    loc
+    labelCount: 0,
+    loc,
   }
 }

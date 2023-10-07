@@ -25,7 +25,6 @@ export enum WordType {
 
 export enum LiteralType {
   Int,
-  Bool,
   Str,
   CStr,
   Assembly

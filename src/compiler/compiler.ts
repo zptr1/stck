@@ -6,15 +6,14 @@ import { Err, StckError } from "../errors";
 import chalk from "chalk";
 
 export class Compiler {
-  public readonly instr: Instruction[] = [];
-  public readonly consts: Map<string, bigint | null> = new Map();
-  public readonly memories: Map<string, number> = new Map();
+  public readonly procs = new Map<number, Instruction[]>();
+  public readonly consts = new Map<string, bigint | null>();
+  public readonly memories = new Map<string, number>();
 
-  private readonly stringIds: Map<string, number> = new Map();
-  private readonly procIds: Map<string, number> = new Map();
+  private readonly stringIds = new Map<string, number>();
+  private readonly procIds = new Map<string, number>();
 
-  private readonly labels: Map<number, number> = new Map();
-  private readonly compiledProcs: Set<string> = new Set();
+  private readonly compiledProcs = new Set<string>();
   private readonly compileProcQueue: string[] = [];
   private memoryOffset: number = 0;
 
@@ -22,29 +21,13 @@ export class Compiler {
     public readonly program: Program
   ) {}
 
-  private label(id?: number): number {
-    if (id == undefined) {
-      this.labels.set(this.labels.size, -1);
-      return this.labels.size;
-    } else {
-      this.labels.set(id, this.instr.length);
-      this.instr.push({
-        kind: Instr.Label,
-        label: id
-      });
-
-      return id;
-    }
-  }
-
   private getProcId(name: string): number {
     if (!this.procIds.has(name))
       this.procIds.set(name, this.procIds.size);
     return this.procIds.get(name)!;
   }
 
-  private cexprCounter: bigint = 0n;
-
+  private offsetCounter: bigint = 0n;
   private evaluate(loc: Location, instructions: Instruction[]): any {
     const stack: bigint[] = [];
 
@@ -102,12 +85,12 @@ export class Compiler {
         const a = stack.pop()!;
         stack.push(a, a);
       } else if (instr.kind == Instr._CExpr__Offset) {
-        const val = this.cexprCounter;
-        this.cexprCounter += stack.pop()!;
+        const val = this.offsetCounter;
+        this.offsetCounter += stack.pop()!;
         stack.push(val);
       } else if (instr.kind == Instr._CExpr__Reset) {
-        stack.push(this.cexprCounter);
-        this.cexprCounter = 0n;
+        stack.push(this.offsetCounter);
+        this.offsetCounter = 0n;
       } else if (instr.kind == Instr.Print) {
         console.log(chalk.cyan.bold("comptime:"), chalk.yellow.bold(stack.pop()), chalk.dim("@", formatLoc(loc)));
       } else if (instr.kind == Instr.PushMem) {
@@ -125,213 +108,207 @@ export class Compiler {
     return stack.pop();
   }
 
-  private compileExpr(expr: Expr, ctx: CompilerContext, out: Instruction[]) {
-    if (expr.kind == AstKind.Literal) {
-      if (expr.type == LiteralType.Str) {
-        if (!this.stringIds.has(expr.value))
-          this.stringIds.set(expr.value, this.stringIds.size);
-
-        out.push({
-          kind: Instr.PushStr,
-          id: this.stringIds.get(expr.value)!,
-          len: expr.value.length
-        });
-      } else if (expr.type == LiteralType.CStr) {
-        expr.value += "\x00";
-        if (!this.stringIds.has(expr.value))
-          this.stringIds.set(expr.value, this.stringIds.size);
-
-        out.push({
-          kind: Instr.PushStr,
-          id: this.stringIds.get(expr.value)!,
-          len: -1
-        });
-      } else if (expr.type == LiteralType.Int) {
-        if (expr.value > i32_MAX || expr.value < i32_MIN) {
-          if (expr.value > i64_MAX || expr.value < i64_MIN) {
-            throw new StckError(Err.InvalidExpr)
-              .addErr(expr.loc, `the integer is too big for i64`);
-          }
+  private compileBody(body: Expr[], out: Instruction[], ctx: CompilerContext) {
+    for (const expr of body) {
+      if (expr.kind == AstKind.Literal) {
+        if (expr.type == LiteralType.Str) {
+          if (!this.stringIds.has(expr.value))
+            this.stringIds.set(expr.value, this.stringIds.size);
 
           out.push({
-            kind: Instr.Push64,
-            value: BigInt(expr.value)
+            kind: Instr.PushStr,
+            id: this.stringIds.get(expr.value)!,
+            len: expr.value.length
+          });
+        } else if (expr.type == LiteralType.CStr) {
+          expr.value += "\x00";
+          if (!this.stringIds.has(expr.value))
+            this.stringIds.set(expr.value, this.stringIds.size);
+
+          out.push({
+            kind: Instr.PushStr,
+            id: this.stringIds.get(expr.value)!,
+            len: -1
+          });
+        } else if (expr.type == LiteralType.Int) {
+          if (expr.value > i32_MAX || expr.value < i32_MIN) {
+            out.push({
+              kind: Instr.Push64,
+              value: expr.value
+            });
+          } else {
+            out.push({
+              kind: Instr.Push,
+              value: expr.value
+            });
+          }
+        } else if (expr.type == LiteralType.Assembly) {
+          out.push({
+            kind: Instr.AsmBlock,
+            value: expr.value
           });
         } else {
-          out.push({
-            kind: Instr.Push,
-            value: Number(expr.value)
-          });
+          assertNever(expr.type);
         }
-      } else if (expr.type == LiteralType.Bool) {
-        out.push({
-          kind: Instr.Push,
-          value: expr.value ? 1 : 0
-        });
-      } else if (expr.type == LiteralType.Assembly) {
-        out.push({
-          kind: Instr.AsmBlock,
-          value: expr.value
-        });
-      } else {
-        assertNever(expr.type);
-      }
-    } else if (expr.kind == AstKind.Word) {
-      if (expr.type == WordType.Intrinsic) {
-        const intrinsic = INTRINSICS.get(expr.value)!;
-        if (intrinsic.instr != Instr.Nop) {
-          out.push({ kind: intrinsic.instr } as any);
-        }
-      } else if (expr.type == WordType.Proc) {
-        const proc = this.program.procs.get(expr.value)!;
-        if (proc.inline) {
-          const idx = ctx.inlineExpansionStack.findIndex((x) => x.name == proc.name);
-          if (idx > -1) {
-            const err = new StckError(Err.RecursiveInlineProcExpansion);
-            for (let i = idx; i < ctx.inlineExpansionStack.length; i++) {
-              const expansion = ctx.inlineExpansionStack[i];
-              if (expansion.name == proc.name) {
-                err.addNote(expansion.loc, `first expansion of ${proc.name}`);
-              } else {
-                err.addTrace(expansion.loc, `${ctx.inlineExpansionStack[i - 1]?.name} lead to this expansion`);
+      } else if (expr.kind == AstKind.Word) {
+        if (expr.type == WordType.Intrinsic) {
+          const intrinsic = INTRINSICS.get(expr.value)!;
+          if (intrinsic.instr != Instr.Nop) {
+            out.push({ kind: intrinsic.instr } as any);
+          }
+        } else if (expr.type == WordType.Proc) {
+          const proc = this.program.procs.get(expr.value)!;
+          if (proc.inline) {
+            const idx = ctx.inlineExpansionStack.findIndex((x) => x.name == proc.name);
+            if (idx > -1) {
+              const err = new StckError(Err.RecursiveInlineProcExpansion);
+              for (let i = idx; i < ctx.inlineExpansionStack.length; i++) {
+                const expansion = ctx.inlineExpansionStack[i];
+                if (expansion.name == proc.name) {
+                  err.addNote(expansion.loc, `first expansion of ${proc.name}`);
+                } else {
+                  err.addTrace(expansion.loc, `${ctx.inlineExpansionStack[i - 1]?.name} lead to this expansion`);
+                }
               }
+
+              err.addErr(expr.loc, `${proc.name} expanded again here`);
+              throw err;
             }
 
-            err.addErr(expr.loc, `${proc.name} expanded again here`);
-            throw err;
+            ctx.inlineExpansionStack.push({
+              loc: expr.loc,
+              name: proc.name
+            });
+
+            this.compileBody(proc.body, out, ctx);
+            ctx.inlineExpansionStack.pop();
+          } else {
+            if (!this.compiledProcs.has(expr.value)) {
+              this.compileProcQueue.push(expr.value);
+            }
+
+            out.push({
+              kind: Instr.Call,
+              id: this.getProcId(expr.value)
+            });
+          }
+        } else if (expr.type == WordType.Constant) {
+          const value = this.consts.get(expr.value)!;
+          if (value > i32_MAX || value < i32_MIN) {
+            out.push({
+              kind: Instr.Push64,
+              value
+            })
+          } else {
+            out.push({
+              kind: Instr.Push,
+              value: value
+            });
+          }
+        } else if (expr.type == WordType.Memory) {
+          if (!this.memories.has(expr.value))
+            this.compileMemory(this.program.memories.get(expr.value)!);
+
+          out.push({
+            kind: Instr.PushMem,
+            offset: this.memories.get(expr.value)!
+          });
+        } else if (expr.type == WordType.Binding) {
+          out.push({
+            kind: Instr.PushLocal,
+            offset: ctx.bindings.get(expr.value)! * 8
+          });
+        } else if (expr.type == WordType.Var) {
+          const variable = this.program.vars.get(expr.value)!;
+          if (!this.memories.has(variable.name)) {
+            this.memories.set(variable.name, this.memoryOffset);
+            this.memoryOffset += variable.size;
           }
 
-          ctx.inlineExpansionStack.push({
-            loc: expr.loc,
-            name: proc.name
+          out.push({
+            kind: Instr.PushMem,
+            offset: this.memories.get(variable.name)!
           });
-
-          this.compileBody(proc.body, out, ctx);
-          ctx.inlineExpansionStack.pop();
+        } else if (expr.type == WordType.Unknown) {
+          throw new StckError(Err.InvalidExpr)
+            .addErr(expr.loc, "unknown word")
+            .addHint("likely a compiler bug?");
+        } else if (expr.type == WordType.Return) {
+          out.push({ kind: Instr.Ret });
         } else {
-          if (!this.compiledProcs.has(expr.value)) {
-            this.compileProcQueue.push(expr.value);
-          }
-
-          out.push({
-            kind: Instr.Call,
-            id: this.getProcId(expr.value)
-          });
+          assertNever(expr.type);
         }
-      } else if (expr.type == WordType.Constant) {
-        const value = this.consts.get(expr.value)!;
-        if (value < i32_MAX && value > i32_MIN) {
+      } else if (expr.kind == AstKind.If) {
+        this.compileBody(expr.condition, out, ctx);
+
+        const L1 = ctx.labelCount++;
+        out.push({
+          kind: Instr.JmpIfNot,
+          label: L1
+        });
+
+        this.compileBody(expr.body, out, ctx);
+
+        if (expr.else.length) {
+          const L2 = ctx.labelCount++;
+          out.push(
+            { kind: Instr.Jmp, label: L2 },
+            { kind: Instr.Label, label: L1 },
+          );
+
+          this.compileBody(expr.else, out, ctx);
           out.push({
-            kind: Instr.Push,
-            value: Number(value)
+            kind: Instr.Label,
+            label: L2
           });
         } else {
           out.push({
-            kind: Instr.Push64,
-            value
-          })
+            kind: Instr.Label,
+            label: L1
+          });
         }
-      } else if (expr.type == WordType.Memory) {
-        if (!this.memories.has(expr.value))
-          this.compileMemory(this.program.memories.get(expr.value)!);
-
+      } else if (expr.kind == AstKind.While) {
+        const L1 = ctx.labelCount++;
+        const L2 = ctx.labelCount++;
         out.push({
-          kind: Instr.PushMem,
-          offset: this.memories.get(expr.value)!
+          kind: Instr.Label,
+          label: L1
         });
-      } else if (expr.type == WordType.Binding) {
+
+        this.compileBody(expr.condition, out, ctx);
         out.push({
-          kind: Instr.PushLocal,
-          offset: ctx.bindings.get(expr.value)! * 8
-        });
-      } else if (expr.type == WordType.Var) {
-        const variable = this.program.vars.get(expr.value)!;
-        if (!this.memories.has(variable.name)) {
-          this.memories.set(variable.name, this.memoryOffset);
-          this.memoryOffset += variable.size;
-        }
-
-        out.push({
-          kind: Instr.PushMem,
-          offset: this.memories.get(variable.name)!
-        });
-      } else if (expr.type == WordType.Unknown) {
-        throw new StckError(Err.InvalidExpr)
-          .addErr(expr.loc, "unknown word")
-          .addHint("likely a compiler bug?");
-      } else if (expr.type == WordType.Return) {
-        out.push({ kind: Instr.Ret });
-      } else {
-        assertNever(expr.type);
-      }
-    } else if (expr.kind == AstKind.If) {
-      this.compileBody(expr.condition, out, ctx);
-
-      const L1 = this.label();
-      out.push({
-        kind: Instr.JmpIfNot,
-        label: L1
-      });
-
-      this.compileBody(expr.body, out, ctx);
-
-      if (expr.else.length) {
-        const L2 = this.label();
-        out.push({
-          kind: Instr.Jmp,
+          kind: Instr.JmpIfNot,
           label: L2
         });
-        this.label(L1);
+        this.compileBody(expr.body, out, ctx);
+        out.push(
+          { kind: Instr.Jmp, label: L1 },
+          { kind: Instr.Label, label: L2 },
+        );
+      } else if (expr.kind == AstKind.Let) {
+        for (const binding of expr.bindings) {
+          ctx.bindings.set(binding, ctx.bindings.size);
+        }
 
-        this.compileBody(expr.else, out, ctx);
-        this.label(L2);
-      } else {
-        this.label(L1);
+        out.push({
+          kind: Instr.Bind,
+          count: expr.bindings.length
+        });
+
+        this.compileBody(expr.body, out, ctx);
+
+        out.push({
+          kind: Instr.Unbind,
+          count: expr.bindings.length
+        });
+
+        for (const binding of expr.bindings) {
+          ctx.bindings.delete(binding);
+        }
+      } else if (expr.kind != AstKind.Cast) {
+        assertNever(expr);
       }
-    } else if (expr.kind == AstKind.While) {
-      const L1 = this.label();
-      const L2 = this.label();
-      this.label(L1);
-
-      this.compileBody(expr.condition, out, ctx);
-      out.push({
-        kind: Instr.JmpIfNot,
-        label: L2
-      });
-      this.compileBody(expr.body, out, ctx);
-      out.push({
-        kind: Instr.Jmp,
-        label: L1
-      });
-      this.label(L2);
-    } else if (expr.kind == AstKind.Let) {
-      for (const binding of expr.bindings) {
-        ctx.bindings.set(binding, ctx.bindings.size);
-      }
-
-      out.push({
-        kind: Instr.Bind,
-        count: expr.bindings.length
-      });
-
-      this.compileBody(expr.body, out, ctx);
-
-      out.push({
-        kind: Instr.Unbind,
-        count: expr.bindings.length
-      });
-
-      for (const binding of expr.bindings) {
-        ctx.bindings.delete(binding);
-      }
-    } else if (expr.kind != AstKind.Cast) {
-      assertNever(expr);
     }
-  }
-
-  private compileBody(body: Expr[], out: Instruction[], ctx: CompilerContext) {
-    for (const expr of body)
-      this.compileExpr(expr, ctx, out);
   }
 
   private compileProc(proc: Proc) {
@@ -339,14 +316,14 @@ export class Compiler {
       return;
 
     this.compiledProcs.add(proc.name);
-    this.instr.push({
-      kind: Instr.EnterProc,
-      name: proc.name,
-      id: this.getProcId(proc.name)
-    });
 
-    this.compileBody(proc.body, this.instr, createContext(proc.loc));
-    this.instr.push({ kind: Instr.Ret });
+    const instr: Instruction[] = [];
+    const id = this.getProcId(proc.name);
+
+    this.compileBody(proc.body, instr, createContext(proc.loc));
+    instr.push({ kind: Instr.Ret });
+
+    this.procs.set(id, instr);
   }
 
   private compileConst(constant: Const) {
@@ -385,7 +362,7 @@ export class Compiler {
     }
 
     return {
-      instr: this.instr,
+      procs: this.procs,
       strings: Array.from(this.stringIds.keys()),
       memorySize: this.memoryOffset
     }
