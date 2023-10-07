@@ -1,10 +1,7 @@
 import { KEYWORDS, Token, Tokens } from "./token";
 import { File, Location, Span } from "../shared";
 import { Err, StckError } from "../errors";
-import { i32_MAX, i32_MIN } from "..";
-
-// TODO: i kinda wanna rewrite this into a single function
-// the language's syntax is quite simple to tokenize sooo... should not be too hard i think?
+import { i64_MAX, i64_MIN } from "..";
 
 export class Lexer {
   private cursor: number = 0;
@@ -117,12 +114,14 @@ export class Lexer {
     }
 
     if (isInt && value != "-") {
-      const int = parseInt(value);
+      const int = BigInt(value);
+      if (int > i64_MAX || int < i64_MIN) {
+        this.error("the integer is too big");
+      }
+
       return {
         kind: Tokens.Int,
-        value: int > i32_MAX || int < i32_MIN
-          ? BigInt(value)
-          : int,
+        value: int,
         loc: this.span(),
       };
     } else if (KEYWORDS.has(value)) {
