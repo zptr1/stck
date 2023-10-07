@@ -36,11 +36,9 @@ end
 
 /// Returns a factorial of an integer
 proc factorial :: int -> int do
-  let n do
-    1 0 while dup n lt do
-      1 add swap over mul swap
-    end drop
-  end
+  1 while over 1 gt do
+    over mul swap 1 sub swap
+  end swap drop
 end
 
 /// Negates an integer

@@ -1,12 +1,11 @@
-// note: overflows after 20
+// note: there is already the same procedure from the standard library
 proc factorial :: int -> int do
-  1 swap 0 while 2dup gt do
-    1 add
-    rot over mul
-    rot rot
-  end drop drop
+  1 while over 1 gt do
+    over mul swap 1 sub swap
+  end swap drop
 end
 
 proc main do
   "16! = " puts 16 factorial print
+  // expected output: 20922789888000
 end
