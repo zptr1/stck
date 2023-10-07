@@ -4,17 +4,25 @@ This is the changelog for **stck**.
 
 ## [unreleased]
 
+## 0.1.3 - 2023-10-07
+
 ### Added
 
+- Added the `return` keyword
 - Added `std/mem` and `std/math` to the standard library
+- Added the `min` and `max` intrinsics
+- Added the `%del` preprocessor directive to delete already defined macros
 - Codegen optimizations for stack operations such as `swap drop`
-- Added a new `return` keyword
-- Added `min` and `max` intrinsics
-- Added a `%del` preprocessor directive to remove already defined macros
 
 ### Changed
 
+- Empty strings are now allowed
 - Moved `std/rand` to `std/math`
+- Refactored the compiler and the codegen
+
+### Fixed
+
+- Fixed the tokenization of C-strings
 
 ## 0.1.2 - 2023-09-28
 
