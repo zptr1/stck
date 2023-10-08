@@ -64,6 +64,9 @@ function exec(path: string, outPath: string, target: string, action: string) {
   new TypeChecker(ast).typecheck();
   const ir = new Compiler(ast).compile();
 
+  if (action == "check")
+    return;
+
   if (target == "fasm") {
     const path = action == "run"
       ? plib.join(tmpdir(), "stck-tmp")
