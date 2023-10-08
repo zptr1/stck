@@ -1,0 +1,93 @@
+%include "std"
+
+const MEM_CAP   30000 end
+const STACK_CAP 255   end
+
+memory mem   MEM_CAP end
+memory stack STACK_CAP sizeof(int) mul end
+
+memory input_buffer 1 end
+
+var cell       int end
+var stack-size int end
+
+proc run-bf-program :: int ptr do
+  let len data do
+    0 while dup len lt do
+      data over ptr+ read8
+
+      if dup '+' eq do
+        drop mem cell @int ptr+
+        dup  read8 1 add
+        swap write8
+      elif dup '-' eq do
+        drop mem cell @int ptr+
+        dup  read8 1 sub
+        swap write8
+      elif dup '>' eq do
+        drop cell @int 1 add
+        // Wrap the cell pointer
+        if dup MEM_CAP gteq do drop 0 end
+        cell !int
+      elif dup '<' eq do
+        drop cell @int 1 sub
+        // Wrap the cell pointer
+        if dup 0 lt do drop MEM_CAP 1 sub end
+        cell !int
+      elif dup '.' eq do
+        drop mem cell @int ptr+ read8 putch
+      elif dup ',' eq do
+        // TODO: stdin needs to be set to raw mode so it reads char-by-char
+        drop 1 input_buffer stdin read drop
+        input_buffer read8 mem cell @int ptr+ write8
+      elif dup '[' eq do
+        drop
+        if mem cell @int ptr+ read8 0 eq do
+          // If the current memory cell is zero, skip everything until the closing `]`
+          1 swap while
+            if dup len lt do
+              over 0 gt
+            else false end
+          do
+            1 add
+            // We also need to keep track of nested loops
+            data over ptr+ read8
+            if dup '[' eq do
+              drop swap 1 add swap
+            elif dup ']' eq do
+              drop swap 1 sub swap
+            else drop end
+          end
+          swap drop
+        else
+          // Otherwise, store the index of the current character in the stack and continue executing
+          // note: `]` jumps back to the stored index - 1
+          stack-size @int 1 add
+          if dup STACK_CAP gteq do
+            "ERROR: Stack overflow\n" eputs
+            1 exit
+          end
+          stack over sizeof(int) mul ptr+ under swap write8
+          stack-size !int
+        end
+      elif dup ']' eq do
+        drop
+        stack-size @int
+        if dup 0 lteq do
+          "ERROR: Stack underflow\n" eputs
+          1 exit
+        end
+        stack over sizeof(int) mul ptr+ read8
+        swap 1 sub stack-size !int
+        swap drop 1 sub
+      else drop end
+
+      1 add
+    end drop
+  end
+end
+
+proc main do
+  "+[-->-[>>+>-----<<]<--<---]>-.>>>+.>>..+++[.>]<<<<.+++.------.<<-.>>>>+."
+  run-bf-program
+end
