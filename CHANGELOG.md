@@ -4,6 +4,11 @@ This is the changelog for **stck**.
 
 ## [unreleased]
 
+### Changed
+
+- Improved the codegen
+- Reduced the callstack size from 640KB (±80k call depth) to 80KB (±10k call depth). This also reduces the size of the compiled executables by 87.5%
+
 ## 0.1.3 - 2023-10-07
 
 ### Added

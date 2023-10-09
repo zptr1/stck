@@ -16,11 +16,15 @@ macro swap_reg a,b {
 }
 
 macro call_proc id {
-  cmp rbp, callstack
-  jnge stack_overflow
+  check_callstack_overflow
   swap_reg rsp, rbp
   call id
   swap_reg rsp, rbp
+}
+
+macro check_callstack_overflow {
+  cmp rbp, callstack
+  jnge stack_overflow
 }
 
 macro ret_call_proc id {
@@ -37,11 +41,6 @@ macro jmpifnot Lb {
   pop rax
   test rax, rax
   jz Lb
-}
-
-macro bind_local i {
-  pop rax
-  mov [rbp+i], rax
 }
 
 ; Intrinsics
@@ -256,7 +255,15 @@ macro bind_local i {
   }
 
   macro intrinsic_dumpstack {
-    call dump_data_stack
+    mov r12, [datastack_start]
+    mov r13, rsp
+    add r13, 8
+    .L2:
+      mov rdi, [r13]
+      call print
+      add r13, 8
+    cmp r12, r13
+    jg .L2
   }
 
 ; Builtins
@@ -307,19 +314,6 @@ print:
   mov rax, 1
   syscall
   add rsp, 40
-  ret
-;; Outputs the current data stack
-dump_data_stack:
-  ; note: r12 and r13 are used because print modifies other scratch registers
-  mov r12, [datastack_start]
-  mov r13, rsp
-  add r13, 8
-  .L2:
-    mov rdi, [r13]
-    call print
-    add r13, 8
-  cmp r12, r13
-  jg .L2
   ret
 ;; This will get called when the stack has overflowed
 stack_overflow:

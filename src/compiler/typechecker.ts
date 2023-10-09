@@ -170,6 +170,10 @@ export class TypeChecker {
           intrinsic.ins, intrinsic.outs,
           false, true, "for the intrinsic call"
         );
+      } else if (ctx.bindings.has(expr.value)) {
+        expr.type = WordType.Binding;
+        ctx.stack.push(ctx.bindings.get(expr.value)!);
+        ctx.stackLocations.push(expr.loc);
       } else if (this.program.procs.has(expr.value)) {
         const proc = this.program.procs.get(expr.value)!;
         expr.type = WordType.Proc;
@@ -178,10 +182,6 @@ export class TypeChecker {
           proc.signature.ins, proc.signature.outs,
           false, true, "for the procedure call"
         );
-      } else if (ctx.bindings.has(expr.value)) {
-        expr.type = WordType.Binding;
-        ctx.stack.push(ctx.bindings.get(expr.value)!);
-        ctx.stackLocations.push(expr.loc);
       } else if (this.program.consts.has(expr.value)) {
         const constant = this.program.consts.get(expr.value)!;
         if (constant.type.type == DataType.Unknown) {

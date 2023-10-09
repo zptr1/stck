@@ -47,7 +47,7 @@ function codegenProc(id: number, instructions: Instruction[], out: string[]) {
     } else if (instr.kind == Instr.Bind) {
       out.push(`sub rbp, ${8 * instr.count}`);
       for (let i = instr.count - 1; i >= 0; i--) {
-        out.push(`bind_local ${i * 8}`);
+        out.push(`pop qword [rbp+${i * 8}]`);
       }
     } else if (instr.kind == Instr.Unbind) {
       out.push(`add rbp, ${8 * instr.count}`);
