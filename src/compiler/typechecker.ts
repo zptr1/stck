@@ -251,7 +251,7 @@ export class TypeChecker {
       handleSignature(
         expr.loc, clone, ctx.stack, [], true, false,
         "after a single iteration of the loop",
-        (err) => err.addHint("loops should not modify the amount of elements or their types on the stack")
+        (err) => err.addHint("loops should not alter the types on the stack")
       );
     } else if (expr.kind == AstKind.Let) {
       if (ctx.stack.length < expr.bindings.length) {
@@ -356,6 +356,25 @@ export class TypeChecker {
       ctx.returnTypes = proc.signature.ins;
     }
 
+    if (proc.name == "main") {
+      if (proc.inline) {
+        throw new StckError(Err.InvalidProc)
+          .addErr(proc.loc, "the main procedure cannot be inlined");
+      } else if (proc.signature.ins.length) {
+        throw new StckError(Err.InvalidProc)
+          .addWarn(proc.signature.ins[0].loc!, "cannot accept anything")
+          .addErr(proc.loc, "invalid signature for the main procedure");
+      } else if (proc.signature.outs.length && proc.signature.outs[0].type != DataType.Int) {
+        throw new StckError(Err.InvalidProc)
+          .addWarn(proc.signature.outs[0].loc!, `expected int but got ${frameToString(proc.signature.outs[0])}`)
+          .addErr(proc.loc, "invalid signature for the main procedure");
+      } else if (proc.signature.outs.length > 1) {
+        throw new StckError(Err.InvalidProc)
+        .addWarn(proc.signature.outs[1].loc!, "cannot return more than 1 value")
+        .addErr(proc.loc, "invalid signature for the main procedure");
+      }
+    }
+
     for (const frame of proc.signature.ins) {
       ctx.stack.push(frame);
       ctx.stackLocations.push(frame.loc ?? proc.loc);
@@ -390,6 +409,17 @@ export class TypeChecker {
 
   public typecheck() {
     this.program.consts.forEach((constant) => this.validateConst(constant));
+    this.program.assertions.forEach((assertion) => {
+      const ctx = createContext();
+      this.validateBody(assertion.body, ctx);
+      handleSignature(
+        assertion.loc, ctx,
+        [{ type: DataType.Bool }], [],
+        true, false,
+        "for the assertion"
+      );
+    });
+
     this.program.memories.forEach((memory) => this.validateMemory(memory));
     this.program.procs.forEach((proc) => {
       if (proc.unsafe) {

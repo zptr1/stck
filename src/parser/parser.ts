@@ -1,4 +1,4 @@
-import { AstKind, Condition, Const, Expr, Let, LiteralType, Proc, Program, Var, While, WordType } from "./ast";
+import { Assert, AstKind, Condition, Const, Expr, Let, LiteralType, Proc, Program, Var, While, WordType } from "./ast";
 import { DataType, INTRINSICS, Location, TypeFrame, sizeOf } from "../shared";
 import { Err, StckError } from "../errors";
 import { Token, Tokens } from "../lexer";
@@ -9,6 +9,7 @@ export class Parser {
   public readonly consts = new Map<string, Const>();
   public readonly memories = new Map<string, Const>();
   public readonly vars = new Map<string, Var>();
+  public readonly assertions: Assert[] = [];
 
   private readonly lastToken: Token;
 
@@ -221,6 +222,8 @@ export class Parser {
         throw new StckError(Err.InvalidComptime)
           .addErr(token.loc, `cannot use ${token.kind} here`)
           .addNote(loc);
+      } else if (token.kind == Tokens.Assert) {
+        this.parseAssert(token.loc);
       } else {
         body.push(this.parseExpr(token));
       }
@@ -402,6 +405,14 @@ export class Parser {
     });
   }
 
+  private parseAssert(loc: Location) {
+    this.assertions.push({
+      kind: AstKind.Assert, loc: loc,
+      message: this.nextOf(Tokens.Str).value,
+      body: this.parseBody(loc, true)
+    });
+  }
+
   public parse(): Program {
     let inlineProc = false;
     let unsafeProc = false;
@@ -427,7 +438,7 @@ export class Parser {
       } else if (token.kind == Tokens.Var) {
         this.parseVar(token.loc);
       } else if (token.kind == Tokens.Assert) {
-        throw new Error("Assertions are not implemented yet");
+        this.parseAssert(token.loc);
       } else {
         throw new StckError(Err.UnexpectedToken)
           .addErr(token.loc, "invalid token at the top level");
@@ -439,7 +450,8 @@ export class Parser {
       procs: this.procs,
       consts: this.consts,
       memories: this.memories,
-      vars: this.vars
+      vars: this.vars,
+      assertions: this.assertions
     }
   }
 }

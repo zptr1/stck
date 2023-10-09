@@ -13,17 +13,17 @@ function codegenProc(id: number, instructions: Instruction[], out: string[]) {
 
   for (const instr of instructions) {
     if (instr.kind == Instr.Ret) {
-      if (id == 0) {
-        out.push("mov rax, 60");
-        out.push("mov rdi, 0");
-        out.push("syscall");
-      } else if (lastInstr.kind == Instr.Call) {
+      if (lastInstr.kind == Instr.Call) {
         out.pop();
         out.push(`ret_call_proc __proc_${lastInstr.id}`);
       } else {
         out.push("swap_reg rsp,rbp");
         out.push("ret");
       }
+    } else if (instr.kind == Instr.Halt) {
+      out.push("mov rax, 60");
+      out.push(`mov rdi, ${instr.code ?? "[rsp]"}`);
+      out.push("syscall");
     } else if (instr.kind == Instr.Call) {
       out.push(`call_proc __proc_${instr.id}`);
     } else if (instr.kind == Instr.Label) {

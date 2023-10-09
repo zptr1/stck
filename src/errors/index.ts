@@ -10,6 +10,7 @@ export enum Err {
   InvalidSyntax,
   InvalidType,
   InvalidExpr,
+  InvalidProc,
   InvalidComptime,
 
   UnexpectedToken,
@@ -22,6 +23,8 @@ export enum Err {
   InsufficientStackTypes,
   UnexpectedStackTypes,
   UnhandledStackTypes,
+
+  AssertionFailed,
 }
 
 export enum ErrSpanKind {
@@ -59,6 +62,8 @@ export function errToStr(err: Err): string {
     return "invalid type";
   } else if (err == Err.InvalidExpr) {
     return "invalid expression";
+  } else if (err == Err.InvalidProc) {
+    return "invalid procedure";
   } else if (err == Err.InvalidComptime) {
     return "invalid compile-time expression";
   } else if (err == Err.UnexpectedToken) {
@@ -77,6 +82,8 @@ export function errToStr(err: Err): string {
     return "unexpected types on the stack";
   } else if (err == Err.UnhandledStackTypes) {
     return "unhandled types on the stack";
+  } else if (err == Err.AssertionFailed) {
+    return "assertion failed";
   } else {
     assertNever(err);
   }

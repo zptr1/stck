@@ -7,7 +7,10 @@ _start:
   mov [datastack_start], rsp
   mov rbp, rsp
   mov rsp, callstack_end
-  jmp __proc_0
+  call __proc_0
+  mov rax, 60
+  mov rdi, [rbp]
+  syscall
 
 macro swap_reg a,b {
   mov rax, a

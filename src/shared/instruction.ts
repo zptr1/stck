@@ -13,7 +13,6 @@ export enum Instr {
   Call,
   Ret,
   Jmp,
-  JmpIf,
   JmpIfNot,
 
   // Math
@@ -91,11 +90,11 @@ type _instr = (
     count: number
   }
   | {
-      kind: Instr.Jmp | Instr.JmpIf | Instr.JmpIfNot | Instr.Label,
+      kind: Instr.Jmp | Instr.JmpIfNot | Instr.Label,
       label: number
     }
   | { kind: Instr.Call, id: number }
-  | { kind: Instr.Halt, code: number }
+  | { kind: Instr.Halt, code: number | null }
 );
 
 export type Instruction =

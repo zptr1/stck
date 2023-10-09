@@ -1,4 +1,4 @@
-import { AstKind, Const, Expr, LiteralType, Proc, Program, WordType } from "../parser";
+import { Assert, AstKind, Const, Expr, LiteralType, Proc, Program, WordType } from "../parser";
 import { INTRINSICS, Instr, Instruction, Location, formatLoc } from "../shared";
 import { i32_MAX, i32_MIN, i64_MAX, i64_MIN, assertNever } from "..";
 import { CompilerContext, IRProgram, createContext } from "./ir";
@@ -25,6 +25,12 @@ export class Compiler {
     if (!this.procIds.has(name))
       this.procIds.set(name, this.procIds.size);
     return this.procIds.get(name)!;
+  }
+
+  private getStrId(str: string): number {
+    if (!this.stringIds.has(str))
+      this.stringIds.set(str, this.stringIds.size);
+    return this.stringIds.get(str)!;
   }
 
   private offsetCounter: bigint = 0n;
@@ -112,22 +118,15 @@ export class Compiler {
     for (const expr of body) {
       if (expr.kind == AstKind.Literal) {
         if (expr.type == LiteralType.Str) {
-          if (!this.stringIds.has(expr.value))
-            this.stringIds.set(expr.value, this.stringIds.size);
-
           out.push({
             kind: Instr.PushStr,
-            id: this.stringIds.get(expr.value)!,
+            id: this.getStrId(expr.value),
             len: expr.value.length
           });
         } else if (expr.type == LiteralType.CStr) {
-          expr.value += "\x00";
-          if (!this.stringIds.has(expr.value))
-            this.stringIds.set(expr.value, this.stringIds.size);
-
           out.push({
             kind: Instr.PushStr,
-            id: this.stringIds.get(expr.value)!,
+            id: this.getStrId(expr.value + "\x00"),
             len: -1
           });
         } else if (expr.type == LiteralType.Int) {
@@ -321,6 +320,16 @@ export class Compiler {
     const id = this.getProcId(proc.name);
 
     this.compileBody(proc.body, instr, createContext(proc.loc));
+
+    if (proc.name == "main" && !proc.signature.outs.length) {
+      // the typechecker forces the main procedure to return either nothing or an integer
+      // the integer on top of the stack is used as an exit code, so we need to push 0 if no exit code is provided
+      instr.push({
+        kind: Instr.Push,
+        value: 0n
+      })
+    }
+
     instr.push({ kind: Instr.Ret });
 
     this.procs.set(id, instr);
@@ -346,15 +355,23 @@ export class Compiler {
     this.memoryOffset += size;
   }
 
+  private validateAssert(assertion: Assert) {
+    const instr: Instruction[] = [];
+    this.compileBody(assertion.body, instr, createContext(assertion.loc));
+    if (!this.evaluate(assertion.loc, instr)) {
+      throw new StckError(Err.AssertionFailed)
+        .addErr(assertion.loc, assertion.message);
+    }
+  }
+
   public compile(): IRProgram {
     const proc = this.program.procs.get("main");
     if (!proc) {
       throw new StckError(Err.NoMainProcedure);
     }
 
-    this.program.consts.forEach((constant) => {
-      this.compileConst(constant);
-    });
+    this.program.consts.forEach((constant) => this.compileConst(constant));
+    this.program.assertions.forEach((assertion) => this.validateAssert(assertion))
 
     this.compileProc(proc);
     while (this.compileProcQueue.length) {

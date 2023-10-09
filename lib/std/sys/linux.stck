@@ -7,8 +7,6 @@ inline proc openat :: int int ptr -> int do
   sys_openat syscall4
 end
 
-inline proc exit :: int do sys_exit syscall1 drop end
-
 var _getrand_buf int end
 
 /// Get a cryptographically secure 32-bit integer

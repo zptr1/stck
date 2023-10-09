@@ -10,6 +10,7 @@ export enum AstKind {
   While,
   Let,
   Cast,
+  Assert,
 }
 
 export enum WordType {
@@ -38,6 +39,7 @@ export interface Program {
   consts: Map<string, Const>;
   memories: Map<string, Const>;
   vars: Map<string, Var>;
+  assertions: Assert[];
 }
 
 export interface Signature {
@@ -54,6 +56,11 @@ export interface Const extends Ast<AstKind.Const> {
   name: string;
   body: Expr[];
   type: TypeFrame;
+}
+
+export interface Assert extends Ast<AstKind.Assert> {
+  message: string;
+  body: Expr[];
 }
 
 export interface Var extends Ast<AstKind.Var> {

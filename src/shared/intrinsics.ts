@@ -80,8 +80,9 @@ addIntrinsic("read32",  Instr.Read32,  [DataType.Ptr],               [DataType.I
 addIntrinsic("read64",  Instr.Read32,  [DataType.Ptr],               [DataType.Int]);
 
 // Program
-addIntrinsic("print",       Instr.Print,     [DataType.Int],               []);
 addIntrinsic("puts",        Instr.Puts,      [DataType.Int, DataType.Ptr], []);
+addIntrinsic("print",       Instr.Print,     [DataType.Int], []);
+addIntrinsic("exit",        Instr.Halt,      [DataType.Int], []);
 addIntrinsic("dump-stack",  Instr.DumpStack, [], []);
 
 // Compile-time

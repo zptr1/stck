@@ -4,10 +4,20 @@ This is the changelog for **stck**.
 
 ## [unreleased]
 
+### Added
+
+- Added compile-time assertions
+- `exit` is now a built-in intrinsic
+- The main procedure can now optionally return an integer, which will be used as an exit code
+
 ### Changed
 
 - Improved the codegen
 - Reduced the callstack size from 640KB (±80k call depth) to 80KB (±10k call depth). This also reduces the size of the compiled executables by 87.5%
+
+### Fixed
+
+- The main procedure was able to have any signature defined which lead to undefined behavior
 
 ## 0.1.3 - 2023-10-07
 
@@ -60,9 +70,9 @@ This is the changelog for **stck**.
 
 ### Added
 
-- Added new Rust-like error messages, which are more detailed and look much better than the old messages. [Screenshot](https://cdn.discordapp.com/attachments/994971483040395374/1154350814521999411/image.png)
+- Added new Rust-like error messages, which are more detailed and look much better than the old messages
 - Added variables
-- Added `div`, `mod` and `idiv`, `imod`, which are like `divmod`/`idivmod` but output one value instead.
+- Added `div`, `mod` and `idiv`, `imod`, which are like `divmod`/`idivmod` but output one value instead
 
 ### Changed
 

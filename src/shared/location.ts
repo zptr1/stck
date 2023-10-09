@@ -74,4 +74,8 @@ export class File {
 
     return this.lc.fromIndex(index);
   }
+
+  get filename() {
+    return plib.basename(this.path);
+  }
 }
