@@ -1,5 +1,5 @@
 import { DataType, Location, TypeFrame, frameToString, Context, INTRINSICS, cloneContext, createContext, formatLoc } from "../shared";
-import { AstKind, Const, Expr, LiteralType, Proc, Program, WordType } from "../parser";
+import { Assert, AstKind, Const, Expr, LiteralType, Proc, Program, WordType } from "../parser";
 import { Err, StckError } from "../errors";
 import { assertNever } from "..";
 import chalk from "chalk";
@@ -353,7 +353,7 @@ export class TypeChecker {
   private validateProc(proc: Proc) {
     const ctx = createContext();
     if (!proc.inline) {
-      ctx.returnTypes = proc.signature.ins;
+      ctx.returnTypes = proc.signature.outs;
     }
 
     if (proc.name == "main") {
@@ -407,20 +407,22 @@ export class TypeChecker {
     );
   }
 
+  private validateAssert(assert: Assert) {
+    const ctx = createContext();
+    this.validateBody(assert.body, ctx);
+    handleSignature(
+      assert.loc, ctx,
+      [{ type: DataType.Bool }], [],
+      true, false,
+      "for the assertion"
+    );
+  }
+
   public typecheck() {
     this.program.consts.forEach((constant) => this.validateConst(constant));
-    this.program.assertions.forEach((assertion) => {
-      const ctx = createContext();
-      this.validateBody(assertion.body, ctx);
-      handleSignature(
-        assertion.loc, ctx,
-        [{ type: DataType.Bool }], [],
-        true, false,
-        "for the assertion"
-      );
-    });
-
+    this.program.assertions.forEach((assert) => this.validateAssert(assert));
     this.program.memories.forEach((memory) => this.validateMemory(memory));
+
     this.program.procs.forEach((proc) => {
       if (proc.unsafe) {
         this.inferUnsafeBody(proc.body, new Set());

@@ -1,7 +1,7 @@
 import { Assert, AstKind, Const, Expr, LiteralType, Proc, Program, WordType } from "../parser";
 import { INTRINSICS, Instr, Instruction, Location, formatLoc } from "../shared";
-import { i32_MAX, i32_MIN, i64_MAX, i64_MIN, assertNever } from "..";
 import { CompilerContext, IRProgram, createContext } from "./ir";
+import { i32_MAX, i32_MIN, assertNever } from "..";
 import { Err, StckError } from "../errors";
 import chalk from "chalk";
 
@@ -355,12 +355,12 @@ export class Compiler {
     this.memoryOffset += size;
   }
 
-  private validateAssert(assertion: Assert) {
+  private compileAssert(assert: Assert) {
     const instr: Instruction[] = [];
-    this.compileBody(assertion.body, instr, createContext(assertion.loc));
-    if (!this.evaluate(assertion.loc, instr)) {
+    this.compileBody(assert.body, instr, createContext(assert.loc));
+    if (!this.evaluate(assert.loc, instr)) {
       throw new StckError(Err.AssertionFailed)
-        .addErr(assertion.loc, assertion.message);
+        .addErr(assert.loc, assert.message);
     }
   }
 
@@ -371,7 +371,7 @@ export class Compiler {
     }
 
     this.program.consts.forEach((constant) => this.compileConst(constant));
-    this.program.assertions.forEach((assertion) => this.validateAssert(assertion))
+    this.program.assertions.forEach((assert) => this.compileAssert(assert));
 
     this.compileProc(proc);
     while (this.compileProcQueue.length) {
