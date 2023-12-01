@@ -285,9 +285,11 @@ export class Compiler {
           { kind: Instr.Label, label: L2 },
         );
       } else if (expr.kind == AstKind.Let) {
-        for (const binding of expr.bindings) {
-          ctx.bindings.set(binding, ctx.bindings.size);
-        }
+        for (const [binding, idx] of ctx.bindings)
+          ctx.bindings.set(binding, idx + expr.bindings.length);
+
+        for (let i = 0; i < expr.bindings.length; i++)
+          ctx.bindings.set(expr.bindings[i], i);
 
         out.push({
           kind: Instr.Bind,
@@ -301,9 +303,11 @@ export class Compiler {
           count: expr.bindings.length
         });
 
-        for (const binding of expr.bindings) {
+        for (const binding of expr.bindings)
           ctx.bindings.delete(binding);
-        }
+
+        for (const [binding, idx] of ctx.bindings)
+          ctx.bindings.set(binding, idx - expr.bindings.length);
       } else if (expr.kind != AstKind.Cast) {
         assertNever(expr);
       }
