@@ -1,37 +1,47 @@
 ;; The core functionality of stck.
 ;; Automatically included by the compiler.
 
-segment readable executable
+section '.text' executable
+public main
 
-_start:
-  mov [datastack_start], rsp
-  mov rbp, rsp
-  mov rsp, callstack_end
+cs_ptr   equ r14
+ds_ptr   equ r15
+ds_start equ rbp
+
+main:
+  mov ds_ptr, rsp
+  sub ds_ptr, 100000
+  mov ds_start, ds_ptr
+
   call __proc_0
-  mov rax, 60
-  mov rdi, [rbp]
-  syscall
 
-macro swap_reg a,b {
-  mov rax, a
-  mov a, b
-  mov b, rax
+  mov rax, [ds_ptr]
+  ret
+
+macro switch_to_datastack {
+  mov cs_ptr, rsp
+  mov rsp, ds_ptr
+}
+
+macro switch_to_callstack {
+  mov ds_ptr, rsp
+  mov rsp, cs_ptr
 }
 
 macro call_proc id {
+  switch_to_callstack
   check_callstack_overflow
-  swap_reg rsp, rbp
   call id
-  swap_reg rsp, rbp
+  switch_to_datastack
 }
 
 macro check_callstack_overflow {
-  cmp rbp, callstack
+  cmp rsp, ds_start
   jnge stack_overflow
 }
 
 macro ret_call_proc id {
-  swap_reg rsp, rbp
+  switch_to_callstack
   jmp id
 }
 
@@ -216,33 +226,34 @@ macro jmpifnot Lb {
     push rcx
   }
 ;; Memory
-  macro __i_write _reg {
-    pop rax
-    pop rbx
+  macro _write_mem _reg {
+    mov rax, [rsp]
+    mov rbx, [rsp+8]
     mov [rax], _reg
+    add rsp, 16
   }
 
-  macro __i_read _reg {
-    pop rax
+  macro _read_mem _reg {
+    mov rax, [rsp]
     xor rbx, rbx
     mov _reg, [rax]
-    push rbx
+    mov [rsp], rbx
   }
 
-  macro intrinsic_write8  { __i_write bl  }
-  macro intrinsic_write16 { __i_write bx  }
-  macro intrinsic_write32 { __i_write ebx }
-  macro intrinsic_write64 { __i_write rbx }
+  macro intrinsic_write8  { _write_mem bl  }
+  macro intrinsic_write16 { _write_mem bx  }
+  macro intrinsic_write32 { _write_mem ebx }
+  macro intrinsic_write64 { _write_mem rbx }
 
-  macro intrinsic_read8  { __i_read bl  }
-  macro intrinsic_read16 { __i_read bx  }
-  macro intrinsic_read32 { __i_read ebx }
+  macro intrinsic_read8  { _read_mem bl  }
+  macro intrinsic_read16 { _read_mem bx  }
+  macro intrinsic_read32 { _read_mem ebx }
   macro intrinsic_read64 {
-    pop rax
-    ; no need for `xor`
-    mov rbx, [rax]
-    push rbx
+    mov rax, [rsp]
+    mov rax, [rax]
+    mov [rsp], rax
   }
+
 ;; Misc
   macro intrinsic_print {
     pop rdi
@@ -257,10 +268,30 @@ macro jmpifnot Lb {
     syscall
   }
 
+  macro intrinsic_offset {
+    pop rax
+    push qword [counter]
+    add qword [counter], rax
+  }
+
+  macro intrinsic_reset {
+    push qword [counter]
+    mov qword [counter], 0
+  }
+
+  ;; Dump the contents of the stack
+  ; TODO: Include this only when it is used in the program
   macro intrinsic_dumpstack {
-    mov r12, [datastack_start]
+    ; mov rax, 1
+    ; mov rdi, 2
+    ; mov rsi, ds_msg
+    ; mov rdx, ds_msg_len
+    ; syscall
+
+    mov r12, ds_start
     mov r13, rsp
     add r13, 8
+    local .L2
     .L2:
       mov rdi, [r13]
       call print
@@ -277,7 +308,7 @@ print:
   mov rcx, rdi
   mov r11, rdi
   neg rax
-  mov BYTE [rsp+31], 10
+  mov byte [rsp+31], 10
   lea r8, [rsp+30]
   mov edi, 1
   mov r9, -3689348814741910323
@@ -294,7 +325,7 @@ print:
   add rsi, rsi
   sub rax, rsi
   add eax, 48
-  mov BYTE [r8+1], al
+  mov byte [r8+1], al
   mov rax, rcx
   mov rcx, rdx
   cmp rax, 9
@@ -305,7 +336,7 @@ print:
   sub eax, edi
   lea edi, [r10+2]
   cdqe
-  mov BYTE [rsp+rax], 45
+  mov byte [rsp+rax], 45
   .L4:
   mov eax, 32
   mov edx, edi
@@ -322,17 +353,18 @@ print:
 stack_overflow:
   mov rax, 1
   mov rdi, 2
-  mov rsi, stack_overflow_msg
-  mov rdx, stack_overflow_msg_size
+  mov rsi, so_msg
+  mov rdx, so_msg_len
   syscall
   mov rax, 60
   mov rdi, 1
   syscall
 
-segment readable writeable
-  datastack_start: rq 1
-  callstack:       rb 640000
-  callstack_end:
+section '.data' writeable
+  counter: rq 1
 
-  stack_overflow_msg:       db '[RUNTIME ERROR] Stack overflow', 10
-  stack_overflow_msg_size = $ - stack_overflow_msg
+  ds_msg:      db '[STCK] Stack:', 10
+  ds_msg_len = $ - ds_msg
+
+  so_msg:      db '[STCK] Stack overflow', 10
+  so_msg_len = $ - so_msg

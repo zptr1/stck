@@ -1,7 +1,7 @@
 import { Assert, AstKind, Const, Expr, LiteralType, Proc, Program, WordType } from "../parser";
-import { INTRINSICS, Instr, Instruction, Location, formatLoc } from "../shared";
+import { INTRINSICS, Instr, Instruction, Location, Size, formatLoc } from "../shared";
 import { CompilerContext, IRProgram, createContext } from "./ir";
-import { i32_MAX, i32_MIN, assertNever } from "..";
+import { i32_MAX, i32_MIN, assertNever } from "../misc";
 import { Err, StckError } from "../errors";
 import chalk from "chalk";
 
@@ -12,9 +12,13 @@ export class Compiler {
 
   private readonly stringIds = new Map<string, number>();
   private readonly procIds = new Map<string, number>();
-
+  
   private readonly compiledProcs = new Set<string>();
   private readonly compileProcQueue: string[] = [];
+  
+  private readonly extern = new Set<string>();
+  private readonly libraries = new Set<string>();
+
   private memoryOffset: number = 0;
 
   constructor (
@@ -36,65 +40,42 @@ export class Compiler {
   private offsetCounter: bigint = 0n;
   private evaluate(loc: Location, instructions: Instruction[]): any {
     const stack: bigint[] = [];
+    const infix = (cb: (lhs: bigint, rhs: bigint) => bigint) => {
+      const rhs = stack.pop()!, lhs = stack.pop()!;
+      return cb(lhs, rhs);
+    }
 
     for (const instr of instructions) {
-      if (instr.kind == Instr.Push || instr.kind == Instr.Push64) {
+      if (instr.kind == Instr.Push || instr.kind == Instr.PushBigInt) {
         stack.push(BigInt(instr.value));
-      } else if (instr.kind == Instr.Add) {
-        stack.push(stack.pop()! + stack.pop()!);
-      } else if (instr.kind == Instr.Mul) {
-        stack.push(stack.pop()! * stack.pop()!);
-      } else if (instr.kind == Instr.Eq) {
-        stack.push(BigInt(stack.pop()! == stack.pop()!));
-      } else if (instr.kind == Instr.Neq) {
-        stack.push(BigInt(stack.pop()! != stack.pop()!));
-      } else if (instr.kind == Instr.Sub) {
-        const rhs = stack.pop()!, lhs = stack.pop()!;
-        stack.push(lhs - rhs);
-      } else if (instr.kind == Instr.DivMod) {
+      } else if (instr.kind == Instr.Add) stack.push(stack.pop()! + stack.pop()!);
+      else if (instr.kind == Instr.Mul) stack.push(stack.pop()! * stack.pop()!);
+      else if (instr.kind == Instr.Eq) stack.push(BigInt(stack.pop()! == stack.pop()!));
+      else if (instr.kind == Instr.Neq) stack.push(BigInt(stack.pop()! != stack.pop()!));
+      else if (instr.kind == Instr.Sub) stack.push(infix((a, b) => a - b));
+      else if (instr.kind == Instr.Lt) stack.push(infix((a, b) => BigInt(a < b)));
+      else if (instr.kind == Instr.Gt) stack.push(infix((a, b) => BigInt(a > b)));
+      else if (instr.kind == Instr.LtEq) stack.push(infix((a, b) => BigInt(a <= b)));
+      else if (instr.kind == Instr.GtEq) stack.push(infix((a, b) => BigInt(a >= b)));
+      else if (instr.kind == Instr.Shl) stack.push(infix((a, b) => a << b));
+      else if (instr.kind == Instr.Shr) stack.push(infix((a, b) => a >> b));
+      else if (instr.kind == Instr.And) stack.push(infix((a, b) => a & b));
+      else if (instr.kind == Instr.Or) stack.push(infix((a, b) => a | b));
+      else if (instr.kind == Instr.Xor) stack.push(infix((a, b) => a ^ b));
+      else if (instr.kind == Instr.Not) stack.push(~stack.pop()!);
+      else if (instr.kind == Instr.Drop) stack.pop();
+      else if (instr.kind == Instr.Swap) stack.push(stack.pop()!, stack.pop()!);
+      else if (instr.kind == Instr.DivMod) {
         const rhs = stack.pop()!, lhs = stack.pop()!;
         stack.push(lhs / rhs, lhs % rhs);
-      } else if (instr.kind == Instr.Lt) {
-        const rhs = stack.pop()!, lhs = stack.pop()!;
-        stack.push(BigInt(lhs < rhs));
-      } else if (instr.kind == Instr.Gt) {
-        const rhs = stack.pop()!, lhs = stack.pop()!;
-        stack.push(BigInt(lhs > rhs));
-      } else if (instr.kind == Instr.LtEq) {
-        const rhs = stack.pop()!, lhs = stack.pop()!;
-        stack.push(BigInt(lhs <= rhs));
-      } else if (instr.kind == Instr.GtEq) {
-        const rhs = stack.pop()!, lhs = stack.pop()!;
-        stack.push(BigInt(lhs >= rhs));
-      } else if (instr.kind == Instr.Shl) {
-        const rhs = stack.pop()!, lhs = stack.pop()!;
-        stack.push(lhs << rhs);
-      } else if (instr.kind == Instr.Shr) {
-        const rhs = stack.pop()!, lhs = stack.pop()!;
-        stack.push(lhs >> rhs);
-      } else if (instr.kind == Instr.And) {
-        const rhs = stack.pop()!, lhs = stack.pop()!;
-        stack.push(lhs & rhs);
-      } else if (instr.kind == Instr.Or) {
-        const rhs = stack.pop()!, lhs = stack.pop()!;
-        stack.push(lhs | rhs);
-      } else if (instr.kind == Instr.Xor) {
-        const rhs = stack.pop()!, lhs = stack.pop()!;
-        stack.push(lhs ^ rhs);
-      } else if (instr.kind == Instr.Not) {
-        stack.push(~stack.pop()!);
-      } else if (instr.kind == Instr.Drop) {
-        stack.pop();
-      } else if (instr.kind == Instr.Swap) {
-        stack.push(stack.pop()!, stack.pop()!);
       } else if (instr.kind == Instr.Dup) {
         const a = stack.pop()!;
         stack.push(a, a);
-      } else if (instr.kind == Instr._CExpr__Offset) {
+      } else if (instr.kind == Instr.Offset) {
         const val = this.offsetCounter;
         this.offsetCounter += stack.pop()!;
         stack.push(val);
-      } else if (instr.kind == Instr._CExpr__Reset) {
+      } else if (instr.kind == Instr.Reset) {
         stack.push(this.offsetCounter);
         this.offsetCounter = 0n;
       } else if (instr.kind == Instr.Print) {
@@ -114,14 +95,41 @@ export class Compiler {
     return stack.pop();
   }
 
+  // TODO: automatically inline procedures that were used only once or are too small
+  private inlineProc(proc: Proc, expr: Expr, out: Instruction[], ctx: CompilerContext) {
+    const idx = ctx.inlineExpansionStack.findIndex((x) => x.name == proc.name);
+    if (idx > -1) {
+      const err = new StckError(Err.RecursiveInlineProcExpansion);
+      for (let i = idx; i < ctx.inlineExpansionStack.length; i++) {
+        const expansion = ctx.inlineExpansionStack[i];
+        if (expansion.name == proc.name) {
+          err.addNote(expansion.loc, `first expansion of ${proc.name}`);
+        } else {
+          err.addTrace(expansion.loc, `${ctx.inlineExpansionStack[i - 1]?.name} lead to this expansion`);
+        }
+      }
+
+      err.addErr(expr.loc, `${proc.name} expanded again here`);
+      throw err;
+    }
+
+    ctx.inlineExpansionStack.push({
+      loc: expr.loc,
+      name: proc.name
+    });
+
+    this.compileBody(proc.body, out, ctx);
+    ctx.inlineExpansionStack.pop();
+  }
+
   private compileBody(body: Expr[], out: Instruction[], ctx: CompilerContext) {
     for (const expr of body) {
       if (expr.kind == AstKind.Literal) {
         if (expr.type == LiteralType.Str) {
           out.push({
             kind: Instr.PushStr,
-            id: this.getStrId(expr.value),
-            len: expr.value.length
+            id: this.getStrId(expr.value + "\x00"),
+            len: new TextEncoder().encode(expr.value).length
           });
         } else if (expr.type == LiteralType.CStr) {
           out.push({
@@ -130,17 +138,16 @@ export class Compiler {
             len: -1
           });
         } else if (expr.type == LiteralType.Int) {
-          if (expr.value > i32_MAX || expr.value < i32_MIN) {
-            out.push({
-              kind: Instr.Push64,
-              value: expr.value
-            });
-          } else {
-            out.push({
-              kind: Instr.Push,
-              value: expr.value
-            });
-          }
+          out.push({
+            kind: Instr.Push,
+            size: Size.Long,
+            value: expr.value
+          });
+        } else if (expr.type == LiteralType.BigInt) {
+          out.push({
+            kind: Instr.PushBigInt,
+            value: expr.value
+          });
         } else if (expr.type == LiteralType.Assembly) {
           out.push({
             kind: Instr.AsmBlock,
@@ -158,29 +165,7 @@ export class Compiler {
         } else if (expr.type == WordType.Proc) {
           const proc = this.program.procs.get(expr.value)!;
           if (proc.inline) {
-            const idx = ctx.inlineExpansionStack.findIndex((x) => x.name == proc.name);
-            if (idx > -1) {
-              const err = new StckError(Err.RecursiveInlineProcExpansion);
-              for (let i = idx; i < ctx.inlineExpansionStack.length; i++) {
-                const expansion = ctx.inlineExpansionStack[i];
-                if (expansion.name == proc.name) {
-                  err.addNote(expansion.loc, `first expansion of ${proc.name}`);
-                } else {
-                  err.addTrace(expansion.loc, `${ctx.inlineExpansionStack[i - 1]?.name} lead to this expansion`);
-                }
-              }
-
-              err.addErr(expr.loc, `${proc.name} expanded again here`);
-              throw err;
-            }
-
-            ctx.inlineExpansionStack.push({
-              loc: expr.loc,
-              name: proc.name
-            });
-
-            this.compileBody(proc.body, out, ctx);
-            ctx.inlineExpansionStack.pop();
+            this.inlineProc(proc, expr, out, ctx);
           } else {
             if (!this.compiledProcs.has(expr.value)) {
               this.compileProcQueue.push(expr.value);
@@ -191,19 +176,30 @@ export class Compiler {
               id: this.getProcId(expr.value)
             });
           }
+        } else if (expr.type == WordType.Extern) {
+          const extern = this.program.externs.get(expr.value)!;
+          
+          this.extern.add(extern.symbol);
+          this.libraries.add(extern.library);
+
+          out.push({
+            kind: Instr.CallExtern,
+            name: extern.symbol,
+            argc: extern.signature.ins.length,
+            hasOutput: extern.signature.outs.length > 0
+          });
         } else if (expr.type == WordType.Constant) {
           const value = this.consts.get(expr.value)!;
-          if (value > i32_MAX || value < i32_MIN) {
-            out.push({
-              kind: Instr.Push64,
+          out.push(
+            value > i32_MAX || value < i32_MIN ? {
+              kind: Instr.PushBigInt,
               value
-            })
-          } else {
-            out.push({
+            } : {
               kind: Instr.Push,
-              value: value
-            });
-          }
+              size: Size.Long,
+              value,
+            }
+          );
         } else if (expr.type == WordType.Memory) {
           if (!this.memories.has(expr.value))
             this.compileMemory(this.program.memories.get(expr.value)!);
@@ -269,16 +265,12 @@ export class Compiler {
       } else if (expr.kind == AstKind.While) {
         const L1 = ctx.labelCount++;
         const L2 = ctx.labelCount++;
-        out.push({
-          kind: Instr.Label,
-          label: L1
-        });
+
+        out.push({ kind: Instr.Label, label: L1 });
 
         this.compileBody(expr.condition, out, ctx);
-        out.push({
-          kind: Instr.JmpIfNot,
-          label: L2
-        });
+        out.push({ kind: Instr.JmpIfNot, label: L2 });
+
         this.compileBody(expr.body, out, ctx);
         out.push(
           { kind: Instr.Jmp, label: L1 },
@@ -330,12 +322,12 @@ export class Compiler {
       // the integer on top of the stack is used as an exit code, so we need to push 0 if no exit code is provided
       instr.push({
         kind: Instr.Push,
+        size: Size.Long,
         value: 0n
-      })
+      });
     }
 
     instr.push({ kind: Instr.Ret });
-
     this.procs.set(id, instr);
   }
 
@@ -385,7 +377,9 @@ export class Compiler {
     return {
       procs: this.procs,
       strings: Array.from(this.stringIds.keys()),
-      memorySize: this.memoryOffset
-    }
+      libraries: Array.from(this.libraries),
+      extern: Array.from(this.extern),
+      memorySize: this.memoryOffset,
+    };
   }
 }

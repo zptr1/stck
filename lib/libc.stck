@@ -1,0 +1,119 @@
+extern "c"
+  /// memory operations
+  proc memccpy :: int int ptr ptr -> ptr end // n c src dest
+  proc memmem  :: int ptr int ptr -> ptr end // needlelen needle haystacklen haystack
+  proc memcmp  :: int ptr ptr -> int end     // n s2 s1
+  proc memchr  :: int int ptr -> ptr end     // n c s
+  proc memset  :: int int ptr end            // n c s
+  proc memcpy  :: int ptr ptr end            // n src dest
+  proc memmove :: int ptr ptr end            // n src dest
+  proc memfrob :: int ptr end
+
+  /// malloc
+  proc malloc  :: int     -> ptr end
+  proc calloc  :: int int -> ptr end
+  proc realloc :: int ptr -> ptr end
+  proc free    :: ptr end
+
+  /// string operations
+  proc strecpy as cstrecpy :: ptr ptr ptr  -> ptr end
+  proc strncat as cstrncat :: ptr ptr int  -> ptr end
+  proc strncpy as cstrncpy :: ptr ptr int  -> ptr end
+  proc strncmp as cstrncmp :: ptr ptr int  -> int end
+  proc strpbrk as cstrpbrk :: ptr ptr      -> ptr end
+  proc strcspn as cstrcspn :: ptr ptr      -> int end
+  proc strrchr as cstrrchr :: ptr int      -> ptr end
+  proc strcat  as cstrcat  :: ptr ptr      -> ptr end
+  proc strcpy  as cstrcpy  :: ptr ptr      -> ptr end
+  proc strtok  as cstrtok  :: ptr ptr      -> ptr end
+  proc strstr  as cstrstr  :: ptr ptr      -> ptr end
+  proc strchr  as cstrchr  :: ptr int      -> ptr end
+  proc strcmp  as cstrcmp  :: ptr ptr      -> int end
+  proc strspn  as cstrspn  :: ptr ptr      -> int end
+  proc strdup  as cstrdup  :: ptr          -> ptr end
+  proc strlen  as cstrlen  :: ptr          -> int end
+
+  proc strerror  :: int -> ptr end
+  proc strsignal :: int -> ptr end
+
+  /// string <-> integer conversion
+  proc strtol as cstrtol :: int ptr ptr -> int end // base endptr nptr
+  proc atoi as catoi :: ptr -> int end
+  proc atol as catol :: ptr -> int end
+  proc a64l as ca64l :: ptr -> int end
+  proc l64a as cl64a :: int -> ptr end
+
+  /// random
+  proc rand  as crand  -> int end
+  proc srand as csrand :: int end
+  proc arc4random     -> int     end
+  proc arc4random_buf :: int ptr end // size ptr
+
+  /// process
+  
+  // TODO: atexit (requires adding procedure pointers)
+  proc abort end
+  proc exit as cexit :: int end
+
+  proc getenv   :: ptr -> ptr end
+  proc setenv   :: int ptr ptr end // replace value name
+  proc getcwd   :: ptr int -> ptr end
+  proc chdir    :: ptr -> int end
+  proc putenv   :: ptr end
+  proc unsetenv :: ptr end
+  proc sleep    :: int end
+  proc usleep   :: int end
+  proc nice     :: int end
+  proc getpid   -> int end
+  proc getppid  -> int end
+  proc getpgrp  -> int end
+  proc getpgid  -> int end
+  proc fork     -> int end
+
+  /// system
+  proc system :: ptr -> int end
+  proc getlogin -> ptr end
+
+  /// fs
+  proc dirname  :: ptr -> ptr end
+  proc basename :: ptr -> ptr end
+  proc dupfd    :: int -> int end
+  proc dupfd2   :: int int    end
+  proc symlink as fsymlink :: ptr ptr -> int end
+  proc link    as flink    :: ptr ptr -> int end
+  proc unlink  as funlink  :: ptr     -> int end
+  proc rmdir   as frmdir   :: ptr     -> int end
+
+  /// io
+  proc remove as cremove :: ptr -> int end
+  proc rename as crename :: ptr ptr -> int end // new old
+
+  // r, r+, w, w+, a, a+
+  proc fopen     :: ptr ptr     -> ptr end // modes filename
+  proc fmemopen  :: ptr int ptr -> ptr end // modes len ptr
+  proc fgets     :: ptr int ptr -> ptr end // file size dest
+  proc fread     :: ptr int int ptr -> int end // file n size dest
+  proc fwrite    :: ptr int int ptr end // file n size dest
+  proc fseek     :: int int ptr end // whence offset file
+  proc fgetc     :: ptr -> int end
+  proc fputc     :: ptr -> int end
+  proc ftell     :: ptr -> int end
+  proc fclose    :: ptr end
+  proc fflush    :: ptr end
+  proc fcloseall end
+
+  proc getline  as fgetline  :: ptr-to ptr int ptr     -> int end // file delim n lineptr
+  proc getdelim as fgetdelim :: ptr-to ptr int int ptr -> int end // file n lineptr
+  proc getw     as fgetw     :: ptr -> int end
+  proc putw     as fputw     :: ptr int end
+
+  /// stdio
+  proc getchar as cgetchar -> int end
+  proc putchar as cputchar :: int end
+  proc gets    as cgets    :: ptr end
+  proc puts    as cputs    :: ptr end
+  
+  proc getpass :: ptr -> ptr end
+  proc fileno  :: ptr -> int end
+  proc perror  :: ptr end
+end

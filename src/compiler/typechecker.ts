@@ -1,7 +1,7 @@
 import { DataType, Location, TypeFrame, frameToString, Context, INTRINSICS, cloneContext, createContext, formatLoc } from "../shared";
 import { Assert, AstKind, Const, Expr, LiteralType, Proc, Program, WordType } from "../parser";
 import { Err, StckError } from "../errors";
-import { assertNever } from "..";
+import { assertNever } from "../misc";
 import chalk from "chalk";
 
 function handleSignature(
@@ -118,7 +118,7 @@ function insertGenerics(frame: TypeFrame, generics: Map<string, TypeFrame>): Typ
       type: frame.type,
       loc: frame.loc,
       value: insertGenerics(frame.value, generics)
-    }
+    };
   } else {
     return frame;
   }
@@ -138,7 +138,7 @@ export class TypeChecker {
         ctx.stackLocations.push(expr.loc);
       } else if (expr.type == LiteralType.CStr) {
         ctx.stack.push({ type: DataType.Ptr });
-      } else if (expr.type == LiteralType.Int) {
+      } else if (expr.type == LiteralType.Int || expr.type == LiteralType.BigInt) {
         ctx.stack.push({ type: DataType.Int });
       } else if (expr.type == LiteralType.Assembly) {
         throw new StckError(Err.InvalidExpr)
@@ -148,7 +148,9 @@ export class TypeChecker {
         assertNever(expr.type);
       }
     } else if (expr.kind == AstKind.Word) {
-      if (expr.value == "<dump-stack>") {
+      const name = expr.value;
+
+      if (name == "<dump-stack>") {
         expr.type = WordType.Intrinsic;
         console.log(chalk.cyan.bold("debug:"), "Current types on the stack");
         for (let i = 0; i < ctx.stack.length; i++) {
@@ -162,28 +164,36 @@ export class TypeChecker {
           throw new StckError(Err.InvalidExpr)
             .addErr(expr.loc, "cannot use return here");
         }
-      } else if (INTRINSICS.has(expr.value)) {
-        const intrinsic = INTRINSICS.get(expr.value)!;
+      } else if (INTRINSICS.has(name)) {
+        const intrinsic = INTRINSICS.get(name)!;
         expr.type = WordType.Intrinsic;
         handleSignature(
           expr.loc, ctx,
           intrinsic.ins, intrinsic.outs,
           false, true, "for the intrinsic call"
         );
-      } else if (ctx.bindings.has(expr.value)) {
+      } else if (ctx.bindings.has(name)) {
         expr.type = WordType.Binding;
-        ctx.stack.push(ctx.bindings.get(expr.value)!);
+        ctx.stack.push(ctx.bindings.get(name)!);
         ctx.stackLocations.push(expr.loc);
-      } else if (this.program.procs.has(expr.value)) {
-        const proc = this.program.procs.get(expr.value)!;
+      } else if (this.program.procs.has(name)) {
+        const proc = this.program.procs.get(name)!;
         expr.type = WordType.Proc;
         handleSignature(
           expr.loc, ctx,
           proc.signature.ins, proc.signature.outs,
           false, true, "for the procedure call"
         );
-      } else if (this.program.consts.has(expr.value)) {
-        const constant = this.program.consts.get(expr.value)!;
+      } else if (this.program.externs.has(name)) {
+        const extern = this.program.externs.get(name)!;
+        expr.type = WordType.Extern;
+        handleSignature(
+          expr.loc, ctx,
+          extern.signature.ins, extern.signature.outs,
+          false, true, "for the extern call"
+        );
+      } else if (this.program.consts.has(name)) {
+        const constant = this.program.consts.get(name)!;
         if (constant.type.type == DataType.Unknown) {
           throw new StckError(Err.InvalidExpr)
             .addErr(expr.loc, "the constant was used before it was defined");
@@ -192,15 +202,15 @@ export class TypeChecker {
         expr.type = WordType.Constant;
         ctx.stack.push(constant.type);
         ctx.stackLocations.push(expr.loc);
-      } else if (this.program.memories.has(expr.value)) {
+      } else if (this.program.memories.has(name)) {
         expr.type = WordType.Memory;
         ctx.stack.push({ type: DataType.Ptr });
         ctx.stackLocations.push(expr.loc);
-      } else if (this.program.vars.has(expr.value)) {
+      } else if (this.program.vars.has(name)) {
         expr.type = WordType.Var;
         ctx.stack.push({
           type: DataType.PtrTo,
-          value: this.program.vars.get(expr.value)!.type
+          value: this.program.vars.get(name)!.type
         });
         ctx.stackLocations.push(expr.loc);
       } else {
@@ -312,19 +322,14 @@ export class TypeChecker {
   private inferUnsafeBody(body: Expr[], bindings: Set<string>) {
     for (const expr of body) {
       if (expr.kind == AstKind.Word) {
-        if (INTRINSICS.has(expr.value)) {
-          expr.type = WordType.Intrinsic;
-        } else if (bindings.has(expr.value)) {
-          expr.type = WordType.Binding;
-        } else if (this.program.procs.has(expr.value)) {
-          expr.type = WordType.Proc;
-        } else if (this.program.consts.has(expr.value)) {
-          expr.type = WordType.Constant;
-        } else if (this.program.memories.has(expr.value)) {
-          expr.type = WordType.Memory;
-        } else if (this.program.vars.has(expr.value)) {
-          expr.type = WordType.Var;
-        } else {
+        if (INTRINSICS.has(expr.value)) expr.type = WordType.Intrinsic;
+        else if (bindings.has(expr.value)) expr.type = WordType.Binding;
+        else if (this.program.procs.has(expr.value)) expr.type = WordType.Proc;
+        else if (this.program.consts.has(expr.value)) expr.type = WordType.Constant;
+        else if (this.program.memories.has(expr.value)) expr.type = WordType.Memory;
+        else if (this.program.vars.has(expr.value)) expr.type = WordType.Var;
+        else if (this.program.externs.has(expr.value)) expr.type = WordType.Extern;
+        else {
           throw new StckError(Err.InvalidExpr)
             .addErr(expr.loc, "unknown word");
         }
@@ -351,7 +356,7 @@ export class TypeChecker {
   }
 
   private validateProc(proc: Proc) {
-    const ctx = createContext();
+    const ctx = createContext(proc);
     if (!proc.inline) {
       ctx.returnTypes = proc.signature.outs;
     }
@@ -385,7 +390,7 @@ export class TypeChecker {
   }
 
   private validateConst(constant: Const) {
-    const ctx = createContext();
+    const ctx = createContext(constant);
     this.validateBody(constant.body, ctx);
     handleSignature(
       constant.loc, ctx,
@@ -398,7 +403,7 @@ export class TypeChecker {
   }
 
   private validateMemory(memory: Const) {
-    const ctx = createContext();
+    const ctx = createContext(memory);
     this.validateBody(memory.body, ctx);
     handleSignature(
       memory.loc, ctx,
@@ -408,7 +413,7 @@ export class TypeChecker {
   }
 
   private validateAssert(assert: Assert) {
-    const ctx = createContext();
+    const ctx = createContext(assert);
     this.validateBody(assert.body, ctx);
     handleSignature(
       assert.loc, ctx,

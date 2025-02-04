@@ -1,8 +1,23 @@
+const max(i8)  127 end
+const max(i16) 32767 end
+const max(i32) 2147483647 end
+const max(i64) 9223372036854775807 end
+
+const min(i8)  -128 end
+const min(i16) -32768 end
+const min(i32) -2147483648 end
+const min(i64) -9223372036854775808 end
+
+const max(u8)  255 end
+const max(u16) 65535 end
+const max(u32) 4294967295 end
+// TODO: max(u64)
+
 var lcg_seed int end
 const LCG_MULTIPLIER 6364136223846793005 end
 const LCG_INCREMENT  1442695040888963407 end
 
-/// Returns a random 64-bit integer using the linear congruential generator algorithm
+/// Returns a random 64-bit integer using LCG
 proc rand -> int do
   lcg_seed @int
   LCG_MULTIPLIER mul LCG_INCREMENT add

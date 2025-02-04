@@ -11,6 +11,8 @@ export interface IRProgram {
   procs: Map<number, Instruction[]>;
   strings: string[];
   memorySize: number;
+  libraries: string[];
+  extern: string[];
 }
 
 export function createContext(loc: Location): CompilerContext {
@@ -19,5 +21,5 @@ export function createContext(loc: Location): CompilerContext {
     bindings: new Map(),
     labelCount: 0,
     loc,
-  }
+  };
 }

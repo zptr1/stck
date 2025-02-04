@@ -123,21 +123,10 @@ Importing files with an `.asm` extension would include them in the compiled `.as
 %include "./example.asm"
 ```
 
+## Special `_load_` procedure
+This procedure is not callable and cannot take any parameters or output anything.
+
+This procedure can be defined as many times, and will be called when the program starts before `main`.
+
 ## FFI/Linking
-
-Currently, the compiler outputs a native executable without any linking. Using a linker could improve the cross platform support and allow for even more functionality.
-
-Here's an example:
-```
-// include the `puts` function from the C standard library
-extern puts
-
-// will automatically create 7 procedures - 'puts()', 'puts(1)', 'puts(2)', ...
-// these procedures could then be used to call the included external function using the provided amount of arguments
-// (no arguments for `puts()`, one argument for `puts(1)` and so on)
-
-proc main
-  c"Hello, World\n" puts(1) drop
-end
-```
-(**TODO:** haven't thought about how would including custom external functions work yet)
+Implemented

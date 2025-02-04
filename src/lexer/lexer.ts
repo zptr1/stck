@@ -1,7 +1,10 @@
 import { KEYWORDS, Token, Tokens } from "./token";
 import { File, Location, Span } from "../shared";
+import { i64_MAX, i64_MIN } from "../misc";
 import { Err, StckError } from "../errors";
-import { i64_MAX, i64_MIN } from "..";
+
+const HEX_DIGITS = "0123456789abcdefABCDEF";
+const DEC_DIGITS = "0123456789";
 
 export class Lexer {
   private cursor: number = 0;
@@ -32,7 +35,7 @@ export class Lexer {
       this.cursor++;
   }
 
-  private readString(quote='"'): string {
+  private readString(quote='"', raw=false): string {
     let value = "";
 
     this.cursor++;
@@ -44,6 +47,15 @@ export class Lexer {
         const esc = this.source[this.cursor++];
         if (!esc) {
           this.error("unexpected EOF");
+        } else if (raw) {
+          value += "\\" + esc;
+        } else if (esc == "u") {
+          const code = this.source.slice(this.cursor, this.cursor += 4);
+          if (!code.match(/^[\da-f]{4}$/i)) {
+            this.error("invalid unicode escape sequence");
+          }
+
+          value += String.fromCharCode(parseInt(code, 16));
         } else if (esc == "n") {
           value += "\n";
         } else if (esc == "r") {
@@ -103,14 +115,22 @@ export class Lexer {
   private readWordToken(): Token {
     let value = this.source[this.cursor++];
     let isInt = "-0123456789".includes(value);
+    let isHex = false;
 
     while (this.cursor < this.source.length) {
       const ch = this.source[this.cursor++];
       if (" \n\r\t".includes(ch))
         break;
 
+      if (ch == "x" && value == "0") {
+        isHex = true;
+      } else if (isHex) {
+        HEX_DIGITS.includes(ch) || this.error("expected a hexadecimal digit");
+      } else if (isInt && !DEC_DIGITS.includes(ch)) {
+        isInt = false;
+      }
+
       value += ch;
-      isInt &&= "0123456789".includes(ch);
     }
 
     if (isInt && value != "-") {
@@ -128,7 +148,7 @@ export class Lexer {
       return {
         kind: value as Tokens,
         loc: this.span()
-      }
+      };
     } else if (value == "asm") {
       return this.readAsmBlock();
     } else {
@@ -173,6 +193,13 @@ export class Lexer {
         tokens.push({
           kind: Tokens.CStr,
           value: this.readString(),
+          loc: this.span()
+        });
+      } else if (peek == "r" && this.source[this.cursor + 1] == '"') {
+        this.cursor++;
+        tokens.push({
+          kind: Tokens.Str,
+          value: this.readString('"', true),
           loc: this.span()
         });
       } else if (peek == "'") {

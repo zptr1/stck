@@ -10,13 +10,17 @@
 const true  1 cast(bool) end
 const false 0 cast(bool) end
 
+const NULL 0 cast(ptr) end
+
 const sizeof(u8)  1 end
 const sizeof(u16) 2 end
 const sizeof(u32) 4 end
 const sizeof(u64) 8 end
 
-const sizeof(int)  sizeof(u64) end
-const sizeof(ptr)  sizeof(u64) end
+const sizeof(int) sizeof(u64) end
+const sizeof(ptr) sizeof(u64) end
+
+// not sure if this should be u8 or u64, because all cells on the stack are 64 bit
 const sizeof(bool) sizeof(u8)  end
 
 /// Pointer operations

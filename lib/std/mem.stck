@@ -1,15 +1,3 @@
-/// Copy N bytes from one pointer to another
-proc memcpy :: int ptr ptr do
-  let len from to do
-    0 while dup len lt do
-      dup
-      from over ptr+ read8
-      to   rot  ptr+ write8
-      1 add
-    end drop
-  end
-end
-
 inline proc u8cpy  :: ptr ptr do swap read8 swap write8 end
 inline proc u16cpy :: ptr ptr do swap read16 swap write16 end
 inline proc u32cpy :: ptr ptr do swap read32 swap write32 end

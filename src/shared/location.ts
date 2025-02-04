@@ -44,7 +44,7 @@ export class File {
     return {
       file: this,
       span
-    }
+    };
   }
 
   child(path: string, source?: string) {
@@ -55,23 +55,8 @@ export class File {
     }
   }
 
-  parentStack(): string[] {
-    const stack: string[] = [];
-    let file: File = this;
-
-    while (file.parent) {
-      file = file.parent;
-      stack.push(file.path);
-    }
-
-    return stack;
-  }
-
   lineColumn(index: number) {
-    if (!this.lc) {
-      this.lc = lineColumn(this.source);
-    }
-
+    this.lc ??= lineColumn(this.source);
     return this.lc.fromIndex(index);
   }
 

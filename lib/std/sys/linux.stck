@@ -7,13 +7,41 @@ inline proc openat :: int int ptr -> int do
   sys_openat syscall4
 end
 
-var _getrand_buf int end
+inline proc mmap :: int int int -> ptr do
+  let flags prot size do
+    0 -1 flags prot size 0 sys_mmap syscall6 cast(ptr)
+  end
+end
+
+inline proc munmap :: int ptr do
+  sys_munmap syscall2 drop
+end
+
+// TODO: File stats struct
+memory _stats_buf 256 end
+
+/// Read a file (path must be a c-string)
+proc readfile :: ptr -> int ptr do
+  0 O_RDONLY rot openat
+  _stats_buf over fstat drop
+  _stats_buf 48 ptr+ read64  // get st_size
+
+  // offset fd flags prot length addr
+  2dup 0 rot rot 2 1 rot 0 sys_mmap syscall6
+  cast(ptr)  // fd len data
+
+  // close fd
+  rot close drop
+end
 
 /// Get a cryptographically secure 32-bit integer
+var _getrand_buf int end
 inline proc getrandom -> int do
   GRND_RANDOM sizeof(int) _getrand_buf sys_getrandom syscall3 drop
   _getrand_buf @int
 end
+
+/// Time
 
 const timespec.tv_sec  sizeof(int) offset end
 const timespec.tv_nsec sizeof(u64) offset end
@@ -66,6 +94,29 @@ const S_IXOTH   00001 end
 const S_ISUID 0004000 end
 const S_ISGID 0002000 end
 const S_ISVTX 0001000 end
+
+/// Protection modes for sys_mmap
+const PROT_NONE  0 end
+const PROT_READ  1 end
+const PROT_WRITE 2 end
+const PROT_EXEC  4 end
+
+/// Flags for sys_mmap
+const MAP_FILE      0   end
+const MAP_SHARED    1   end
+const MAP_PRIVATE   2   end
+const MAP_FIXED     16  end
+const MAP_ANONYMOUS 32  end
+const MAP_32BIT     64  end
+
+const MAP_GROWSDOWN  256    end
+const MAP_DENYWRITE  2048   end
+const MAP_EXECUTABLE 4096   end
+const MAP_LOCKED     8196   end
+const MAP_NORESERVE  16384  end
+const MAP_POPULATE   32768  end
+const MAP_NONBLOCK   65536  end
+const MAP_STACK      131072 end
 
 /// Flags for sys_getrandom
 const GRND_NONBLOCK 1 end

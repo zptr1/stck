@@ -1,5 +1,5 @@
+import { assertNever } from "../misc";
 import { Location } from "../shared";
-import { assertNever } from "..";
 import chalk from "chalk";
 
 export enum Err {
@@ -90,15 +90,12 @@ export function errToStr(err: Err): string {
 }
 
 export function errSpanColor(kind: ErrSpanKind) {
-  if (kind == ErrSpanKind.Error) {
-    return chalk.red.bold;
-  } else if (kind == ErrSpanKind.Warn) {
-    return chalk.yellow.bold;
-  } else if (kind == ErrSpanKind.Note) {
-    return chalk.blue.bold;
-  } else {
-    return chalk.dim.bold;
-  }
+  return (
+    kind == ErrSpanKind.Error ? chalk.red.bold
+    : kind == ErrSpanKind.Warn ? chalk.yellow.bold
+    : kind == ErrSpanKind.Note ? chalk.blue.bold
+    : chalk.dim.bold
+  );
 }
 
 export function errSpanArrow(kind: ErrSpanKind, size: number) {

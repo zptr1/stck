@@ -11,6 +11,7 @@ export enum AstKind {
   Let,
   Cast,
   Assert,
+  Extern,
 }
 
 export enum WordType {
@@ -22,10 +23,12 @@ export enum WordType {
   Constant,
   Binding,
   Return,
+  Extern
 }
 
 export enum LiteralType {
   Int,
+  BigInt,
   Str,
   CStr,
   Assembly
@@ -38,8 +41,10 @@ export interface Program {
   procs: Map<string, Proc>;
   consts: Map<string, Const>;
   memories: Map<string, Const>;
+  externs: Map<string, Extern>;
   vars: Map<string, Var>;
   assertions: Assert[];
+  libraries: string[];
 }
 
 export interface Signature {
@@ -73,6 +78,7 @@ export interface Proc extends Ast<AstKind.Proc> {
   name: string;
   body: Expr[];
   signature: Signature;
+  memories: Map<string, Const>;
   unsafe: boolean;
   inline: boolean;
 }
@@ -106,4 +112,11 @@ export interface Let extends Ast<AstKind.Let> {
 
 export interface Cast extends Ast<AstKind.Cast> {
   types: TypeFrame[];
+}
+
+export interface Extern extends Ast<AstKind.Extern> {
+  name: string;
+  symbol: string;
+  signature: Signature;
+  library: string;
 }

@@ -1,4 +1,5 @@
-import { assertNever } from "..";
+import { Assert, Const, Proc } from "../parser";
+import { assertNever } from "../misc";
 import { Location } from ".";
 
 export enum DataType {
@@ -8,6 +9,8 @@ export enum DataType {
   Bool,
   PtrTo,
   Generic,
+  // TODO: static pointers to differentiate between
+  // pre-allocated and dynamically allocated pointers
 }
 
 export type TypeFrame = (
@@ -26,10 +29,11 @@ export interface Context {
   stackLocations: Location[];
   bindings: Map<string, TypeFrame>;
   returnTypes: TypeFrame[] | undefined;
-  // ...
+  location: Proc | Const | Assert;
 }
 
 export function createContext(
+  location: Proc | Const | Assert,
   stack: TypeFrame[] = [],
   stackLocations: Location[] = [],
   bindings: Map<string, TypeFrame> = new Map(),
@@ -39,12 +43,14 @@ export function createContext(
     stack,
     stackLocations,
     bindings,
-    returnTypes
-  }
+    returnTypes,
+    location
+  };
 }
 
 export function cloneContext(ctx: Context): Context {
   return createContext(
+    ctx.location,
     structuredClone(ctx.stack),
     ctx.stackLocations.slice(),
     ctx.bindings,
@@ -53,21 +59,15 @@ export function cloneContext(ctx: Context): Context {
 }
 
 export function frameToString(frame: TypeFrame): string {
-  if (frame.type == DataType.Unknown) {
-    return "unknown";
-  } else if (frame.type == DataType.Ptr) {
-    return "ptr";
-  } else if (frame.type == DataType.Int) {
-    return "int";
-  } else if (frame.type == DataType.Bool) {
-    return "bool";
-  } else if (frame.type == DataType.PtrTo) {
-    return `ptr(${frameToString(frame.value)})`;
-  } else if (frame.type == DataType.Generic) {
-    return `<${frame.label}>(${frameToString(frame.value)})`;
-  } else {
-    assertNever(frame);
-  }
+  return (
+    frame.type == DataType.Unknown ? "unknown"
+    : frame.type == DataType.Ptr ? "ptr"
+    : frame.type == DataType.Int ? "int"
+    : frame.type == DataType.Bool ? "bool"
+    : frame.type == DataType.PtrTo ? `ptr(${frameToString(frame.value)})`
+    : frame.type == DataType.Generic ? `<${frame.label}>(${frameToString(frame.value)})`
+    : assertNever(frame)
+  );
 }
 
 export function sizeOf(frame: TypeFrame): number {

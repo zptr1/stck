@@ -2,7 +2,36 @@
 
 This is the changelog for **stck**.
 
-## [unreleased]
+## 0.1.5 - 2025-02-01
+Welp, back to working on this language I guess!
+
+### Added
+- Added FFI support!!! Some stuff might not work because this is a stack based language but oh well!
+- Strings now support unicode characters. Obviously, unicode escape sequences are now also a thing.
+- Added raw strings using the `r"..."` syntax. For example, `r"\n\"\u0069"` will output `\n\"\u0069`
+- Added `override`, which can be used to override a previously defined object (constant, procedure, memory region, etc)
+- Added `mmap`, `munmap` and `readfile` procedures to the standard library
+- Added some useful constants and enums to std
+- New library `libc` containing libc headers to use for stck
+- Added hexadecimal numbers
+
+### Changed
+- Improved the way call and data stacks work.
+- `reset` and `offset` can now be used at runtime
+- The call stack is now allocated on the regular stack instead of being allocated in the executable using `rb`
+- The call and data stacks are now swapped more efficiently, using two `mov`s now instead of three.
+- Optimized infinite loops
+
+### Removed
+- `memcpy` procedure from std
+
+### Fixed
+- Fixed `dump-stack` not being usable more than once in one procedure
+- The CLI now appends a random string to temporary files when running to avoid possible conflicts when running multiple stck programs at the same time
+- The CLI now deletes temporary files
+- Fixed `read64` and `write64` being 32-bit instead of 64-bit
+
+## 0.1.4 - 2023-10-10
 
 ### Added
 
@@ -13,7 +42,7 @@ This is the changelog for **stck**.
 ### Changed
 
 - Improved the codegen
-- Reduced the callstack size from 640KB (±80k call depth) to 80KB (±10k call depth). This also reduces the size of the compiled executables by 87.5%
+- Reduced the callstack size from 640KB (±80k call depth) to 80KB (±10k call depth)
 
 ### Fixed
 

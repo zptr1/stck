@@ -1,5 +1,6 @@
 %include "std"
+%include "libc"
 
-proc main do
-  "Hello, World!\n" puts
-end
+proc a do a end
+
+proc main do a end

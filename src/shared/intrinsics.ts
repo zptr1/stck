@@ -9,24 +9,21 @@ export interface Intrinsic {
   outs: TypeFrame[];
 }
 
+function createTypeObject(x: string | DataType): TypeFrame {
+  return typeof x == "string" ? {
+    type: DataType.Generic,
+    value: { type: DataType.Unknown },
+    label: x
+  } : {
+    type: x as any
+  };
+}
+
 function addIntrinsic(name: string, instr: Instr, ins: (DataType | string)[], outs: (DataType | string)[]) {
   INTRINSICS.set(name, {
     instr,
-    // TODO: Find a better way to do this
-    ins: ins.map(
-      (x) => typeof x == "string" ? {
-        type: DataType.Generic,
-        value: { type: DataType.Unknown },
-        label: x,
-      } : { type: x as any }
-    ),
-    outs: outs.map(
-      (x) => typeof x == "string" ? {
-        type: DataType.Generic,
-        value: { type: DataType.Unknown },
-        label: x,
-      } : { type: x as any }
-    )
+    ins: ins.map(createTypeObject),
+    outs: outs.map(createTypeObject)
   });
 }
 
@@ -73,11 +70,11 @@ addIntrinsic("over", Instr.Over, ["a", "b"],      ["a", "b", "a"]);
 addIntrinsic("write8",  Instr.Write8,  [DataType.Int, DataType.Ptr], []);
 addIntrinsic("write16", Instr.Write16, [DataType.Int, DataType.Ptr], []);
 addIntrinsic("write32", Instr.Write32, [DataType.Int, DataType.Ptr], []);
-addIntrinsic("write64", Instr.Write32, [DataType.Int, DataType.Ptr], []);
+addIntrinsic("write64", Instr.Write64, [DataType.Int, DataType.Ptr], []);
 addIntrinsic("read8",   Instr.Read8,   [DataType.Ptr],               [DataType.Int]);
 addIntrinsic("read16",  Instr.Read16,  [DataType.Ptr],               [DataType.Int]);
 addIntrinsic("read32",  Instr.Read32,  [DataType.Ptr],               [DataType.Int]);
-addIntrinsic("read64",  Instr.Read32,  [DataType.Ptr],               [DataType.Int]);
+addIntrinsic("read64",  Instr.Read64,  [DataType.Ptr],               [DataType.Int]);
 
 // Program
 addIntrinsic("puts",        Instr.Puts,      [DataType.Int, DataType.Ptr], []);
@@ -86,6 +83,6 @@ addIntrinsic("exit",        Instr.Halt,      [DataType.Int], []);
 addIntrinsic("dump-stack",  Instr.DumpStack, [], []);
 
 // Compile-time
-addIntrinsic("?stack-types", Instr.Nop, [], []);
-addIntrinsic("offset",       Instr._CExpr__Offset, [DataType.Int], [DataType.Int]);
-addIntrinsic("reset",        Instr._CExpr__Reset,  [],             [DataType.Int]);
+addIntrinsic("?stack-types", Instr.Nop,    [], []);
+addIntrinsic("offset",       Instr.Offset, [DataType.Int], [DataType.Int]);
+addIntrinsic("reset",        Instr.Reset,  [],             [DataType.Int]);

@@ -1,0 +1,1 @@
+%include "std" unsafe proc main do r"%include \"std\" unsafe proc main do r\"_\" let L P do P while dup L P add lt do dup read8 if dup 95 eq do drop L P puts elif dup 92 eq do drop else putch end 1 add end end end" let L P do P while dup L P add lt do dup read8 if dup 95 eq do drop L P puts elif dup 92 eq do drop else putch end 1 add end end end

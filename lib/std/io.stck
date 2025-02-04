@@ -4,6 +4,8 @@ const stdin  0 end
 const stdout 1 end
 const stderr 2 end
 
+const EOF -1 end
+
 memory _putch_buf 1 end
 /// Writes a character to the standard output
 inline proc putch :: int do

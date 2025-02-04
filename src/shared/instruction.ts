@@ -3,7 +3,7 @@ export enum Instr {
   Label,
 
   Push,
-  Push64,
+  PushBigInt,
   PushStr,
   PushLocal,
   PushMem,
@@ -11,6 +11,7 @@ export enum Instr {
 
   // Control flow
   Call,
+  CallExtern,
   Ret,
   Jmp,
   JmpIfNot,
@@ -38,12 +39,12 @@ export enum Instr {
   GtEq,
 
   // Bitwise Operations
-  Shl,  // <<
-  Shr,  // >>
-  Not,  // ~
-  Or,   // |
-  And,  // &
-  Xor,  // ^
+  Shl,
+  Shr,
+  Not,
+  Or,
+  And,
+  Xor,
 
   // Stack manipulation
   Dup,
@@ -74,25 +75,27 @@ export enum Instr {
   Halt,
   DumpStack,
 
-  // Compile-time expressions
-  _CExpr__Offset,
-  _CExpr__Reset
+  Offset,
+  Reset
+}
+
+export enum Size {
+  Byte = "byte",
+  Short = "word",
+  Int = "dword",
+  Long = "qword"
 }
 
 type _instr = (
-  | { kind: Instr.Push | Instr.Push64, value: bigint }
+  | { kind: Instr.Push, value: bigint, size: Size }
+  | { kind: Instr.PushBigInt, value: bigint }
   | { kind: Instr.PushStr, id: number, len: number }
   | { kind: Instr.PushMem, offset: number }
   | { kind: Instr.PushLocal, offset: number }
   | { kind: Instr.AsmBlock, value: string }
-  | {
-    kind: Instr.Bind | Instr.Unbind,
-    count: number
-  }
-  | {
-      kind: Instr.Jmp | Instr.JmpIfNot | Instr.Label,
-      label: number
-    }
+  | { kind: Instr.Bind | Instr.Unbind, count: number }
+  | { kind: Instr.Jmp | Instr.JmpIfNot | Instr.Label, label: number }
+  | { kind: Instr.CallExtern, name: string, argc: number, hasOutput: boolean }
   | { kind: Instr.Call, id: number }
   | { kind: Instr.Halt, code: number | null }
 );

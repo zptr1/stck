@@ -18,8 +18,9 @@ proc fib-loop do
 end
 
 proc main do
-  "fib(10) = " puts 10 fib-recursion print
+  40 fib-recursion print
+  // "fib(10) = " puts 10 fib-recursion print
 
-  "Fibonacci sequence to 10th term:\n" puts
-  fib-loop
+  // "Fibonacci sequence to 10th term:\n" puts
+  // fib-loop
 end

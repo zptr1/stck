@@ -1,17 +1,20 @@
-import { Assert, AstKind, Condition, Const, Expr, Let, LiteralType, Proc, Program, Var, While, WordType } from "./ast";
+import { Assert, AstKind, Condition, Const, Expr, Extern, Let, LiteralType, Proc, Program, Var, While, WordType } from "./ast";
 import { DataType, INTRINSICS, Location, TypeFrame, sizeOf } from "../shared";
 import { Err, StckError } from "../errors";
+import { i32_MAX, i32_MIN } from "../misc";
 import { Token, Tokens } from "../lexer";
-import chalk from "chalk";
 
 export class Parser {
   public readonly procs = new Map<string, Proc>();
   public readonly consts = new Map<string, Const>();
   public readonly memories = new Map<string, Const>();
+  public readonly externs = new Map<string, Extern>();
   public readonly vars = new Map<string, Var>();
   public readonly assertions: Assert[] = [];
+  public readonly libraries: string[] = [];
 
   private readonly lastToken: Token;
+  private override: boolean = false;
 
   constructor (
     private readonly tokens: Token[]
@@ -24,74 +27,79 @@ export class Parser {
     return this.tokens.pop()!;
   }
 
-  private nextOf(kind: Tokens) {
+  private peek() {
+    return this.tokens.at(-1)!;
+  }
+
+  private nextOf(kind: Tokens, message?: string) {
     const token = this.next();
     if (!token || token.kind != kind) {
       throw new StckError(Err.UnexpectedToken)
-        .addErr(token?.loc ??  this.lastToken.loc, `expected \`${kind}\``);
+        .addErr(token?.loc ?? this.lastToken.loc, message || `expected \`${kind}\``);
     }
 
     return token;
   }
 
-  private checkUniqueDefinition(name: string, loc: Location) {
-    if (INTRINSICS.has(name)) {
+  private checkUniqueDefinition({ loc, value }: Token) {
+    if (INTRINSICS.has(value)) {
       throw new StckError(Err.DuplicatedDefinition)
         .addErr(loc, "there is already an intrinsic with the same name");
-    } else if (this.procs.has(name)) {
-      throw new StckError(Err.DuplicatedDefinition)
-        .addErr(loc, "there is already a procedure with the same name")
-        .addNote(this.procs.get(name)!.loc, "defined here");
-    } else if (this.consts.has(name)) {
-      throw new StckError(Err.DuplicatedDefinition)
-        .addErr(loc, "there is already a constant with the same name")
-        .addNote(this.consts.get(name)!.loc, "defined here");
-    } else if (this.memories.has(name)) {
-      throw new StckError(Err.DuplicatedDefinition)
-        .addErr(loc, "there is already a memory region with the same name")
-        .addNote(this.memories.get(name)!.loc, "defined here");
-    } else if (this.vars.has(name)) {
-      throw new StckError(Err.DuplicatedDefinition)
-        .addErr(loc, "there is already a variable with the same name")
-        .addNote(this.vars.get(name)!.loc, "defined here");
     }
+    
+    for (const registry of [this.procs, this.consts, this.memories, this.vars, this.externs]) {
+      if (registry.has(value)) {
+        if (this.override) registry.delete(value);
+        else {
+          throw new StckError(Err.DuplicatedDefinition)
+            .addNote(registry.get(value)!.loc, "previously defined here")
+            .addErr(loc, "duplicated definition of the word")
+            .addHint("use `override` to override");
+        }
+      }
+    }
+
+    this.override = false;
   }
 
   private parseExpr(token: Token): Expr {
-    if (
-      token.kind == Tokens.Int
-      || token.kind == Tokens.Str
-      || token.kind == Tokens.CStr
-      || token.kind == Tokens.AsmBlock
-    ) {
+    // TODO: make this nicer
+    if (token.kind == Tokens.Int) {
+      return {
+        kind: AstKind.Literal, loc: token.loc,
+        type: token.value > i32_MAX || token.value < i32_MIN
+          ? LiteralType.BigInt
+          : LiteralType.Int,
+        value: token.value
+      };
+    } else if (token.kind == Tokens.Str || token.kind == Tokens.CStr || token.kind == Tokens.AsmBlock) {
       return {
         kind: AstKind.Literal, loc: token.loc,
         type: (
-          token.kind == Tokens.Int        ? LiteralType.Int
-          : token.kind == Tokens.Str      ? LiteralType.Str
-          : token.kind == Tokens.CStr     ? LiteralType.CStr
-          : token.kind == Tokens.AsmBlock ? LiteralType.Assembly
+          token.kind == Tokens.AsmBlock ? LiteralType.Assembly
+          : token.kind == Tokens.CStr ? LiteralType.CStr
+          : token.kind == Tokens.Str ? LiteralType.Str
           : 0
         ),
         value: token.value
-      }
+      };
     } else if (token.kind == Tokens.Word) {
       return {
         kind: AstKind.Word, loc: token.loc,
         type: WordType.Unknown,
         value: token.value
-      }
+      };
     } else if (token.kind == Tokens.Return) {
       return {
         kind: AstKind.Word, loc: token.loc,
         type: WordType.Return,
         value: token.value
-      }
-    } else if (token.kind == Tokens.Cast) {
-      return {
-        kind: AstKind.Cast, loc: token.loc,
-        types: this.parseSignature(token.loc, [Tokens.End])[0]
       };
+    } else if (token.kind == Tokens.Cast) {
+      const types = this.parseSignature(token.loc);
+      this.nextOf(Tokens.End);
+
+      return { kind: AstKind.Cast, loc: token.loc, types };
     } else if (token.kind == Tokens.If) {
       return this.parseCondition(token.loc);
     } else if (token.kind == Tokens.While) {
@@ -110,7 +118,7 @@ export class Parser {
       condition: [],
       body: [],
       else: []
-    }
+    };
 
     while (true) {
       const token = this.next();
@@ -155,7 +163,7 @@ export class Parser {
       kind: AstKind.While, loc,
       condition: [],
       body: []
-    }
+    };
 
     while (true) {
       const token = this.next();
@@ -179,7 +187,7 @@ export class Parser {
       kind: AstKind.Let, loc,
       bindings: [],
       body: []
-    }
+    };
 
     while (true) {
       const token = this.next();
@@ -238,27 +246,27 @@ export class Parser {
       return {
         type: DataType.Int,
         loc: token.loc
-      }
+      };
     } else if (token.value == "bool") {
       return {
         type: DataType.Bool,
         loc: token.loc
-      }
+      };
     } else if (token.value == "ptr") {
       return {
         type: DataType.Ptr,
         loc: token.loc
-      }
+      };
     } else if (token.value == "ptr") {
       return {
         type: DataType.Ptr,
         loc: token.loc
-      }
+      };
     } else if (token.value == "ptr-to") {
       return {
         type: DataType.PtrTo, loc: token.loc,
         value: this.parseType(this.nextOf(Tokens.Word), loc, unsafe)
-      }
+      };
     } else if (token.value == "unknown") {
       if (!unsafe) {
         throw new StckError(Err.InvalidType)
@@ -270,7 +278,7 @@ export class Parser {
 
       return {
         type: DataType.Unknown, loc: token.loc
-      }
+      };
     } else if (token.value[0] == "<" && token.value.endsWith(">")) {
       if (!unsafe) {
         throw new StckError(Err.InvalidType)
@@ -283,10 +291,8 @@ export class Parser {
       return {
         type: DataType.Generic, loc: token.loc,
         label: token.value,
-        value: {
-          type: DataType.Unknown
-        }
-      }
+        value: { type: DataType.Unknown }
+      };
     } else {
       throw new StckError(Err.InvalidType)
         .addNote(loc, "type signature starts here")
@@ -294,22 +300,15 @@ export class Parser {
     }
   }
 
-  private parseSignature(loc: Location, end: Tokens[], unsafe: boolean = false): [TypeFrame[], Token] {
+  private parseSignature(loc: Location, unsafe: boolean = false): TypeFrame[] {
     const types: TypeFrame[] = [];
 
     while (this.tokens.length) {
-      const token = this.next();
+      const token = this.nextOf(Tokens.Word, "expected a type");
+      types.push(this.parseType(token, loc, unsafe));
 
-      if (!token) {
-        break;
-      } else if (end.includes(token.kind)) {
-        return [types, token];
-      } else if (token.kind == Tokens.Word) {
-        types.push(this.parseType(token, loc, unsafe));
-      } else {
-        throw new StckError(Err.InvalidType)
-          .addNote(loc, "type signature starts here")
-          .addErr(token.loc, "unexpected token");
+      if (this.peek().kind != Tokens.Word) {
+        return types;
       }
     }
 
@@ -319,48 +318,26 @@ export class Parser {
 
   private parseProc(loc: Location, inline: boolean, unsafe: boolean) {
     const name = this.nextOf(Tokens.Word);
-    this.checkUniqueDefinition(name.value, name.loc);
+    this.checkUniqueDefinition(name);
 
     const proc: Proc = {
       kind: AstKind.Proc, loc,
       name: name.value,
-      signature: { ins: [], outs: [] },
+      signature: {
+        ins: this.peek().kind == Tokens.SigIns ? this.parseSignature(this.next().loc, unsafe) : [],
+        outs: this.peek().kind == Tokens.SigOuts ? this.parseSignature(this.next().loc, unsafe) : []
+      },
       inline, unsafe,
-      body: [],
-    }
-
-    // TODO: Find a better way to do this
-    const token = this.next();
-    if (token.kind == Tokens.SigIns) {
-      const [types, end] = this.parseSignature(token.loc, [Tokens.Do, Tokens.SigOuts], unsafe);
-      proc.signature.ins = types;
-
-      if (end.kind == Tokens.SigOuts) {
-        const [types, end2] = this.parseSignature(end.loc, [Tokens.Do], unsafe);
-        proc.signature.outs = types;
-        proc.body = this.parseBody(end2.loc);
-      } else {
-        proc.body = this.parseBody(end.loc);
-      }
-    } else if (token.kind == Tokens.SigOuts) {
-      const [types, end] = this.parseSignature(token.loc, [Tokens.Do], unsafe);
-      proc.signature.outs = types;
-      proc.body = this.parseBody(end.loc);
-    } else if (token.kind == Tokens.Do) {
-      proc.body = this.parseBody(token.loc);
-    } else {
-      throw new StckError(Err.UnexpectedToken)
-        .addNote(loc, "procedure defined here")
-        .addErr(token.loc, "unexpected token")
-        .addHint(`did you forget to add ${chalk.yellow.bold("do")} after the name of the procedure?`);
-    }
+      memories: new Map(),
+      body: this.parseBody(this.nextOf(Tokens.Do).loc)
+    };
 
     this.procs.set(proc.name, proc);
   }
 
   private parseConst(loc: Location) {
     const name = this.nextOf(Tokens.Word);
-    this.checkUniqueDefinition(name.value, name.loc);
+    this.checkUniqueDefinition(name);
 
     this.consts.set(name.value, {
       kind: AstKind.Const, loc,
@@ -372,8 +349,10 @@ export class Parser {
 
   private parseVar(loc: Location) {
     const name = this.nextOf(Tokens.Word);
-    this.checkUniqueDefinition(name.value, name.loc);
-    const [sig, end] = this.parseSignature(name.loc, [Tokens.End]);
+    this.checkUniqueDefinition(name);
+
+    const sig = this.parseSignature(name.loc);
+    const end = this.nextOf(Tokens.End);
 
     if (sig.length < 1) {
       throw new StckError(Err.InvalidType)
@@ -395,7 +374,7 @@ export class Parser {
 
   private parseMemory(loc: Location) {
     const name = this.nextOf(Tokens.Word);
-    this.checkUniqueDefinition(name.value, name.loc);
+    this.checkUniqueDefinition(name);
 
     this.memories.set(name.value, {
       kind: AstKind.Const, loc,
@@ -413,6 +392,50 @@ export class Parser {
     });
   }
 
+  private parseExtern(loc: Location) {
+    const library = this.nextOf(Tokens.Str).value;
+    this.libraries.push(library);
+
+    while (this.tokens.length) {
+      const token = this.next();
+
+      if (token.kind == Tokens.End) return;
+      if (!token || token.kind != Tokens.Proc) {
+        throw new StckError(Err.UnexpectedToken)
+          .addErr(token?.loc ?? this.lastToken.loc, "expected `proc`");
+      }
+
+      const symbol = this.nextOf(Tokens.Word);
+      const name = this.peek().kind == Tokens.As
+        ? this.next() && this.nextOf(Tokens.Word)
+        : symbol;
+
+      this.checkUniqueDefinition(name);
+
+      const extern: Extern = {
+        kind: AstKind.Extern, loc: token.loc,
+        symbol: symbol.value, library,
+        name: name.value,
+        signature: {
+          ins: this.peek().kind == Tokens.SigIns ? this.parseSignature(this.next().loc) : [],
+          outs: this.peek().kind == Tokens.SigOuts ? this.parseSignature(this.next().loc) : [],
+        }
+      };
+
+      if (extern.signature.outs.length > 1) {
+        throw new StckError(Err.InvalidType)
+          .addErr(extern.signature.outs.at(-1)?.loc!, "external functions can only return one value")
+          .addNote(token.loc, "extern defined here");
+      }
+
+      this.nextOf(Tokens.End);
+      this.externs.set(extern.name, extern);
+    }
+
+    throw new StckError(Err.UnclosedBlock)
+      .addErr(loc, "this extern was never closed");
+  }
+
   public parse(): Program {
     let inlineProc = false;
     let unsafeProc = false;
@@ -424,22 +447,18 @@ export class Parser {
         this.parseProc(token.loc, inlineProc, unsafeProc);
         inlineProc = false;
         unsafeProc = false;
-      } else if (token.kind == Tokens.Inline) {
-        inlineProc = true;
-      } else if (token.kind == Tokens.Unsafe) {
-        unsafeProc = true;
-      } else if (inlineProc || unsafeProc) {
+      } else if (token.kind == Tokens.Inline) inlineProc = true;
+      else if (token.kind == Tokens.Unsafe) unsafeProc = true;
+      else if (token.kind == Tokens.Override) this.override = true;
+      else if (inlineProc || unsafeProc) {
         throw new StckError(Err.UnexpectedToken)
           .addErr(token.loc, "expected procedure declaration here")
-      } else if (token.kind == Tokens.Const) {
-        this.parseConst(token.loc);
-      } else if (token.kind == Tokens.Memory) {
-        this.parseMemory(token.loc);
-      } else if (token.kind == Tokens.Var) {
-        this.parseVar(token.loc);
-      } else if (token.kind == Tokens.Assert) {
-        this.parseAssert(token.loc);
-      } else {
+      } else if (token.kind == Tokens.Const) this.parseConst(token.loc);
+      else if (token.kind == Tokens.Memory) this.parseMemory(token.loc);
+      else if (token.kind == Tokens.Var) this.parseVar(token.loc);
+      else if (token.kind == Tokens.Assert) this.parseAssert(token.loc);
+      else if (token.kind == Tokens.Extern) this.parseExtern(token.loc);
+      else {
         throw new StckError(Err.UnexpectedToken)
           .addErr(token.loc, "invalid token at the top level");
       }
@@ -450,8 +469,10 @@ export class Parser {
       procs: this.procs,
       consts: this.consts,
       memories: this.memories,
+      externs: this.externs,
+      assertions: this.assertions,
+      libraries: this.libraries,
       vars: this.vars,
-      assertions: this.assertions
-    }
+    };
   }
 }

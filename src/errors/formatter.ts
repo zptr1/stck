@@ -15,7 +15,7 @@ export class StckError {
     return {
       line: this._lastFile!.lines.length,
       col: this._lastFile!.lines.at(-1)!.length - 1
-    }
+    };
   }
 
   private add(kind: ErrSpanKind, loc: Location, text?: string) {

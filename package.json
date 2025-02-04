@@ -6,12 +6,12 @@
     "bun-types": "latest"
   },
   "peerDependencies": {
-    "typescript": "^5.0.0"
+    "typescript": "^5.7.3"
   },
   "dependencies": {
-    "@types/line-column": "^1.0.0",
-    "@types/minimist": "^1.2.2",
-    "chalk": "^5.3.0",
+    "@types/line-column": "^1.0.2",
+    "@types/minimist": "^1.2.5",
+    "chalk": "^5.4.1",
     "line-column": "^1.0.2",
     "minimist": "^1.2.8"
   }

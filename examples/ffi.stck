@@ -1,0 +1,11 @@
+%include "std"
+
+extern "c"
+  proc puts as cputs :: ptr end
+  proc getcwd :: int ptr -> ptr end
+end
+
+proc main do
+  c"Hello, World!" cputs
+  0 NULL getcwd cputs
+end
