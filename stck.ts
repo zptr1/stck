@@ -8,6 +8,7 @@ import { tmpdir } from "os";
 import chalk from "chalk";
 import plib from "path";
 
+let verbose = false;
 function printHelp(): never {
   console.log(chalk.bold("stck"));
   console.log(chalk.red("usage:"));
@@ -21,15 +22,19 @@ function printHelp(): never {
   console.log(chalk.gray("options:"));
   console.log(" ", chalk.bold("--keep, -k"));
   console.log("   ", "Keep the .asm and .o files");
+  console.log(" ", chalk.bold("--verbose, -v"));
+  console.log("   ", "Print information about the process");
   console.log();
   process.exit(1);
 }
 
 function cmd(command: string[]) {
+  const start = performance.now();
   const cmd = Bun.spawnSync({ cmd: command });
+  const took = performance.now() - start;
 
   if (cmd.exitCode != 0) {
-    console.error(chalk.bold.white("[CMD]"), command.join(" "));
+    console.error(chalk.red.bold("[CMD]"), command.join(" "));
     console.error(chalk.red.bold("[ERROR]"), chalk.bold("Command failed"));
 
     const lines = cmd.stderr.toString().trim().split("\n");
@@ -38,17 +43,46 @@ function cmd(command: string[]) {
     }
 
     process.exit(1);
+  } else if (verbose) {
+    console.log(chalk.bold("[CMD]"), command.join(" "), chalk.green(took.toFixed(2), "ms"));
+  }
+}
+
+let lastStepAt = 0;
+let lastStep: string;
+
+function step(name?: string) {
+  if (!verbose) return;
+
+  if (lastStep) {
+    const took = performance.now() - lastStepAt;
+    console.log(chalk.bold("[DEBUG]"), lastStep.padEnd(10, " "), chalk.green(took.toFixed(2), "ms"));
+  }
+
+  if (name) {
+    lastStepAt = performance.now();
+    lastStep = name;
   }
 }
 
 function exec(src: string, outPath: string, action: string, keep: boolean) {
-  const ast = new Parser(
-    new Preprocessor(
-      new Lexer(File.read(src)).lex()
-    ).preprocess()
-  ).parse();
+  // FIXME: it appears that the lexing is always the slowest step (besides linking)
+  // maybe rewrite it? its not that much work anyway and rewriting is probably gonna
+  // be easier than changing the existing lexer
+  // a few ideas: 
+  // - turn the lexer into just a few functions instead of a class?
+  // - do preprocessing in the same step as tokenization
 
+  step("tokenize");
+  const tokens = new Preprocessor(new Lexer(File.read(src)).lex()).preprocess();
+  
+  step("parse");
+  const ast = new Parser(tokens).parse();
+  
+  step("typecheck");
   new TypeChecker(ast).typecheck();
+  
+  step("compile");
   const ir = new Compiler(ast).compile();
 
   if (action == "check")
@@ -58,10 +92,13 @@ function exec(src: string, outPath: string, action: string, keep: boolean) {
     ? plib.join(tmpdir(), `stck-${randomBytes(4).toString("base64url")}`)
     : outPath;
 
+  step("codegen");
   writeFileSync(path + ".asm", codegenFasm(ir).join("\n"));
+  step();
+  
   cmd(["fasm", path + ".asm"]);
-
   // TODO: Support LDFLAGS
+  // TODO: Detect if the user has mold installed, and omit -fuse-ld=mold if not
   cmd(
     [
       "gcc", path + ".o", "-o", path,
@@ -80,6 +117,16 @@ function exec(src: string, outPath: string, action: string, keep: boolean) {
     Bun.spawn({
       cmd: [path], stdio: ["inherit", "inherit", "inherit"],
       onExit(_, code, signal) {
+        if (verbose) {
+          console.log();
+          console.log(
+            chalk.bold(
+              "Exited with code",
+              code ? chalk.red(code) : chalk.green(code)
+            )
+          )
+        }
+
         unlinkSync(path);
         if (typeof signal == "string") {
           console.error(`\n${chalk.redBright.bold(signal)}`);
@@ -113,6 +160,8 @@ function main() {
     console.error("Directory not found:", outPath);
     process.exit(1);
   }
+
+  verbose = args.verbose || args.v;
 
   try {
     exec(plib.resolve(path), plib.resolve(outPath), action, args.keep || args.k);

@@ -1,6 +1,6 @@
 %include "std"
 %include "libc"
 
-proc a do a end
-
-proc main do a end
+proc main do
+  c"hello world" cputs
+end
