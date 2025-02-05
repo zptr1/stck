@@ -74,7 +74,7 @@ function generateTypeError(
 ) {
   for (let i = Math.max(offset, 0); i < ctx.stack.length; i++) {
     const frame = frameToString(insertGenerics(ctx.stack[i], generics));
-    if (i == failedAt) {
+    if (i == failedAt + offset) {
       err.addWarn(ctx.stackLocations[i], `got ${frame} but expected ${expected}`);
     } else {
       err.addNote(ctx.stackLocations[i], `${frame} introduced here`);
