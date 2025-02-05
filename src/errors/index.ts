@@ -94,7 +94,7 @@ export function errSpanColor(kind: ErrSpanKind) {
     kind == ErrSpanKind.Error ? chalk.red.bold
     : kind == ErrSpanKind.Warn ? chalk.yellow.bold
     : kind == ErrSpanKind.Note ? chalk.blue.bold
-    : chalk.dim.bold
+    : chalk.gray.bold
   );
 }
 
