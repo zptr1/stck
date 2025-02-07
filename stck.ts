@@ -4,6 +4,7 @@ import { File, Parser, Compiler, TypeChecker, Lexer, Preprocessor, StckError, co
 import { existsSync, statSync, unlinkSync, writeFileSync } from "fs";
 import { randomBytes } from "crypto";
 import minimist from "minimist";
+import * as shlex from "shlex";
 import { tmpdir } from "os";
 import chalk from "chalk";
 import plib from "path";
@@ -12,7 +13,7 @@ let verbose = false;
 function printHelp(): never {
   console.log(chalk.bold("stck"));
   console.log(chalk.red("usage:"));
-  console.log(" ", chalk.bold("stck run"), chalk.yellow.bold("<file>"));
+  console.log(" ", chalk.bold("stck run"), chalk.yellow.bold("<file>"),);
   console.log("   ", "Run a program");
   console.log(" ", chalk.bold("stck build"), chalk.yellow.bold("<file>"), chalk.yellow.dim("[output]"));
   console.log("   ", "Build a program");
@@ -20,6 +21,8 @@ function printHelp(): never {
   console.log("   ", "Typecheck a program without running or compiling it");
   console.log();
   console.log(chalk.gray("options:"));
+  console.log(" ", chalk.bold("--output, -o"));
+  console.log("   ", "Output file");
   console.log(" ", chalk.bold("--keep, -k"));
   console.log("   ", "Keep the .asm and .o files");
   console.log(" ", chalk.bold("--verbose, -v"));
@@ -65,7 +68,7 @@ function step(name?: string) {
   }
 }
 
-function exec(src: string, outPath: string, action: string, keep: boolean) {
+async function exec(src: string, outPath: string, args: string[], action: string, keep: boolean) {
   // FIXME: it appears that the lexing is always the slowest step (besides linking)
   // maybe rewrite it? its not that much work anyway and rewriting is probably gonna
   // be easier than changing the existing lexer
@@ -85,8 +88,10 @@ function exec(src: string, outPath: string, action: string, keep: boolean) {
   step("compile");
   const ir = new Compiler(ast).compile();
 
-  if (action == "check")
+  if (action == "check") {
+    step();
     return;
+  }
 
   const path = action == "run"
     ? plib.join(tmpdir(), `stck-${randomBytes(4).toString("base64url")}`)
@@ -97,25 +102,25 @@ function exec(src: string, outPath: string, action: string, keep: boolean) {
   step();
   
   cmd(["fasm", path + ".asm"]);
-  // TODO: Support LDFLAGS
-  // TODO: Detect if the user has mold installed, and omit -fuse-ld=mold if not
-  cmd(
-    [
-      "gcc", path + ".o", "-o", path,
-      "-fno-PIE", "-no-pie",
-      "-fuse-ld=mold",
-      "-L", process.cwd()
-    ].concat(ir.libraries.map((x) => ["-l", x]).flat())
-  );
+  cmd([
+    "gcc", path + ".o", "-o", path,
+    "-fno-PIE", "-no-pie",
+    ...shlex.split(process.env.LDFLAGS || ""),
+    ...ir.libraries.map((x) => ["-l", x]).flat()
+  ]);
 
-  if (!keep) {
+  if (action == "run" || !keep) {
     unlinkSync(path + ".asm");
     unlinkSync(path + ".o");
   }
 
   if (action == "run") {
+    // Should work, hopefully
+    process.on("SIGINT", () => {});
+
     Bun.spawn({
-      cmd: [path], stdio: ["inherit", "inherit", "inherit"],
+      cmd: [path, ...args],
+      stdio: ["inherit", "inherit", "inherit"],
       onExit(_, code, signal) {
         if (verbose) {
           console.log();
@@ -139,11 +144,25 @@ function exec(src: string, outPath: string, action: string, keep: boolean) {
   }
 }
 
-function main() {
-  const args = minimist(process.argv.slice(2));
+async function main() {
+  if (!Bun.which("fasm") || !Bun.which("gcc")) {
+    console.error(`The stck compiler requires ${chalk.bold("fasm")} and ${chalk.bold("gcc")} in order to work.`);
+    console.error("Make sure you have both installed and they are available in PATH");
+    process.exit(1);
+  }
+
+  const args = minimist(
+    process.argv.slice(2),
+    {
+      alias: { keep: "k", verbose: "v", output: "o" },
+      boolean: ["keep", "verbose"]
+    }
+  );
+
+  verbose = args.verbose;
 
   const action = args._[0];
-  if (action != "run" && action != "build" && action != "check")
+  if (!["run", "build", "check"].includes(action))
     printHelp();
 
   const path = args._[1];
@@ -153,18 +172,16 @@ function main() {
     process.exit(1);
   }
 
-  // TODO: Providing a custom file extension will append .asm instead of replacing it
-  const outPath = args._[2] || path.replace(/(\.stck)?$/, "");
+  // FIXME: Providing a custom file extension appends .asm instead of replacing it
+  const outPath = args.output || path.replace(/(\.stck)?$/, "");
   if (!outPath) printHelp();
   else if (!existsSync(plib.dirname(outPath))) {
     console.error("Directory not found:", outPath);
     process.exit(1);
   }
 
-  verbose = args.verbose || args.v;
-
   try {
-    exec(plib.resolve(path), plib.resolve(outPath), action, args.keep || args.k);
+    await exec(plib.resolve(path), plib.resolve(outPath), args._.slice(2), action, args.keep);
   } catch (err) {
     if (err instanceof StckError) {
       console.error();
