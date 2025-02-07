@@ -22,6 +22,8 @@ The integer type could be split into `u8`, `u16`, `u32`, `u64` and their signed 
 
 #### Structures
 
+Edit: probably in a different way
+
 (not documented properly because i'm lazy)
 
 ```
@@ -38,70 +40,9 @@ Defines
 
 Structures can be used as types as well.
 
-Problem: types can take more than one word! (typed pointers or quotes) Maybe use a separator for determining the name of the field?
-```
-struct Example
-  a :: ptr-to u8
-  b :: ptr-to Str
-end
-
-// while i like the above more, something like this would be easier/better to parse:
-struct Example2
-  ptr-to u8  :: a
-  ptr-to Str :: b
-end
-```
-
-#### Arrays
-
-Arrays will be similar to variables, except they will be able to hold multiple values of a defined type. They would need to have both the type and the size defined.
-
-I think incorporating arrays into `var` is much better than defining a new keyword like `array`, but I'm not sure how would that look.
-Maybe something like this?
-```
-var numbers array-of 10 u64 end
-```
-
-Each array will define three procedures, each of them accepting an unsigned index of an element of the array.
-Each array will also define two constants - `sizeof()` and `length()`, with the name of the array inside of the parentheses. The first constant will have the size of the array in bytes, and the second constant will have the amount of elements the array has.
-
-So, in the example provided abouve, the `numbers` array would define:
-- A `numbers` procedure, accepting an index and returning a typed pointer to an element in the array at the provided index.
-- A `@numbers` procedure that reads the element at the provided index, which returns `u64` in our case.
-- A `!numbers` procedure that writes a new value to the element at the provided index.
-- A `sizeof(numbers)` constant which would have the value of `10 * 8` -> `80` in our case (8 is the size of u64)
-- A `length(numbers)` constant which would have the value of `10` in our case
-
-The `@` and `!` procedures are **omitted** if a structure is used as a type of the array.
-
 #### Quotes
 
 sorry im too lazy to explain this
-
-## Compile-Time Conditions
-
-Compile-time conditions will let you to include or exclude code during compilation depending on certain conditions or states of the constants.
-
-```
-%if <condition> do
-  ...
-%elseif <condition> do
-  ...
-%else
-  ...
-%end
-```
-
-Compile-time conditions will also be able to use a special operation `def?` followed by a word to check if a specific constant, procedure or memory region has been defined, and `def!` to check if it is not defined.
-
-The compiler could also automatically introduce specific constants depending on the platform, which would allow for additional cross-platform support, for example
-```
-%if def? _WIN32 do
-  %include "windows"
-%else
-  %include "posix"
-%end
-```
 
 ## Local Memory Regions
 
@@ -128,5 +69,33 @@ This procedure is not callable and cannot take any parameters or output anything
 
 This procedure can be defined as many times, and will be called when the program starts before `main`.
 
-## FFI/Linking
-Implemented
+## Special config constants
+
+For example
+```
+const STCK_CALLSTACK_SIZE 10000 end
+```
+
+## Sized Pointers
+
+Using integers
+```
+proc example :: ptr-of 16 do
+  // the provided pointer should have at least 16 bytes available
+end
+```
+Or constants
+```
+const MEM_SIZE 69 end
+
+memory a_mem 69 end
+memory b_mem 42 end
+
+proc example -> ptr-of MEM_SIZE do
+  // the procedure must return a pointer with at least MEM_SIZE bytes
+  // a_mem will work, because it is 69 bytes, but b_mem won't, because it is only 42 bytes.
+end
+```
+These will be the same type as regular pointers, but will contain size information.
+Pointers with unknown size can be used anywhere, but pointers with known size will only be able to be used when they're at least the required amount of bytes.
+For example, a pointer to 100 bytes can be used in a procedure that requires a pointer to 64 bytes, but a pointer to 50 bytes cannot.
