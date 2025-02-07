@@ -48,7 +48,8 @@ proc puti :: int do
   else putu end
 end
 
-/// Writes the string to the stderr
-inline proc eputs :: int ptr do
-  stderr write drop
-end
+/// Write the string to a FD
+inline proc fputs :: int ptr int do write drop end
+
+/// Write the string to the stderr
+inline proc eputs :: int ptr do stderr fputs end
