@@ -116,6 +116,10 @@ export class Lexer {
     let value = this.source[this.cursor++];
     let isInt = "-0123456789".includes(value);
     let isHex = false;
+    let underscoreUsed = false;
+
+    // TODO: separate function for parsing an integer
+    // that falls back to readWordToken for cases like `2dup`
 
     while (this.cursor < this.source.length) {
       const ch = this.source[this.cursor++];
@@ -127,9 +131,17 @@ export class Lexer {
       } else if (isHex) {
         HEX_DIGITS.includes(ch) || this.error("expected a hexadecimal digit");
       } else if (isInt && !DEC_DIGITS.includes(ch)) {
+        if (ch == "_") {
+          if (underscoreUsed) this.error("multiple consecutive underscores are not allowed");
+          underscoreUsed = true;
+
+          continue;
+        }
+
         isInt = false;
       }
 
+      underscoreUsed = false;
       value += ch;
     }
 

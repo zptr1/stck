@@ -2,5 +2,5 @@
 %include "libc"
 
 proc main do
-  c"hello world" cputs
+  1_000_000 print
 end
