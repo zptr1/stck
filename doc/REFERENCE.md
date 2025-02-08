@@ -102,6 +102,8 @@ Macros can be re-defined and can use each other. If you use a macro while defini
 ```
 In this case, `second` did not exist when `first` was defined, so using `first` expands to `second`, which will expand to its last definition, which would be "world". But `third` was defined after `second` was first defined as "hello", so using `third` will expand to "hello".
 
+Currently, macros do not take any input. This will be changed in the future.
+
 You can also define macros inside of macros, though, this is probably useless in most cases.
 To remove a macro, use the `%del` processor directive followed by the name of the macro.
 
