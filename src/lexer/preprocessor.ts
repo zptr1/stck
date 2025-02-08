@@ -26,10 +26,7 @@ export class Preprocessor {
 
     tokens.reverse();
     this.lastToken = tokens[0];
-
-    const file = tokens[0].loc.file;
-    this.includedFiles.add(file.path);
-    this.include(plib.join(ROOT_DIR, "lib/prelude.stck"), file);
+    this.include(plib.join(ROOT_DIR, "lib/prelude.stck"), tokens[0].loc);
   }
 
   private next(): Token {
@@ -51,15 +48,50 @@ export class Preprocessor {
     return token;
   }
 
-  private include(path: string, file: File) {
+  private include(path: string, loc: Location) {
     if (this.includedFiles.has(path)) return;
     this.includedFiles.add(path);
 
-    const tokens = new Lexer(file.child(path)).lex();
+    if (!exists(path)) {
+      throw new StckError(Err.UnresolvedImport)
+        .addErr(loc, "file not found");
+    }
 
-    // note: this.tokens is reversed
-    for (let i = tokens.length - 1; i >= 0; i--) {
-      this.tokens.push(tokens[i]);
+    try {
+      const tokens = new Lexer(loc.file.child(path)).lex();
+  
+      // note: this.tokens is reversed
+      for (let i = tokens.length - 1; i >= 0; i--) {
+        this.tokens.push(tokens[i]);
+      }
+    } catch (err) {
+      if (err instanceof StckError) err.addTrace(loc, "imported from here");
+      throw err;
+    }
+  }
+
+  private resolveImport(raw: string, loc: Location): string {
+    if (raw.startsWith("./") || raw.startsWith("../")) {
+      // relative import (to the current file)
+      return plib.resolve(plib.join(loc.file.path, "..", raw));
+    } else if (raw.startsWith("/")) {
+      return plib.resolve(raw);
+    } else {
+      // library import
+      const paths = [
+        plib.join(ROOT_DIR, "lib", raw),
+        plib.resolve(plib.join("lib", raw)),
+      ];
+
+      const path = paths.find((x) => exists(x));
+      if (!path) {
+        throw new StckError(Err.UnresolvedImport)
+          .addErr(loc, "library not found")
+          .addHint(`make sure it exists in the ${chalk.yellow.bold("lib")} folder`)
+          .addHint("of the compiler or the current direcory");
+      }
+
+      return path;
     }
   }
 
@@ -95,44 +127,12 @@ export class Preprocessor {
   private readToken(token: Token, out: Token[]) {
     if (token.kind == Tokens.Include) {
       const str = this.nextOf(Tokens.Str);
-      const raw = str.value + ".stck";
+      const path = this.resolveImport(
+        str.value.replace(/(\.stck)?$/, ".stck"),
+        token.loc
+      );
 
-      if (raw.startsWith("./") || raw.startsWith("../")) {
-        // relative import (to the current file)
-        const path = plib.resolve(plib.join(token.loc.file.path, "..", raw));
-        if (!exists(path)) {
-          throw new StckError(Err.UnresolvedImport)
-            .addErr(token.loc, "import failed")
-            .addHint(`file not found: ${chalk.yellow(path)}`);
-        }
-
-        this.include(path, token.loc.file);
-      } else if (raw.startsWith("/")) {
-        // absolute import
-        const path = plib.resolve(raw);
-        if (!exists(path)) {
-          throw new StckError(Err.UnresolvedImport)
-            .addErr(token.loc, "import failed")
-            .addHint(`file not found: ${chalk.yellow(path)}`);
-        }
-
-        this.include(path, token.loc.file);
-      } else {
-        // library import
-        const paths = [
-          plib.join(ROOT_DIR, "lib", raw),
-          plib.resolve(plib.join("lib", raw)),
-        ];
-
-        const path = paths.find((x) => exists(x));
-        if (!path) {
-          throw new StckError(Err.UnresolvedImport)
-            .addErr(token.loc, "import failed")
-            .addHint(`file not found: ${chalk.yellow(path)}`);
-        }
-
-        this.include(path, token.loc.file);
-      }
+      this.include(path, token.loc);
     } else if (token.kind == Tokens.Macro) {
       this.readMacro(this.nextOf(Tokens.Word).value, token.loc);
     } else if (token.kind == Tokens.Del) {
