@@ -2,6 +2,20 @@
 
 This is the changelog for **stck**.
 
+## Unreleased
+
+### Added
+- `--verbose`/`-v` flag to the CLI
+- The CLI now shows an error if you dont have fasm or gcc installed
+- The CLI now passes the arguments to the program when using the `run` command
+- The linking now respects the user's `LDFLAGS` environment variable
+- You can now use underscores in numbers as separators, for example `1_000_000`
+- Added `fputs` to `std/io` that can be used for writing a string to the provided file descriptor
+
+### Changed
+- The output path is now specified with the `--output`/`-o` flag instead
+- Improved import handling
+
 ## 0.1.5 - 2025-02-01
 Welp, back to working on this language I guess!
 

@@ -30,6 +30,8 @@ macro switch_to_callstack {
 
 macro call_proc id {
   switch_to_callstack
+  ; TODO: should the callstack overflow check be skipped when calling
+  ;       an unsafe procedure or inside of an unsafe procedure?
   check_callstack_overflow
   call id
   switch_to_datastack
