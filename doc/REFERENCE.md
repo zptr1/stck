@@ -37,7 +37,7 @@ Pushes a 64-bit signed integer onto the stack. Hexadecimal integers are prefixed
 ```
 
 ## String
-Pushes two values onto the stack: the length of the string and a pointer to the start of the string. The string is encoded in UTF-8. Unicode characters are supported. Use backticks to escape a character. Special escape sequences are newline (`\n`), carriage return (`\r`), tab (`\t`) and unicode (`\u123A`).
+Pushes two values onto the stack: the length of the string and a pointer to the start of the string. The string is encoded in UTF-8. Unicode characters are supported. Use backslashes to escape a character. Special escape sequences are newline (`\n`), carriage return (`\r`), tab (`\t`) and unicode (`\u123A`).
 ```
 "Hello, World!\n"
 "Supported escape sequences: \n\r\t\"\u0D9E"
@@ -51,7 +51,7 @@ c"This string is null-terminated"
 
 **Raw strings** can be used to include all escape sequences (except `\"`)
 ```
-"Hello\n\"World"  // Hello\n"World
+r"Hello\n\"World"  // Hello\n"World
 ```
 
 ## Character
@@ -107,9 +107,7 @@ To remove a macro, use the `%del` processor directive followed by the name of th
 
 # Types
 
-**stck** is statically typed, and has a type checker, which ensures that 
-
-**stck** has four types: integers, pointers, typed poitners, booleans.
+**stck** is statically typed. It has four types: integers, pointers, typed pointers, booleans.
 
 - `int` - integer
 - `ptr` - pointer
