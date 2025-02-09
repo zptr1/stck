@@ -13,35 +13,30 @@ inline proc putch :: int do
   1 _putch_buf puts
 end
 
-// TODO: Local memory regions
-memory _putu_buf 32 end
-
 /// Writes an unsigned integer to stdout without a newline
 proc putu :: int do
   if dup 0 eq do
     "0" puts drop
   else
-    31 swap while dup 0 gt do
-      10 divmod '0' add
-      rot _putu_buf over ptr+
-      rot swap write8
-      1 sub swap
-    end
-    drop
-    _putu_buf over ptr+
-    swap 32 swap sub
-    swap puts
+    memory buffer 32 end
 
-    // TODO: Local memory regions
-    0 while dup 32 lt do
-      0 over _putu_buf swap ptr+ write64
-      7 add // TODO: weird ass bug
-    end drop
+    32 while over 0 gt do
+      1 sub swap
+      10 divmod '0' add
+      under buffer swap ptr+
+      write8
+      swap
+    end
+
+    32 over sub
+    buffer under ptr+
+    puts
+    drop drop
   end
 end
 
 /// Writes a signed integer to stdout without a newline
-proc puti :: int do
+inline proc puti :: int do
   if dup 0 lt do
     "-" puts
     not 1 add putu

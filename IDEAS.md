@@ -46,16 +46,7 @@ sorry im too lazy to explain this
 
 ## Local Memory Regions
 
-Currently, memory regions can be defined only globally, and the memory is allocated statically even if it is not used for most of the time. Local memory regions will be allocated only when the procedure is called and will be automatically deallocated when the procedure has finished executing.
-```
-proc main
-  memory a 8 end
-
-  6942 a write64
-  a read64 print
-end
-```
-Small local memory regions will be allocated on the callstack, but large memory regions will be allocated using syscalls instead.
+Implemented
 
 ## Assembly Imports
 

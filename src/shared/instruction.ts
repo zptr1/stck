@@ -5,8 +5,9 @@ export enum Instr {
   Push,
   PushBigInt,
   PushStr,
+  PushAddr,
   PushLocal,
-  PushMem,
+  PushLocalAddr,
   AsmBlock,
 
   // Control flow
@@ -53,7 +54,6 @@ export enum Instr {
   Rot,
   Over,
   Bind,
-  Unbind,
 
   // Memory
   // TODO: A single Write and Read instructions with { size: number }
@@ -65,9 +65,9 @@ export enum Instr {
   Read16,
   Read32,
   Read64,
-
-  WriteT,
-  ReadT,
+  
+  Alloc,
+  Dealloc,
 
   // Program
   Print,
@@ -90,10 +90,11 @@ type _instr = (
   | { kind: Instr.Push, value: bigint, size: Size }
   | { kind: Instr.PushBigInt, value: bigint }
   | { kind: Instr.PushStr, id: number, len: number }
-  | { kind: Instr.PushMem, offset: number }
-  | { kind: Instr.PushLocal, offset: number }
+  | { kind: Instr.PushAddr, offset: number }
+  | { kind: Instr.PushLocal | Instr.PushLocalAddr, offset: number }
   | { kind: Instr.AsmBlock, value: string }
-  | { kind: Instr.Bind | Instr.Unbind, count: number }
+  | { kind: Instr.Bind, count: number }
+  | { kind: Instr.Alloc | Instr.Dealloc, size: number }
   | { kind: Instr.Jmp | Instr.JmpIfNot | Instr.Label, label: number }
   | { kind: Instr.CallExtern, name: string, argc: number, hasOutput: boolean }
   | { kind: Instr.Call, id: number }

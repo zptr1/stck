@@ -1,25 +1,27 @@
-import { ExpansionStackElement, Instruction, Location } from "../shared";
+import { ExpansionStackElement, Instruction } from "../shared";
 
 export interface CompilerContext {
   inlineExpansionStack: ExpansionStackElement[];
   bindings: Map<string, number>;
-  loc: Location;
+  memories: Map<string, number>;
+  memorySize: number;
   labelCount: number;
 }
 
 export interface IRProgram {
   procs: Map<number, Instruction[]>;
-  strings: string[];
   memorySize: number;
+  strings: string[];
   libraries: string[];
   extern: string[];
 }
 
-export function createContext(loc: Location): CompilerContext {
+export function createContext(): CompilerContext {
   return {
     inlineExpansionStack: [],
     bindings: new Map(),
-    labelCount: 0,
-    loc,
+    memories: new Map(),
+    memorySize: 0,
+    labelCount: 0
   };
 }

@@ -7,7 +7,7 @@ export enum AstKind {
   Literal,
   Word,
   If,
-  While,
+  Loop,
   Let,
   Cast,
   Assert,
@@ -19,6 +19,7 @@ export enum WordType {
   Intrinsic,
   Proc,
   Memory,
+  LocalMemory,
   Var,
   Constant,
   Binding,
@@ -34,7 +35,8 @@ export enum LiteralType {
   Assembly
 }
 
-export type Expr = Word | Literal | Condition | While | Let | Cast;
+export type Expr = Word | Literal | Condition | Loop | Let | Cast;
+export type Definition = Proc | Const | Assert;
 
 export interface Program {
   file: File;
@@ -100,7 +102,7 @@ export interface Condition extends Ast<AstKind.If> {
   elseBranch?: Location;
 }
 
-export interface While extends Ast<AstKind.While> {
+export interface Loop extends Ast<AstKind.Loop> {
   condition: Expr[];
   body: Expr[];
 }

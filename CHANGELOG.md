@@ -90,6 +90,7 @@ Welp, back to working on this language I guess!
 - Added missing syscalls to `std/sys/linux`
 - Added a `str-chop-left` procedure to `std/str`
 - Added comments to procedures from the standard library
+- Added local memory regions which are allocated on the call stack
 
 ### Changed
 

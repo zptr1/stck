@@ -1,8 +1,9 @@
-import { Assert, AstKind, Condition, Const, Expr, Extern, Let, LiteralType, Proc, Program, Var, While, WordType } from "./ast";
+import { Assert, AstKind, Definition, Condition, Const, Expr, Extern, Let, LiteralType, Proc, Program, Var, Loop, WordType } from "./ast";
 import { DataType, INTRINSICS, Location, TypeFrame, sizeOf } from "../shared";
 import { Err, StckError } from "../errors";
 import { i32_MAX, i32_MIN } from "../misc";
 import { Token, Tokens } from "../lexer";
+import chalk from "chalk";
 
 export class Parser {
   public readonly procs = new Map<string, Proc>();
@@ -62,7 +63,7 @@ export class Parser {
     this.override = false;
   }
 
-  private parseExpr(token: Token): Expr {
+  private parseExpr(token: Token, ctx: Definition): Expr {
     // TODO: make this nicer
     if (token.kind == Tokens.Int) {
       return {
@@ -72,27 +73,10 @@ export class Parser {
           : LiteralType.Int,
         value: token.value
       };
-    } else if (token.kind == Tokens.Str || token.kind == Tokens.CStr || token.kind == Tokens.AsmBlock) {
-      return {
-        kind: AstKind.Literal, loc: token.loc,
-        type: (
-          token.kind == Tokens.AsmBlock ? LiteralType.Assembly
-          : token.kind == Tokens.CStr ? LiteralType.CStr
-          : token.kind == Tokens.Str ? LiteralType.Str
-          : 0
-        ),
-        value: token.value
-      };
     } else if (token.kind == Tokens.Word) {
       return {
         kind: AstKind.Word, loc: token.loc,
         type: WordType.Unknown,
-        value: token.value
-      };
-    } else if (token.kind == Tokens.Return) {
-      return {
-        kind: AstKind.Word, loc: token.loc,
-        type: WordType.Return,
         value: token.value
       };
     } else if (token.kind == Tokens.Cast) {
@@ -100,19 +84,35 @@ export class Parser {
       this.nextOf(Tokens.End);
 
       return { kind: AstKind.Cast, loc: token.loc, types };
+    } else if (ctx.kind != AstKind.Proc) {
+      throw new StckError(Err.UnexpectedToken)
+        .addErr(token.loc, `cannot use ${chalk.yellow.bold(token.kind)} outside of procedures`)
+        .addNote(ctx.loc, `definition starts here`);
+    } else if (token.kind == Tokens.Str) {
+      return { kind: AstKind.Literal, loc: token.loc, type: LiteralType.Str, value: token.value };
+    } else if (token.kind == Tokens.CStr) {
+      return { kind: AstKind.Literal, loc: token.loc, type: LiteralType.CStr, value: token.value };
+    } else if (token.kind == Tokens.AsmBlock) {
+      return { kind: AstKind.Literal, loc: token.loc, type: LiteralType.Assembly, value: token.value };
     } else if (token.kind == Tokens.If) {
-      return this.parseCondition(token.loc);
+      return this.parseCondition(token.loc, ctx);
     } else if (token.kind == Tokens.While) {
-      return this.parseLoop(token.loc);
+      return this.parseLoop(token.loc, ctx);
     } else if (token.kind == Tokens.Let) {
-      return this.parseBinding(token.loc);
+      return this.parseBinding(token.loc, ctx);
+    } else if (token.kind == Tokens.Return) {
+      return {
+        kind: AstKind.Word, loc: token.loc,
+        type: WordType.Return,
+        value: token.value
+      };
     } else {
       throw new StckError(Err.UnexpectedToken)
         .addErr(token.loc);
     }
   }
 
-  private parseCondition(loc: Location): Condition {
+  private parseCondition(loc: Location, ctx: Definition): Condition {
     const condition: Condition = {
       kind: AstKind.If, loc,
       condition: [],
@@ -130,7 +130,7 @@ export class Parser {
         loc = token.loc;
         break;
       } else {
-        condition.condition.push(this.parseExpr(token));
+        condition.condition.push(this.parseExpr(token, ctx));
       }
     }
 
@@ -141,26 +141,26 @@ export class Parser {
         throw new StckError(Err.UnclosedBlock)
           .addErr(loc, "this condition was never closed");
       } else if (token.kind == Tokens.Else) {
-        condition.else = this.parseBody(token.loc);
+        condition.else = this.parseBody(token.loc,  ctx);
         condition.elseBranch = token.loc;
         break;
       } else if (token.kind == Tokens.ElseIf) {
-        condition.else.push(this.parseCondition(token.loc));
+        condition.else.push(this.parseCondition(token.loc, ctx));
         condition.elseBranch = token.loc;
         break;
       } else if (token.kind == Tokens.End) {
         break;
       } else {
-        condition.body.push(this.parseExpr(token));
+        condition.body.push(this.parseExpr(token, ctx));
       }
     }
 
     return condition;
   }
 
-  private parseLoop(loc: Location): While {
-    const loop: While = {
-      kind: AstKind.While, loc,
+  private parseLoop(loc: Location, ctx: Definition): Loop {
+    const loop: Loop = {
+      kind: AstKind.Loop, loc,
       condition: [],
       body: []
     };
@@ -172,17 +172,17 @@ export class Parser {
         throw new StckError(Err.UnclosedBlock)
           .addErr(loc, "this loop was never closed");
       } else if (token.kind == Tokens.Do) {
-        loop.body = this.parseBody(token.loc);
+        loop.body = this.parseBody(token.loc, ctx);
         break;
       } else {
-        loop.condition.push(this.parseExpr(token));
+        loop.condition.push(this.parseExpr(token, ctx));
       }
     }
 
     return loop;
   }
 
-  private parseBinding(loc: Location): Let {
+  private parseBinding(loc: Location, ctx: Definition): Let {
     const binding: Let = {
       kind: AstKind.Let, loc,
       bindings: [],
@@ -196,7 +196,7 @@ export class Parser {
         throw new StckError(Err.UnclosedBlock)
           .addErr(loc, "this binding was never closed");
       } else if (token.kind == Tokens.Do) {
-        binding.body = this.parseBody(token.loc);
+        binding.body = this.parseBody(token.loc, ctx);
         break;
       } else if (token.kind == Tokens.Word) {
         binding.bindings.push(token.value);
@@ -210,7 +210,7 @@ export class Parser {
     return binding;
   }
 
-  private parseBody(loc: Location, constant: boolean = false): Expr[] {
+  private parseBody(loc: Location, ctx: Definition): Expr[] {
     const body: Expr[] = [];
 
     while (this.tokens.length) {
@@ -218,22 +218,29 @@ export class Parser {
 
       if (token.kind == Tokens.End) {
         return body;
-      } else if (
-        constant && (
-          token.kind == Tokens.Str
-          || token.kind == Tokens.CStr
-          || token.kind == Tokens.AsmBlock
-          || token.kind == Tokens.If
-          || token.kind == Tokens.While
-        )
-      ) {
-        throw new StckError(Err.InvalidComptime)
-          .addErr(token.loc, `cannot use ${token.kind} here`)
-          .addNote(loc);
       } else if (token.kind == Tokens.Assert) {
         this.parseAssert(token.loc);
+      } else if (ctx.kind == AstKind.Proc && token.kind == Tokens.Memory) {
+        if (ctx.inline) {
+          throw new StckError(Err.InvalidComptime)
+            .addNote(ctx.loc, "inline procedure defined here")
+            .addErr(token.loc, "local memory regions are not allowed here");
+        }
+
+        const name = this.nextOf(Tokens.Word);
+        this.checkUniqueDefinition(name);
+    
+        const mem: Const = {
+          kind: AstKind.Const, loc: token.loc,
+          name: name.value,
+          type: { type: DataType.Int },
+          body: []
+        };
+    
+        mem.body = this.parseBody(name.loc, mem);
+        ctx.memories.set(name.value, mem);
       } else {
-        body.push(this.parseExpr(token));
+        body.push(this.parseExpr(token, ctx));
       }
     }
 
@@ -329,9 +336,10 @@ export class Parser {
       },
       inline, unsafe,
       memories: new Map(),
-      body: this.parseBody(this.nextOf(Tokens.Do).loc)
+      body: []
     };
 
+    proc.body = this.parseBody(this.nextOf(Tokens.Do).loc, proc);
     this.procs.set(proc.name, proc);
   }
 
@@ -339,12 +347,15 @@ export class Parser {
     const name = this.nextOf(Tokens.Word);
     this.checkUniqueDefinition(name);
 
-    this.consts.set(name.value, {
+    const constant: Const = {
       kind: AstKind.Const, loc,
       name: name.value,
-      body: this.parseBody(name.loc, true),
-      type: { type: DataType.Unknown }
-    });
+      type: { type: DataType.Unknown },
+      body: [],
+    };
+
+    constant.body = this.parseBody(name.loc, constant);
+    this.consts.set(name.value, constant);
   }
 
   private parseVar(loc: Location) {
@@ -376,20 +387,26 @@ export class Parser {
     const name = this.nextOf(Tokens.Word);
     this.checkUniqueDefinition(name);
 
-    this.memories.set(name.value, {
+    const mem: Const = {
       kind: AstKind.Const, loc,
       name: name.value,
-      body: this.parseBody(name.loc, true),
-      type: { type: DataType.Int }
-    });
+      type: { type: DataType.Int },
+      body: []
+    };
+
+    mem.body = this.parseBody(name.loc, mem);
+    this.memories.set(name.value, mem);
   }
 
   private parseAssert(loc: Location) {
-    this.assertions.push({
+    const assert: Assert = {
       kind: AstKind.Assert, loc: loc,
       message: this.nextOf(Tokens.Str).value,
-      body: this.parseBody(loc, true)
-    });
+      body: []
+    };
+
+    assert.body = this.parseBody(loc, assert);
+    this.assertions.push(assert);
   }
 
   private parseExtern(loc: Location) {

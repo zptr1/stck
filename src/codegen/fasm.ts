@@ -6,7 +6,7 @@ import plib from "path";
 const isPushInstr = (instr: Instr) => (
   instr == Instr.Push
   || instr == Instr.PushBigInt
-  || instr == Instr.PushMem
+  || instr == Instr.PushAddr
   || instr == Instr.PushStr
   || instr == Instr.PushLocal
 );
@@ -54,19 +54,24 @@ function codegenProc(id: number, instructions: Instruction[], out: string[]) {
       // C-strings have .len set to -1
       if (instr.len != -1) out.push(`push ${instr.len}`);
       out.push(`push str${instr.id}`);
-    } else if (instr.kind == Instr.PushMem) {
-      out.push(`push mem+${instr.offset}`);
     } else if (instr.kind == Instr.AsmBlock) {
       out.push(instr.value.trim());
+    } else if (instr.kind == Instr.PushAddr) {
+      out.push(`push mem+${instr.offset}`);
     } else if (instr.kind == Instr.PushLocal) {
       out.push(`push qword [cs_ptr+${instr.offset}]`)
+    } else if (instr.kind == Instr.PushLocalAddr) {
+      out.push(`lea rax, [cs_ptr+${instr.offset}]`);
+      out.push("push rax");
     } else if (instr.kind == Instr.Bind) {
       out.push(`sub cs_ptr, ${8 * instr.count}`);
       for (let i = instr.count - 1; i >= 0; i--) {
         out.push(`pop qword [cs_ptr+${i * 8}]`);
       }
-    } else if (instr.kind == Instr.Unbind) {
-      out.push(`add cs_ptr, ${8 * instr.count}`);
+    } else if (instr.kind == Instr.Alloc) {
+      out.push(`sub cs_ptr, ${instr.size}`);
+    } else if (instr.kind == Instr.Dealloc) {
+      out.push(`add cs_ptr, ${instr.size}`);
     } else if (instr.kind == Instr.Jmp) {
       out.push(`jmp .L${instr.label}`);
     } else if (instr.kind == Instr.JmpIfNot) {

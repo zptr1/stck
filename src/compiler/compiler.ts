@@ -19,7 +19,7 @@ export class Compiler {
   private readonly extern = new Set<string>();
   private readonly libraries = new Set<string>();
 
-  private memoryOffset: number = 0;
+  private memorySize: number = 0;
 
   constructor (
     public readonly program: Program
@@ -80,7 +80,7 @@ export class Compiler {
         this.offsetCounter = 0n;
       } else if (instr.kind == Instr.Print) {
         console.log(chalk.cyan.bold("comptime:"), chalk.yellow.bold(stack.pop()), chalk.dim("@", formatLoc(loc)));
-      } else if (instr.kind == Instr.PushMem) {
+      } else if (instr.kind == Instr.PushAddr) {
         throw new StckError(Err.InvalidComptime)
           .addErr(loc, "memories are not allowed here");
       } else if (instr.kind == Instr.Call) {
@@ -93,6 +93,13 @@ export class Compiler {
     }
 
     return stack.pop();
+  }
+
+  private evalBody(body: Expr[], loc: Location) {
+    const instr: Instruction[] = [];
+    this.compileBody(body, instr, createContext());
+
+    return this.evaluate(loc, instr);
   }
 
   // TODO: automatically inline procedures that were used only once or are too small
@@ -205,8 +212,13 @@ export class Compiler {
             this.compileMemory(this.program.memories.get(expr.value)!);
 
           out.push({
-            kind: Instr.PushMem,
+            kind: Instr.PushAddr,
             offset: this.memories.get(expr.value)!
+          });
+        } else if (expr.type == WordType.LocalMemory) {
+          out.push({
+            kind: Instr.PushLocalAddr,
+            offset: ctx.memories.get(expr.value)!
           });
         } else if (expr.type == WordType.Binding) {
           out.push({
@@ -216,12 +228,12 @@ export class Compiler {
         } else if (expr.type == WordType.Var) {
           const variable = this.program.vars.get(expr.value)!;
           if (!this.memories.has(variable.name)) {
-            this.memories.set(variable.name, this.memoryOffset);
-            this.memoryOffset += variable.size;
+            this.memories.set(variable.name, this.memorySize);
+            this.memorySize += variable.size;
           }
 
           out.push({
-            kind: Instr.PushMem,
+            kind: Instr.PushAddr,
             offset: this.memories.get(variable.name)!
           });
         } else if (expr.type == WordType.Unknown) {
@@ -229,6 +241,10 @@ export class Compiler {
             .addErr(expr.loc, "unknown word")
             .addHint("likely a compiler bug?");
         } else if (expr.type == WordType.Return) {
+          if (ctx.memorySize) {
+            out.push({ kind: Instr.Dealloc, size: ctx.memorySize });
+          }
+
           out.push({ kind: Instr.Ret });
         } else {
           assertNever(expr.type);
@@ -262,7 +278,7 @@ export class Compiler {
             label: L1
           });
         }
-      } else if (expr.kind == AstKind.While) {
+      } else if (expr.kind == AstKind.Loop) {
         const L1 = ctx.labelCount++;
         const L2 = ctx.labelCount++;
 
@@ -291,8 +307,8 @@ export class Compiler {
         this.compileBody(expr.body, out, ctx);
 
         out.push({
-          kind: Instr.Unbind,
-          count: expr.bindings.length
+          kind: Instr.Dealloc,
+          size: expr.bindings.length * 8
         });
 
         for (const binding of expr.bindings)
@@ -315,7 +331,28 @@ export class Compiler {
     const instr: Instruction[] = [];
     const id = this.getProcId(proc.name);
 
-    this.compileBody(proc.body, instr, createContext(proc.loc));
+    const ctx = createContext();
+    
+    for (const memory of proc.memories.values()) {
+      const size = Number(this.evalBody(memory.body, memory.loc));
+      if (size < 1 || size > 1e8) {
+        throw new StckError(Err.InvalidComptime)
+          .addErr(memory.loc, "invalid memory size");
+      }
+      
+      ctx.memories.set(memory.name, ctx.memorySize);
+      ctx.memorySize += size;
+    }
+
+    if (ctx.memorySize) {
+      instr.push({ kind: Instr.Alloc, size: ctx.memorySize });
+    }
+
+    this.compileBody(proc.body, instr, ctx);
+
+    if (ctx.memorySize) {
+      instr.push({ kind: Instr.Dealloc, size: ctx.memorySize });
+    }
 
     if (proc.name == "main" && !proc.signature.outs.length) {
       // the typechecker forces the main procedure to return either nothing or an integer
@@ -332,29 +369,23 @@ export class Compiler {
   }
 
   private compileConst(constant: Const) {
-    const instr: Instruction[] = [];
     this.consts.set(constant.name, null);
-    this.compileBody(constant.body, instr, createContext(constant.loc));
-    this.consts.set(constant.name, this.evaluate(constant.loc, instr));
+    this.consts.set(constant.name, this.evalBody(constant.body, constant.loc));
   }
 
   private compileMemory(memory: Const) {
-    const instr: Instruction[] = [];
-    this.memories.set(memory.name, this.memoryOffset);
-    this.compileBody(memory.body, instr, createContext(memory.loc));
-    const size = Number(this.evaluate(memory.loc, instr));
-    if (size < 1 || !Number.isSafeInteger(size)) {
+    const size = Number(this.evalBody(memory.body, memory.loc));
+    if (size < 1 || size > 1e8) {
       throw new StckError(Err.InvalidComptime)
-        .addErr(memory.loc, "invalid memory size")
+        .addErr(memory.loc, "invalid memory size");
     }
-
-    this.memoryOffset += size;
+    
+    this.memories.set(memory.name, this.memorySize);
+    this.memorySize += size;
   }
 
   private compileAssert(assert: Assert) {
-    const instr: Instruction[] = [];
-    this.compileBody(assert.body, instr, createContext(assert.loc));
-    if (!this.evaluate(assert.loc, instr)) {
+    if (!this.evalBody(assert.body, assert.loc)) {
       throw new StckError(Err.AssertionFailed)
         .addErr(assert.loc, assert.message);
     }
@@ -379,7 +410,7 @@ export class Compiler {
       strings: Array.from(this.stringIds.keys()),
       libraries: Array.from(this.libraries),
       extern: Array.from(this.extern),
-      memorySize: this.memoryOffset,
+      memorySize: this.memorySize,
     };
   }
 }

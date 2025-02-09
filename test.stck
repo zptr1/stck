@@ -1,6 +1,22 @@
 %include "std"
 %include "libc"
 
+proc test :: int int -> int do
+  memory a 8 end
+  memory b 8 end
+  memory c 8 end
+
+  a write64
+  b write64
+
+  a read64
+  b read64
+  add
+  c write64
+
+  c read64
+end
+
 proc main do
-  1_000_000 print
+  34 35 test puti "\n" puts
 end

@@ -206,6 +206,10 @@ export class TypeChecker {
         expr.type = WordType.Memory;
         ctx.stack.push({ type: DataType.Ptr });
         ctx.stackLocations.push(expr.loc);
+      } else if (ctx.location.kind == AstKind.Proc && ctx.location.memories.has(name)) {
+        expr.type = WordType.LocalMemory;
+        ctx.stack.push({ type: DataType.Ptr });
+        ctx.stackLocations.push(expr.loc);
       } else if (this.program.vars.has(name)) {
         expr.type = WordType.Var;
         ctx.stack.push({
@@ -248,7 +252,7 @@ export class TypeChecker {
           (err) => err.addHint("a condition with a single branch must not alter the types on the stack")
         );
       }
-    } else if (expr.kind == AstKind.While) {
+    } else if (expr.kind == AstKind.Loop) {
       const clone = cloneContext(ctx);
       this.validateBody(expr.condition, clone);
       handleSignature(
@@ -319,7 +323,7 @@ export class TypeChecker {
   /**
    * Unsafe procedures do not get typechecked, but we still to add some type data to them
    */
-  private inferUnsafeBody(body: Expr[], bindings: Set<string>) {
+  private inferUnsafeBody(body: Expr[], bindings: Set<string>, memories: Map<string, Const>) {
     for (const expr of body) {
       if (expr.kind == AstKind.Word) {
         if (INTRINSICS.has(expr.value)) expr.type = WordType.Intrinsic;
@@ -329,21 +333,22 @@ export class TypeChecker {
         else if (this.program.memories.has(expr.value)) expr.type = WordType.Memory;
         else if (this.program.vars.has(expr.value)) expr.type = WordType.Var;
         else if (this.program.externs.has(expr.value)) expr.type = WordType.Extern;
+        else if (memories.has(expr.value)) expr.type = WordType.LocalMemory;
         else {
           throw new StckError(Err.InvalidExpr)
             .addErr(expr.loc, "unknown word");
         }
       } else if (expr.kind == AstKind.If) {
-        this.inferUnsafeBody(expr.condition, bindings);
-        this.inferUnsafeBody(expr.body, bindings);
-        this.inferUnsafeBody(expr.else, bindings);
-      } else if (expr.kind == AstKind.While) {
-        this.inferUnsafeBody(expr.condition, bindings);
-        this.inferUnsafeBody(expr.body, bindings);
+        this.inferUnsafeBody(expr.condition, bindings, memories);
+        this.inferUnsafeBody(expr.body, bindings, memories);
+        this.inferUnsafeBody(expr.else, bindings, memories);
+      } else if (expr.kind == AstKind.Loop) {
+        this.inferUnsafeBody(expr.condition, bindings, memories);
+        this.inferUnsafeBody(expr.body, bindings, memories);
       } else if (expr.kind == AstKind.Let) {
         for (const binding of expr.bindings)
           bindings.add(binding);
-        this.inferUnsafeBody(expr.body, bindings);
+        this.inferUnsafeBody(expr.body, bindings, memories);
         for (const binding of expr.bindings)
           bindings.delete(binding);
       }
@@ -366,6 +371,7 @@ export class TypeChecker {
         throw new StckError(Err.InvalidProc)
           .addErr(proc.loc, "the main procedure cannot be inlined");
       } else if (proc.signature.ins.length) {
+        // TODO: `int ptr` to accept argc and argv
         throw new StckError(Err.InvalidProc)
           .addWarn(proc.signature.ins[0].loc!, "cannot accept anything")
           .addErr(proc.loc, "invalid signature for the main procedure");
@@ -429,8 +435,12 @@ export class TypeChecker {
     this.program.memories.forEach((memory) => this.validateMemory(memory));
 
     this.program.procs.forEach((proc) => {
+      for (const memory of proc.memories.values()) {
+        this.validateBody(memory.body, createContext(memory));
+      }
+      
       if (proc.unsafe) {
-        this.inferUnsafeBody(proc.body, new Set());
+        this.inferUnsafeBody(proc.body, new Set(), proc.memories);
       } else {
         this.validateProc(proc);
       }

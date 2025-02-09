@@ -266,8 +266,7 @@ Using the memory regions pushes a pointer to the start of that region, which you
 
 ### Local Memory Regions
 
-Not implemented yet.
-~~Local memory regions are defined inside of a procedure, and instead of being statically allocated, they are allocated on the call stack when the procedure gets called, and automatically deallocated when the procedure returns.~~
+Local memory regions are defined inside of a procedure, and instead of being statically allocated, they are allocated on the call stack when the procedure gets called, and automatically deallocated when the procedure returns.
 
 ## Variables
 
