@@ -61,8 +61,12 @@ function codegenProc(id: number, instructions: Instruction[], out: string[]) {
     } else if (instr.kind == Instr.PushLocal) {
       out.push(`push qword [cs_ptr+${instr.offset}]`)
     } else if (instr.kind == Instr.PushLocalAddr) {
-      out.push(`lea rax, [cs_ptr+${instr.offset}]`);
-      out.push("push rax");
+      if (instr.offset) {
+        out.push(`lea rax, [cs_ptr+${instr.offset}]`);
+        out.push("push rax");
+      } else {
+        out.push("push cs_ptr");
+      }
     } else if (instr.kind == Instr.Bind) {
       out.push(`sub cs_ptr, ${8 * instr.count}`);
       for (let i = instr.count - 1; i >= 0; i--) {
@@ -129,8 +133,6 @@ function codegenProc(id: number, instructions: Instruction[], out: string[]) {
         "and rsp, -15"
       );
 
-      // not sure if this works
-      // upd: it fucking does
       if (instr.argc > 6) {
         if (instr.argc % 2) out.push(`sub rsp, 8`);
         for (let i = instr.argc - 1; i >= 6; i--) {
