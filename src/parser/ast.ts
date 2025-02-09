@@ -1,4 +1,5 @@
 import { File, Location, TypeFrame } from "../shared";
+import { Token } from "../lexer";
 
 export enum AstKind {
   Proc,
@@ -8,7 +9,7 @@ export enum AstKind {
   Word,
   If,
   Loop,
-  Let,
+  Binding,
   Cast,
   Assert,
   Extern,
@@ -29,14 +30,12 @@ export enum WordType {
 
 export enum LiteralType {
   Int,
-  BigInt,
   Str,
   CStr,
   Assembly
 }
 
-export type Expr = Word | Literal | Condition | Loop | Let | Cast;
-export type Definition = Proc | Const | Assert;
+export type Expr = Word | Literal | Condition | Loop | Binding | Cast;
 
 export interface Program {
   file: File;
@@ -107,8 +106,9 @@ export interface Loop extends Ast<AstKind.Loop> {
   body: Expr[];
 }
 
-export interface Let extends Ast<AstKind.Let> {
+export interface Binding extends Ast<AstKind.Binding> {
   bindings: string[];
+  inline: boolean;
   body: Expr[];
 }
 

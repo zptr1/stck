@@ -28,15 +28,15 @@ export interface Context {
   stack: TypeFrame[];
   stackLocations: Location[];
   bindings: Map<string, TypeFrame>;
+  memories: Map<string, Const>;
   returnTypes: TypeFrame[] | undefined;
-  location: Proc | Const | Assert;
 }
 
 export function createContext(
-  location: Proc | Const | Assert,
   stack: TypeFrame[] = [],
   stackLocations: Location[] = [],
-  bindings: Map<string, TypeFrame> = new Map(),
+  bindings = new Map<string, TypeFrame>(),
+  memories = new Map<string, Const>(),
   returnTypes?: TypeFrame[]
 ): Context {
   return {
@@ -44,16 +44,16 @@ export function createContext(
     stackLocations,
     bindings,
     returnTypes,
-    location
+    memories
   };
 }
 
 export function cloneContext(ctx: Context): Context {
   return createContext(
-    ctx.location,
     structuredClone(ctx.stack),
     ctx.stackLocations.slice(),
     ctx.bindings,
+    ctx.memories,
     ctx.returnTypes
   );
 }

@@ -62,6 +62,8 @@ function codegenProc(id: number, instructions: Instruction[], out: string[]) {
       out.push(`push qword [cs_ptr+${instr.offset}]`)
     } else if (instr.kind == Instr.PushLocalAddr) {
       if (instr.offset) {
+        // For some reason, `push mem+imm` works just fine
+        // but `push cs_ptr+imm` only pushes the immediate
         out.push(`lea rax, [cs_ptr+${instr.offset}]`);
         out.push("push rax");
       } else {

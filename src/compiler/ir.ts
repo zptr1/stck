@@ -1,6 +1,6 @@
 import { ExpansionStackElement, Instruction } from "../shared";
 
-export interface CompilerContext {
+export interface IRContext {
   inlineExpansionStack: ExpansionStackElement[];
   bindings: Map<string, number>;
   memories: Map<string, number>;
@@ -16,7 +16,7 @@ export interface IRProgram {
   extern: string[];
 }
 
-export function createContext(): CompilerContext {
+export function createContext(): IRContext {
   return {
     inlineExpansionStack: [],
     bindings: new Map(),

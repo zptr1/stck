@@ -138,12 +138,12 @@ export class TypeChecker {
         ctx.stackLocations.push(expr.loc);
       } else if (expr.type == LiteralType.CStr) {
         ctx.stack.push({ type: DataType.Ptr });
-      } else if (expr.type == LiteralType.Int || expr.type == LiteralType.BigInt) {
+      } else if (expr.type == LiteralType.Int) {
         ctx.stack.push({ type: DataType.Int });
       } else if (expr.type == LiteralType.Assembly) {
         throw new StckError(Err.InvalidExpr)
-          .addErr(expr.loc, "assembly blocks cannot be used in safe procedures")
-          .addHint("you can add `unsafe` before the procedure to make it unsafe (not recommended)");
+          .addErr(expr.loc, "inline assembly cannot be used here")
+          .addHint("this can be used in unsafe procedures");
       } else {
         assertNever(expr.type);
       }
@@ -152,7 +152,21 @@ export class TypeChecker {
 
       if (name == "<dump-stack>") {
         expr.type = WordType.Intrinsic;
-        console.log(chalk.cyan.bold("debug:"), "Current types on the stack");
+
+        // // TODO: decide whether or not this is better
+        // const err = new StckError(Err.InvalidType);
+
+        // for (let i = 0; i < ctx.stack.length; i++) {
+        //   err.addNote(ctx.stackLocations[i], frameToString(ctx.stack[i]));
+        // }
+
+        // err.addTrace(expr.loc, " ");
+
+        // console.log(chalk.blue.bold("debug:"), "current types on the stack")
+        // console.log(err.format(false));
+
+        console.log(chalk.cyan.bold("debug:"), "Current types on the stack:");
+        if (!ctx.stack.length) console.log("..... ", "Empty");
         for (let i = 0; i < ctx.stack.length; i++) {
           console.log("..... ", chalk.bold(frameToString(ctx.stack[i])), "@", formatLoc(ctx.stackLocations[i]));
         }
@@ -175,6 +189,10 @@ export class TypeChecker {
       } else if (ctx.bindings.has(name)) {
         expr.type = WordType.Binding;
         ctx.stack.push(ctx.bindings.get(name)!);
+        ctx.stackLocations.push(expr.loc);
+      } else if (ctx.memories.has(name)) {
+        expr.type = WordType.LocalMemory;
+        ctx.stack.push({ type: DataType.Ptr });
         ctx.stackLocations.push(expr.loc);
       } else if (this.program.procs.has(name)) {
         const proc = this.program.procs.get(name)!;
@@ -204,10 +222,6 @@ export class TypeChecker {
         ctx.stackLocations.push(expr.loc);
       } else if (this.program.memories.has(name)) {
         expr.type = WordType.Memory;
-        ctx.stack.push({ type: DataType.Ptr });
-        ctx.stackLocations.push(expr.loc);
-      } else if (ctx.location.kind == AstKind.Proc && ctx.location.memories.has(name)) {
-        expr.type = WordType.LocalMemory;
         ctx.stack.push({ type: DataType.Ptr });
         ctx.stackLocations.push(expr.loc);
       } else if (this.program.vars.has(name)) {
@@ -267,7 +281,7 @@ export class TypeChecker {
         "after a single iteration of the loop",
         (err) => err.addHint("loops should not alter the types on the stack")
       );
-    } else if (expr.kind == AstKind.Let) {
+    } else if (expr.kind == AstKind.Binding) {
       if (ctx.stack.length < expr.bindings.length) {
         throw new StckError(Err.InsufficientStackTypes)
           .addStackElements(ctx, (e) => `${e} introduced here`)
@@ -284,10 +298,11 @@ export class TypeChecker {
 
         if (ctx.bindings.has(binding)) {
           throw new StckError(Err.DuplicatedDefinition)
-            .addErr(
-              expr.loc,
-              `\`${binding}\` is already bound to ${frameToString(ctx.bindings.get(binding)!)}`
-            );
+            .addErr(expr.loc, `\`${binding}\` is already bound`);
+        } else if (ctx.memories.has(binding)) {
+          throw new StckError(Err.DuplicatedDefinition)
+            .addErr(expr.loc, "there is already a local memory region with the same name")
+            .addNote(ctx.memories.get(binding)!.loc, "defined here");
         } else {
           const frame = ctx.stack.pop()!;
           ctx.stackLocations.pop();
@@ -296,6 +311,8 @@ export class TypeChecker {
       }
 
       this.validateBody(expr.body, ctx);
+      for (const binding of expr.bindings)
+        ctx.bindings.delete(binding);
     } else if (expr.kind == AstKind.Cast) {
       if (ctx.stack.length < expr.types.length) {
         throw new StckError(Err.InsufficientStackTypes)
@@ -304,7 +321,7 @@ export class TypeChecker {
             expr.loc,
             expr.types.length > 1
               ? `casts ${expr.types.length} elements but got ${ctx.stack.length}`
-              : "casts an element but got nothing"
+              : "casts one element but got nothing"
           );
       }
 
@@ -320,48 +337,51 @@ export class TypeChecker {
     }
   }
 
+  private validateBody(body: Expr[], ctx: Context) {
+    for (const expr of body) {
+      this.validateExpr(expr, ctx);
+    }
+  }
+
   /**
-   * Unsafe procedures do not get typechecked, but we still to add some type data to them
+   * Unsafe procedures do not get typechecked, but we still want to add some type data to them
    */
-  private inferUnsafeBody(body: Expr[], bindings: Set<string>, memories: Map<string, Const>) {
+  private inferUnsafeBody(body: Expr[], ctx: Context) {
     for (const expr of body) {
       if (expr.kind == AstKind.Word) {
         if (INTRINSICS.has(expr.value)) expr.type = WordType.Intrinsic;
-        else if (bindings.has(expr.value)) expr.type = WordType.Binding;
+        else if (ctx.bindings.has(expr.value)) expr.type = WordType.Binding;
+        else if (ctx.memories.has(expr.value)) expr.type = WordType.LocalMemory;
         else if (this.program.procs.has(expr.value)) expr.type = WordType.Proc;
         else if (this.program.consts.has(expr.value)) expr.type = WordType.Constant;
         else if (this.program.memories.has(expr.value)) expr.type = WordType.Memory;
         else if (this.program.vars.has(expr.value)) expr.type = WordType.Var;
         else if (this.program.externs.has(expr.value)) expr.type = WordType.Extern;
-        else if (memories.has(expr.value)) expr.type = WordType.LocalMemory;
         else {
           throw new StckError(Err.InvalidExpr)
             .addErr(expr.loc, "unknown word");
         }
       } else if (expr.kind == AstKind.If) {
-        this.inferUnsafeBody(expr.condition, bindings, memories);
-        this.inferUnsafeBody(expr.body, bindings, memories);
-        this.inferUnsafeBody(expr.else, bindings, memories);
+        this.inferUnsafeBody(expr.condition, ctx);
+        this.inferUnsafeBody(expr.body, ctx);
+        this.inferUnsafeBody(expr.else, ctx);
       } else if (expr.kind == AstKind.Loop) {
-        this.inferUnsafeBody(expr.condition, bindings, memories);
-        this.inferUnsafeBody(expr.body, bindings, memories);
-      } else if (expr.kind == AstKind.Let) {
+        this.inferUnsafeBody(expr.condition, ctx);
+        this.inferUnsafeBody(expr.body, ctx);
+      } else if (expr.kind == AstKind.Binding) {
         for (const binding of expr.bindings)
-          bindings.add(binding);
-        this.inferUnsafeBody(expr.body, bindings, memories);
+          ctx.bindings.set(binding, { type: DataType.Unknown });
+        
+        this.inferUnsafeBody(expr.body, ctx);
+
         for (const binding of expr.bindings)
-          bindings.delete(binding);
+          ctx.bindings.delete(binding);
       }
     }
   }
 
-  private validateBody(body: Expr[], ctx: Context) {
-    for (const expr of body)
-      this.validateExpr(expr, ctx);
-  }
-
   private validateProc(proc: Proc) {
-    const ctx = createContext(proc);
+    const ctx = createContext();
     if (!proc.inline) {
       ctx.returnTypes = proc.signature.outs;
     }
@@ -381,8 +401,8 @@ export class TypeChecker {
           .addErr(proc.loc, "invalid signature for the main procedure");
       } else if (proc.signature.outs.length > 1) {
         throw new StckError(Err.InvalidProc)
-        .addWarn(proc.signature.outs[1].loc!, "cannot return more than 1 value")
-        .addErr(proc.loc, "invalid signature for the main procedure");
+          .addWarn(proc.signature.outs[1].loc!, "cannot return more than 1 value")
+          .addErr(proc.loc, "invalid signature for the main procedure");
       }
     }
 
@@ -391,12 +411,25 @@ export class TypeChecker {
       ctx.stackLocations.push(frame.loc ?? proc.loc);
     }
 
-    this.validateBody(proc.body, ctx);
-    handleSignature(proc.loc, ctx, proc.signature.outs, [], true, false, "after the procedure");
+    for (const memory of proc.memories.values()) {
+      this.validateMemory(memory);
+      ctx.memories.set(memory.name, memory);
+    }
+
+    if (proc.unsafe) {
+      this.inferUnsafeBody(proc.body, ctx);
+    } else {
+      this.validateBody(proc.body, ctx);
+      handleSignature(
+        proc.loc, ctx,
+        proc.signature.outs, [],
+        true, false, "after the procedure"
+      );
+    }
   }
 
   private validateConst(constant: Const) {
-    const ctx = createContext(constant);
+    const ctx = createContext();
     this.validateBody(constant.body, ctx);
     handleSignature(
       constant.loc, ctx,
@@ -409,7 +442,7 @@ export class TypeChecker {
   }
 
   private validateMemory(memory: Const) {
-    const ctx = createContext(memory);
+    const ctx = createContext();
     this.validateBody(memory.body, ctx);
     handleSignature(
       memory.loc, ctx,
@@ -419,7 +452,7 @@ export class TypeChecker {
   }
 
   private validateAssert(assert: Assert) {
-    const ctx = createContext(assert);
+    const ctx = createContext();
     this.validateBody(assert.body, ctx);
     handleSignature(
       assert.loc, ctx,
@@ -433,17 +466,6 @@ export class TypeChecker {
     this.program.consts.forEach((constant) => this.validateConst(constant));
     this.program.assertions.forEach((assert) => this.validateAssert(assert));
     this.program.memories.forEach((memory) => this.validateMemory(memory));
-
-    this.program.procs.forEach((proc) => {
-      for (const memory of proc.memories.values()) {
-        this.validateBody(memory.body, createContext(memory));
-      }
-      
-      if (proc.unsafe) {
-        this.inferUnsafeBody(proc.body, new Set(), proc.memories);
-      } else {
-        this.validateProc(proc);
-      }
-    });
+    this.program.procs.forEach((proc) => this.validateProc(proc));
   }
 }

@@ -17,6 +17,11 @@ This is the changelog for **stck**.
 - The output path is now specified with the `--output`/`-o` flag instead
 - Improved import handling
 
+### Fixed
+- Fixed the parser not checking whether the word is already defined for let-bindings
+- Fixed the typechecker not removing bindings from the context after the block ends
+- `override` now works properly in externs
+
 ## 0.1.5 - 2025-02-01
 Welp, back to working on this language I guess!
 

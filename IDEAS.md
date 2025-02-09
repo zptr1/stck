@@ -44,10 +44,6 @@ Structures can be used as types as well.
 
 sorry im too lazy to explain this
 
-## Local Memory Regions
-
-Implemented
-
 ## Assembly Imports
 
 Importing files with an `.asm` extension would include them in the compiled `.asm` source.
@@ -90,3 +86,5 @@ end
 These will be the same type as regular pointers, but will contain size information.
 Pointers with unknown size can be used anywhere, but pointers with known size will only be able to be used when they're at least the required amount of bytes.
 For example, a pointer to 100 bytes can be used in a procedure that requires a pointer to 64 bytes, but a pointer to 50 bytes cannot.
+
+Problem: the values of memories and constants are evaluated after typechecking

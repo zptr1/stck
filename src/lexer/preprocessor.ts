@@ -162,7 +162,7 @@ export class Preprocessor {
     }
 
     throw new StckError(Err.UnclosedBlock)
-      .addErr(loc, "this block was never closed");
+      .addErr(loc, "this macro was never closed");
   }
 
   public preprocess(): Token[] {

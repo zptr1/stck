@@ -284,15 +284,14 @@ macro jmpifnot Lb {
   ;; Dump the contents of the stack
   ; TODO: Include this only when it is used in the program
   macro intrinsic_dumpstack {
-    ; mov rax, 1
-    ; mov rdi, 2
-    ; mov rsi, ds_msg
-    ; mov rdx, ds_msg_len
-    ; syscall
+    mov rax, 1
+    mov rdi, 2
+    mov rsi, ds_msg
+    mov rdx, ds_msg_len
+    syscall
 
     mov r12, ds_start
     mov r13, rsp
-    add r13, 8
     local .L2
     .L2:
       mov rdi, [r13]

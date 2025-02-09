@@ -183,10 +183,12 @@ export class StckError {
 
   }
 
-  public format(): string {
+  public format(includeTopLine = true): string {
     const out: string[] = [];
 
-    out.push(`${chalk.red.bold(`error:`)} ${errToStr(this.type)}`);
+    if (includeTopLine) {
+      out.push(`${chalk.red.bold(`error:`)} ${errToStr(this.type)}`);
+    }
 
     for (const file of this.files.values()) {
       this.formatFile(out, file);

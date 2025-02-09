@@ -24,6 +24,7 @@ export const KEYWORDS = new Set([
   "let",
   "cast",
   "return",
+  "in",
   "do",
   "end",
 ]);
@@ -60,6 +61,7 @@ export enum Tokens {
   Let = "let",
   Cast = "cast",
   Return = "return",
+  In = "in",
   Do = "do",
   End = "end",
   // Special tokens

@@ -1,6 +1,6 @@
 import { Assert, AstKind, Const, Expr, LiteralType, Proc, Program, WordType } from "../parser";
 import { INTRINSICS, Instr, Instruction, Location, Size, formatLoc } from "../shared";
-import { CompilerContext, IRProgram, createContext } from "./ir";
+import { IRContext, IRProgram, createContext } from "./ir";
 import { i32_MAX, i32_MIN, assertNever } from "../misc";
 import { Err, StckError } from "../errors";
 import chalk from "chalk";
@@ -45,6 +45,7 @@ export class Compiler {
       return cb(lhs, rhs);
     }
 
+    // TODO: make this nicer
     for (const instr of instructions) {
       if (instr.kind == Instr.Push || instr.kind == Instr.PushBigInt) {
         stack.push(BigInt(instr.value));
@@ -103,7 +104,7 @@ export class Compiler {
   }
 
   // TODO: automatically inline procedures that were used only once or are too small
-  private inlineProc(proc: Proc, expr: Expr, out: Instruction[], ctx: CompilerContext) {
+  private inlineProc(proc: Proc, expr: Expr, out: Instruction[], ctx: IRContext) {
     const idx = ctx.inlineExpansionStack.findIndex((x) => x.name == proc.name);
     if (idx > -1) {
       const err = new StckError(Err.RecursiveInlineProcExpansion);
@@ -129,7 +130,7 @@ export class Compiler {
     ctx.inlineExpansionStack.pop();
   }
 
-  private compileBody(body: Expr[], out: Instruction[], ctx: CompilerContext) {
+  private compileBody(body: Expr[], out: Instruction[], ctx: IRContext) {
     for (const expr of body) {
       if (expr.kind == AstKind.Literal) {
         if (expr.type == LiteralType.Str) {
@@ -145,16 +146,16 @@ export class Compiler {
             len: -1
           });
         } else if (expr.type == LiteralType.Int) {
-          out.push({
-            kind: Instr.Push,
-            size: Size.Long,
-            value: expr.value
-          });
-        } else if (expr.type == LiteralType.BigInt) {
-          out.push({
-            kind: Instr.PushBigInt,
-            value: expr.value
-          });
+          out.push(
+            expr.value > i32_MAX || expr.value < i32_MIN ? {
+              kind: Instr.PushBigInt,
+              value: expr.value
+            } : {
+              kind: Instr.Push,
+              size: Size.Long,
+              value: expr.value
+            }
+          );
         } else if (expr.type == LiteralType.Assembly) {
           out.push({
             kind: Instr.AsmBlock,
@@ -292,7 +293,7 @@ export class Compiler {
           { kind: Instr.Jmp, label: L1 },
           { kind: Instr.Label, label: L2 },
         );
-      } else if (expr.kind == AstKind.Let) {
+      } else if (expr.kind == AstKind.Binding) {
         for (const [binding, idx] of ctx.bindings)
           ctx.bindings.set(binding, idx + expr.bindings.length);
 
@@ -311,11 +312,10 @@ export class Compiler {
           size: expr.bindings.length * 8
         });
 
-        for (const binding of expr.bindings)
-          ctx.bindings.delete(binding);
-
-        for (const [binding, idx] of ctx.bindings)
+        for (const binding of expr.bindings) ctx.bindings.delete(binding);
+        for (const [binding, idx] of ctx.bindings) {
           ctx.bindings.set(binding, idx - expr.bindings.length);
+        }
       } else if (expr.kind != AstKind.Cast) {
         assertNever(expr);
       }

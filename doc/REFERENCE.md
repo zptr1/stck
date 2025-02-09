@@ -466,12 +466,13 @@ write intrinsics have a signature of `int ptr -> void`, and read intrinsics have
 ## Program
 | Name | Signature | Description |
 |------|-----------|--------------
-| **puts**       | `int ptr`     | Prints the provided string to stdout                               |
-| **print**      | `int`         | Prints the provided integer to stdout                              |
-| **exit**       | `int`         | Finishes the execution with the provided exit code.                |
-| **offset**     | `int -> int`  | Output the global counter and increment it by the specified value. |
-| **reset**      | `void -> int` | Output the global counter and reset it to zero.                    |
-| **dump-stack** |               | For debugging: Prints the contents of the entire data stack.       |
+| **puts**         | `int ptr`     | Prints the provided string to stdout                               |
+| **print**        | `int`         | Prints the provided integer to stdout                              |
+| **exit**         | `int`         | Finishes the execution with the provided exit code.                |
+| **offset**       | `int -> int`  | Output the global counter and increment it by the specified value. |
+| **reset**        | `void -> int` | Output the global counter and reset it to zero.                    |
+| **dump-stack**   |               | For debugging: Prints the contents of the entire data stack.       |
+| **<dump-stack>** |               | Compile-time: Prints the types on the stack                        |
 
 # Prelude
 

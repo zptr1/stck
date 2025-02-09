@@ -81,8 +81,8 @@ addIntrinsic("puts",        Instr.Puts,      [DataType.Int, DataType.Ptr], []);
 addIntrinsic("print",       Instr.Print,     [DataType.Int], []);
 addIntrinsic("exit",        Instr.Halt,      [DataType.Int], []);
 addIntrinsic("dump-stack",  Instr.DumpStack, [], []);
+addIntrinsic("offset",      Instr.Offset, [DataType.Int], [DataType.Int]);
+addIntrinsic("reset",       Instr.Reset,  [],             [DataType.Int]);
 
 // Compile-time
-addIntrinsic("?stack-types", Instr.Nop,    [], []);
-addIntrinsic("offset",       Instr.Offset, [DataType.Int], [DataType.Int]);
-addIntrinsic("reset",        Instr.Reset,  [],             [DataType.Int]);
+addIntrinsic("<dump-stack>", Instr.Nop,    [], []);
