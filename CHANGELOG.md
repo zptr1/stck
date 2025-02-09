@@ -11,6 +11,7 @@ This is the changelog for **stck**.
 - The linking now respects the user's `LDFLAGS` environment variable
 - You can now use underscores in numbers as separators, for example `1_000_000`
 - Added `fputs` to `std/io` that can be used for writing a string to the provided file descriptor
+- Added local memory regions which are allocated on the call stack
 
 ### Changed
 - The output path is now specified with the `--output`/`-o` flag instead
@@ -90,7 +91,6 @@ Welp, back to working on this language I guess!
 - Added missing syscalls to `std/sys/linux`
 - Added a `str-chop-left` procedure to `std/str`
 - Added comments to procedures from the standard library
-- Added local memory regions which are allocated on the call stack
 
 ### Changed
 
