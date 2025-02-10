@@ -10,6 +10,14 @@ proc cstr-to-str :: ptr -> int ptr do
   end swap
 end
 
+/// Returns a pointer to the end of a C-string.
+/// Returns the same pointer if it already points to a zero.
+inline proc cstr-end :: ptr -> ptr do
+  while dup read8 0 neq do
+    1 ptr+
+  end
+end
+
 /// Checks whether both strings are equal
 proc streq :: int ptr int ptr -> bool do
   let len ptr1 len2 ptr2 do

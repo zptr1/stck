@@ -1,5 +1,5 @@
-import type { IRProgram } from "../compiler/ir";
-import { Instr, Instruction } from "../shared";
+import { formatLoc, Instr, Instruction } from "../shared";
+import type { IRProc, IRProgram } from "../compiler/ir";
 import { ROOT_DIR } from "../index";
 import plib from "path";
 
@@ -13,23 +13,27 @@ const isPushInstr = (instr: Instr) => (
 
 // TODO: Another compilation step before codegen to optimize stuff
 
-function codegenProc(id: number, instructions: Instruction[], out: string[]) {
+function codegenProc(id: number, proc: IRProc, out: string[]) {
   let lastInstr: Instruction = { kind: Instr.Nop };
 
   out.push(
+    `;; ${proc.name} @ ${formatLoc(proc.loc)}`,
     `__proc_${id}:`,
     "switch_to_datastack"
   );
 
   if (id == 0) {
-    // push argv and argc for the main procedure
+    // push argv and argc for <load>
     out.push("push rsi");
     out.push("push rdi");
   }
 
-  for (const instr of instructions) {
+  for (const instr of proc.instr) {
     if (instr.kind == Instr.Ret) {
-      if (lastInstr.kind == Instr.Call) {
+      if (id == 0) {
+        // Jump to main after executing <load>
+        out.push("ret_call_proc __proc_1");
+      } else if (lastInstr.kind == Instr.Call) {
         out.pop();
         out.push(`ret_call_proc __proc_${lastInstr.id}`);
       } else {
@@ -172,8 +176,8 @@ export function codegenFasm(prog: IRProgram): string[] {
   out.push(`include "${plib.join(ROOT_DIR, "lib/prelude.asm")}"`);
   out.push("section '.text' executable\n");
 
-  for (const [id, instr] of prog.procs) {
-    codegenProc(id, instr, out);
+  for (const [id, proc] of prog.procs) {
+    codegenProc(id, proc, out);
   }
 
   out.push("section '.data' writeable");

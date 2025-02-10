@@ -382,7 +382,7 @@ export class TypeChecker {
 
   private validateProc(proc: Proc) {
     const ctx = createContext();
-    if (!proc.inline) {
+    if (!proc.inline && proc.name != "<load>") {
       ctx.returnTypes = proc.signature.outs;
     }
 

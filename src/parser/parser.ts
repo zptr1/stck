@@ -52,6 +52,16 @@ export class Parser {
     return token;
   }
 
+  private expectNext(loc?: Location, message?: string) {
+    const token = this.next();
+    if (!token) {
+      throw new StckError(Err.UnclosedBlock)
+        .addErr(loc || this.lastToken.loc, message || "unexpected EOF");
+    }
+
+    return token;
+  }
+
   private checkUniqueDefinition({ loc, value }: Token) {
     if (INTRINSICS.has(value)) {
       throw new StckError(Err.DuplicatedDefinition)
@@ -121,12 +131,9 @@ export class Parser {
     };
 
     while (true) {
-      const token = this.next();
+      const token = this.expectNext(loc, "this condition was never closed");
 
-      if (!token) {
-        throw new StckError(Err.UnclosedBlock)
-          .addErr(loc, "this condition was never closed");
-      } else if (token.kind == Tokens.Do) {
+      if (token.kind == Tokens.Do) {
         loc = token.loc;
         break;
       } else {
@@ -135,12 +142,9 @@ export class Parser {
     }
 
     while (true) {
-      const token = this.next();
+      const token = this.expectNext(loc, "this condition was never closed");
 
-      if (!token) {
-        throw new StckError(Err.UnclosedBlock)
-          .addErr(loc, "this condition was never closed");
-      } else if (token.kind == Tokens.Else) {
+      if (token.kind == Tokens.Else) {
         condition.else = this.parseBody(token.loc, ctx);
         condition.elseBranch = token.loc;
         break;
@@ -166,12 +170,9 @@ export class Parser {
     };
 
     while (true) {
-      const token = this.next();
-
-      if (!token) {
-        throw new StckError(Err.UnclosedBlock)
-          .addErr(loc, "this loop was never closed");
-      } else if (token.kind == Tokens.Do) {
+      const token = this.expectNext(loc, "this loop was never closed");
+      
+      if (token.kind == Tokens.Do) {
         loop.body = this.parseBody(token.loc, ctx);
         break;
       } else {
@@ -191,12 +192,9 @@ export class Parser {
     };
 
     while (true) {
-      const token = this.next();
-
-      if (!token) {
-        throw new StckError(Err.UnclosedBlock)
-          .addErr(loc, "this binding was never closed");
-      } else if (token.kind == Tokens.Do) {
+      const token = this.expectNext(loc, "this binding was never closed");
+      
+      if (token.kind == Tokens.Do) {
         binding.body = this.parseBody(token.loc, ctx);
         break;
       } else if (token.kind == Tokens.Word) {
@@ -214,9 +212,9 @@ export class Parser {
 
   private parseConstBody(loc: Location): Expr[] {
     const body: Expr[] = [];
-    while (this.notEOF()) {
-      const token = this.next();
-
+    while (true) {
+      const token = this.expectNext(loc, "this definition was never closed");
+      
       if (token.kind == Tokens.End) {
         return body;
       } else if (token.kind == Tokens.Int) {
@@ -238,16 +236,13 @@ export class Parser {
           .addErr(token.loc, "unexpected token in a compile-time expression");
       }
     }
-
-    throw new StckError(Err.UnclosedBlock)
-      .addErr(loc, "this definition was never closed");
   }
 
   private parseBody(loc: Location, ctx: Proc): Expr[] {
     const body: Expr[] = [];
 
-    while (this.notEOF()) {
-      const token = this.next();
+    while (true) {
+      const token = this.expectNext(loc, "this block was never closed");
 
       if (token.kind == Tokens.End) {
         return body;
@@ -273,9 +268,6 @@ export class Parser {
         body.push(this.parseExpr(token, ctx));
       }
     }
-
-    throw new StckError(Err.UnclosedBlock)
-      .addErr(loc, "this block was never closed");
   }
 
   private parseType(token: Token, loc: Location, unsafe: boolean = false): TypeFrame {
@@ -296,8 +288,7 @@ export class Parser {
       if (!unsafe) {
         throw new StckError(Err.InvalidType)
           .addNote(loc, "type signature starts here")
-          .addErr(token.loc, "unknown types are not allowed here")
-          .addHint("this can be used in unsafe procedures");
+          .addErr(token.loc, "unknown types are only allowed in unsafe procedures");
       }
 
       return {
@@ -307,8 +298,7 @@ export class Parser {
       if (!unsafe) {
         throw new StckError(Err.InvalidType)
           .addNote(loc, "type signature starts here")
-          .addErr(token.loc, "generic types are not allowed here")
-          .addHint("this can be used in unsafe procedures");
+          .addErr(token.loc, "generic types are only allowed in unsafe procedures");
       }
 
       return {
@@ -341,6 +331,32 @@ export class Parser {
 
   private parseProc(loc: Location) {
     const name = this.nextOf(Tokens.Word);
+    if (name.value == "<load>") {
+      const token = this.expectNext(loc, "expected `do`");
+
+      if (token.kind == Tokens.SigIns || token.kind == Tokens.SigOuts) {
+        throw new StckError(Err.UnexpectedToken)
+          .addNote(loc, "procedure starts here")
+          .addErr(token.loc, "this procedure cannot have a signature")
+          .addHint("<load> is a special procedure and cannot have a signature");
+      } else if (token.kind != Tokens.Do) {
+        throw new StckError(Err.UnexpectedToken)
+          .addNote(loc, "procedure starts here")
+          .addErr(token.loc, "expected `do`");
+      }
+
+      if (this.inlineProc || this.unsafeProc) {
+        throw new StckError(Err.InvalidProc)
+          .addErr(loc, "this procedure cannot be inline or unsafe")
+          .addHint("<load> is a special procedure and cannot be inline or unsafe");
+      }
+
+      const proc = this.procs.get("<load>")!;
+      proc.body.push(...this.parseBody(token.loc, proc));
+
+      return;
+    }
+
     this.checkUniqueDefinition(name);
 
     const proc: Proc = {
@@ -468,6 +484,17 @@ export class Parser {
   }
 
   public parse(): Program {
+    this.procs.set("<load>", {
+      kind: AstKind.Proc,
+      loc: this.lastToken.loc,
+      name: "<load>",
+      signature: { ins: [], outs: [] },
+      memories: new Map(),
+      inline: false,
+      unsafe: false,
+      body: []
+    });
+    
     while (this.notEOF()) {
       const token = this.next();
 

@@ -201,6 +201,16 @@ end
 Please note that the compiled stck binaries use the `r14` and `r15` registers for switching between the call stack and the data stack, and store the end of the data stack in `rbp` to check for callstack overflow.
 Make sure to restore them back to their original state if you need to use them.
 
+### Special procedures
+
+Currently, the only special procedure names are `main` and `<load>`.
+
+A stck program can only have one `main` procedure, which gets called when the program starts. This procedure cannot accept any arguments or be inline. The main procedure can optionally return an integer, which will be used as the program's exit code. You can also use the `exit` intrinsic though.
+
+However, a library might need to initialize some state (for example, the seed for random number generation) when it gets imported, and libraries cannot use `main` because that procedure can only be defined once. Instead, they should use the special `<load>` procedure, which can be defined multiple times and will get called when the program starts before the main procedure.
+
+`<load>` cannot have any inputs or outputs, cannot use `return` and cannot be inline or unsafe. You can use conditions, loops and other procedures, but it is recommended to make this as efficient as possible to not take too much time for the program to start.
+
 ## Constants
 
 Constants can be defined using the `const` keyword followed by the name and the value of the constant.
@@ -408,6 +418,10 @@ This example prints numbers from 1 to 10.
 
 Both the condition and the body must not change the types on the stack.
 
+## Return
+
+You can use the `return` keyword to return from the procedure early.
+
 # Intrinsics
 
 Intrinsics are built-in words baked into the compiler.
@@ -469,6 +483,8 @@ write intrinsics have a signature of `int ptr -> void`, and read intrinsics have
 | **puts**         | `int ptr`     | Prints the provided string to stdout                               |
 | **print**        | `int`         | Prints the provided integer to stdout                              |
 | **exit**         | `int`         | Finishes the execution with the provided exit code.                |
+| **get-argv**     | `void -> ptr` | Pushes the pointer to the list of command line arguments           |
+| **get-argc**     | `void -> int` | Pushes the amount of provided command line arguments               |
 | **offset**       | `int -> int`  | Output the global counter and increment it by the specified value. |
 | **reset**        | `void -> int` | Output the global counter and reset it to zero.                    |
 | **dump-stack**   |               | For debugging: Prints the contents of the entire data stack.       |

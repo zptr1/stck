@@ -6,6 +6,18 @@ const stderr 2 end
 
 const EOF -1 end
 
+proc nth-argv :: int -> ptr do
+  if dup 0 lt do
+    drop c""
+  elif dup get-argc gteq do
+    drop c""
+  else
+    sizeof(ptr) mul
+    get-argv swap ptr+
+    read64 cast(ptr)
+  end
+end
+
 memory _putch_buf 1 end
 /// Writes a character to the standard output
 inline proc putch :: int do

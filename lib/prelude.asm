@@ -270,6 +270,14 @@ macro jmpifnot Lb {
     syscall
   }
 
+  macro intrinsic_getargv {
+    push qword [ds_start-8]
+  }
+
+  macro intrinsic_getargc {
+    push qword [ds_start-16]
+  }
+
   macro intrinsic_offset {
     pop rax
     push qword [counter]

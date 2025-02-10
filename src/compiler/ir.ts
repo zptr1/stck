@@ -1,4 +1,4 @@
-import { ExpansionStackElement, Instruction } from "../shared";
+import { ExpansionStackElement, Instruction, Location } from "../shared";
 
 export interface IRContext {
   inlineExpansionStack: ExpansionStackElement[];
@@ -8,8 +8,16 @@ export interface IRContext {
   labelCount: number;
 }
 
+export interface IRProc {
+  name: string;
+  argc: number;
+  retc: number;
+  instr: Instruction[];
+  loc: Location;
+}
+
 export interface IRProgram {
-  procs: Map<number, Instruction[]>;
+  procs: Map<number, IRProc>;
   memorySize: number;
   strings: string[];
   libraries: string[];

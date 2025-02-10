@@ -50,43 +50,26 @@ export interface ErrorFile {
 }
 
 export function errToStr(err: Err): string {
-  if (err == Err.EmptyFile) {
-    return "empty file";
-  } else if (err == Err.NoMainProcedure) {
-    return "no main procedure";
-  } else if (err == Err.UnresolvedImport) {
-    return "unresolved import";
-  } else if (err == Err.InvalidSyntax) {
-    return "invalid syntax";
-  } else if (err == Err.InvalidType) {
-    return "invalid type";
-  } else if (err == Err.InvalidExpr) {
-    return "invalid expression";
-  } else if (err == Err.InvalidProc) {
-    return "invalid procedure";
-  } else if (err == Err.InvalidComptime) {
-    return "invalid compile-time expression";
-  } else if (err == Err.UnexpectedToken) {
-    return "unexpected token";
-  } else if (err == Err.UnclosedBlock) {
-    return "unclosed block";
-  } else if (err == Err.DuplicatedDefinition) {
-    return "duplicated definition";
-  } else if (err == Err.RecursiveInlineProcExpansion) {
-    return "recursive expansion of an inline procedure";
-  } else if (err == Err.RecursiveMacroExpansion) {
-    return "recursive expansion of a macro";
-  } else if (err == Err.InsufficientStackTypes) {
-    return "insufficient types on the stack";
-  } else if (err == Err.UnexpectedStackTypes) {
-    return "unexpected types on the stack";
-  } else if (err == Err.UnhandledStackTypes) {
-    return "unhandled types on the stack";
-  } else if (err == Err.AssertionFailed) {
-    return "assertion failed";
-  } else {
-    assertNever(err);
-  }
+  return (
+    Err.EmptyFile ? "empty file"
+    : err == Err.NoMainProcedure ? "no main procedure"
+    : err == Err.UnresolvedImport ? "unresolved import"
+    : err == Err.InvalidSyntax ? "invalid syntax"
+    : err == Err.InvalidType ? "invalid type"
+    : err == Err.InvalidExpr ? "invalid expression"
+    : err == Err.InvalidProc ? "invalid procedure"
+    : err == Err.InvalidComptime ? "invalid compile-time expression"
+    : err == Err.UnexpectedToken ? "unexpected token"
+    : err == Err.UnclosedBlock ? "unclosed block"
+    : err == Err.DuplicatedDefinition ? "duplicated definition"
+    : err == Err.RecursiveInlineProcExpansion ? "recursive expansion of an inline procedure"
+    : err == Err.RecursiveMacroExpansion ? "recursive expansion of a macro"
+    : err == Err.InsufficientStackTypes ? "insufficient types on the stack"
+    : err == Err.UnexpectedStackTypes ? "unexpected types on the stack"
+    : err == Err.UnhandledStackTypes ? "unhandled types on the stack"
+    : err == Err.AssertionFailed ? "assertion failed"
+    : "unknown error"
+  );
 }
 
 export function errSpanColor(kind: ErrSpanKind) {

@@ -73,6 +73,8 @@ export enum Instr {
   Print,
   Puts,
   Halt,
+  GetArgc,
+  GetArgv,
   DumpStack,
 
   Offset,

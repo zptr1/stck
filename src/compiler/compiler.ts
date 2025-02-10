@@ -1,17 +1,19 @@
 import { Assert, AstKind, Const, Expr, LiteralType, Proc, Program, WordType } from "../parser";
 import { INTRINSICS, Instr, Instruction, Location, Size, formatLoc } from "../shared";
-import { IRContext, IRProgram, createContext } from "./ir";
+import { IRContext, IRProc, IRProgram, createContext } from "./ir";
 import { i32_MAX, i32_MIN, assertNever } from "../misc";
 import { Err, StckError } from "../errors";
 import chalk from "chalk";
 
 export class Compiler {
-  public readonly procs = new Map<number, Instruction[]>();
+  public readonly procs = new Map<number, IRProc>();
   public readonly consts = new Map<string, bigint | null>();
   public readonly memories = new Map<string, number>();
 
   private readonly stringIds = new Map<string, number>();
-  private readonly procIds = new Map<string, number>();
+  private readonly procIds = new Map<string, number>()
+    .set("<load>", 0)
+    .set("main", 1);
   
   private readonly compiledProcs = new Set<string>();
   private readonly compileProcQueue: string[] = [];
@@ -172,7 +174,11 @@ export class Compiler {
           }
         } else if (expr.type == WordType.Proc) {
           const proc = this.program.procs.get(expr.value)!;
-          if (proc.inline) {
+          if (proc.name == "<load>") {
+            throw new StckError(Err.InvalidExpr)
+              .addErr(expr.loc, "cannot call this procedure")
+              .addHint("<load> is a special procedure and cannot be called");
+          } else if (proc.inline) {
             this.inlineProc(proc, expr, out, ctx);
           } else {
             if (!this.compiledProcs.has(expr.value)) {
@@ -330,21 +336,20 @@ export class Compiler {
 
     const instr: Instruction[] = [];
     const id = this.getProcId(proc.name);
-
     const ctx = createContext();
-    
-    for (const memory of proc.memories.values()) {
-      const size = Number(this.evalBody(memory.body, memory.loc));
-      if (size < 1 || size > 1e8) {
-        throw new StckError(Err.InvalidComptime)
-          .addErr(memory.loc, "invalid memory size");
-      }
-      
-      ctx.memories.set(memory.name, ctx.memorySize);
-      ctx.memorySize += size;
-    }
 
-    if (ctx.memorySize) {
+    if (proc.memories.size) {
+      for (const memory of proc.memories.values()) {
+        const size = Number(this.evalBody(memory.body, memory.loc));
+        if (size < 1 || size > 1e8) {
+          throw new StckError(Err.InvalidComptime)
+            .addErr(memory.loc, "invalid memory size");
+        }
+        
+        ctx.memories.set(memory.name, ctx.memorySize);
+        ctx.memorySize += size;
+      }
+
       instr.push({ kind: Instr.Alloc, size: ctx.memorySize });
     }
 
@@ -365,7 +370,12 @@ export class Compiler {
     }
 
     instr.push({ kind: Instr.Ret });
-    this.procs.set(id, instr);
+    this.procs.set(id, {
+      name: proc.name, loc: proc.loc,
+      argc: proc.signature.ins.length,
+      retc: proc.signature.outs.length,
+      instr
+    });
   }
 
   private compileConst(constant: Const) {
@@ -392,15 +402,16 @@ export class Compiler {
   }
 
   public compile(): IRProgram {
-    const proc = this.program.procs.get("main");
-    if (!proc) {
+    if (!this.program.procs.has("main")) {
       throw new StckError(Err.NoMainProcedure);
     }
 
     this.program.consts.forEach((constant) => this.compileConst(constant));
     this.program.assertions.forEach((assert) => this.compileAssert(assert));
 
-    this.compileProc(proc);
+    this.compileProc(this.program.procs.get("<load>")!);
+    this.compileProc(this.program.procs.get("main")!);
+
     while (this.compileProcQueue.length) {
       this.compileProc(this.program.procs.get(this.compileProcQueue.shift()!)!);
     }

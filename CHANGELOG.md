@@ -12,6 +12,9 @@ This is the changelog for **stck**.
 - You can now use underscores in numbers as separators, for example `1_000_000`
 - Added `fputs` to `std/io` that can be used for writing a string to the provided file descriptor
 - Added local memory regions which are allocated on the call stack
+- Added a special procedure `<load>` which gets called before `main` and can be defined multiple times
+- Added `get-argv` and `get-argc` intrinsics
+- Added `nth-argv` to the standard library
 
 ### Changed
 - The output path is now specified with the `--output`/`-o` flag instead
