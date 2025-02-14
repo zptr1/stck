@@ -14,7 +14,7 @@ This language is a work in progress and is not meant for production use!
 **Requirements:** `bun`, `fasm` and `gcc`
 
 Use `stck run file.stck` to run a stck program, or `stck build file.stck` to compile it to an ELF64 executable.
-stck supports Linux x86_64 only for now.
+stck only supports Linux x86_64 for now.
 
 # Roadmap / To-Do
 

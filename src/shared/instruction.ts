@@ -3,7 +3,6 @@ export enum Instr {
   Label,
 
   Push,
-  PushBigInt,
   PushStr,
   PushAddr,
   PushLocal,
@@ -24,6 +23,7 @@ export enum Instr {
   Div,
   Mod,
   DivMod,
+  Neg,
   IMul,
   IDiv,
   IMod,
@@ -81,16 +81,8 @@ export enum Instr {
   Reset
 }
 
-export enum Size {
-  Byte = "byte",
-  Short = "word",
-  Int = "dword",
-  Long = "qword"
-}
-
 type _instr = (
-  | { kind: Instr.Push, value: bigint, size: Size }
-  | { kind: Instr.PushBigInt, value: bigint }
+  | { kind: Instr.Push, value: bigint }
   | { kind: Instr.PushStr, id: number, len: number }
   | { kind: Instr.PushAddr, offset: number }
   | { kind: Instr.PushLocal | Instr.PushLocalAddr, offset: number }
@@ -99,7 +91,7 @@ type _instr = (
   | { kind: Instr.Alloc | Instr.Dealloc, size: number }
   | { kind: Instr.Jmp | Instr.JmpIfNot | Instr.Label, label: number }
   | { kind: Instr.CallExtern, name: string, argc: number, hasOutput: boolean }
-  | { kind: Instr.Call, id: number }
+  | { kind: Instr.Call, id: number, argc: number, retc: number }
   | { kind: Instr.Halt, code: number | null }
 );
 

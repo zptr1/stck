@@ -56,11 +56,6 @@ proc factorial :: int -> int do
   end swap drop
 end
 
-/// Negates an integer
-inline proc neg :: int -> int do
-  not 1 add
-end
-
 /// Raises an integer to a given power
 proc pow :: int int -> int do
   if dup 2 eq do
@@ -84,5 +79,19 @@ proc sqrt :: int -> int do
       rot 2 add
       rot
     end drop drop
+  end
+end
+
+unsafe inline proc set-bit :: int int -> int do
+  asm
+    pop rax
+    bts qword [rsp], rax
+  end
+end
+
+unsafe inline proc reset-bit :: int int -> int do
+  asm
+    pop rax
+    btr qword [rsp], rax
   end
 end

@@ -14,11 +14,12 @@ This is the changelog for **stck**.
 - Added local memory regions which are allocated on the call stack
 - Added a special procedure `<load>` which gets called before `main` and can be defined multiple times
 - Added `get-argv` and `get-argc` intrinsics
-- Added `nth-argv` to the standard library
+- Added `nth-argv`, `set-bit` and `reset-bit` to the standard library
 
 ### Changed
 - The output path is now specified with the `--output`/`-o` flag instead
 - Improved import handling
+- The `neg` procedure has been moved from std to a built-in intrinsic
 
 ### Fixed
 - Fixed the parser not checking whether the word is already defined for let-bindings

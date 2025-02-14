@@ -1,8 +1,8 @@
 import { Assert, AstKind, Const, Expr, LiteralType, Proc, Program, WordType } from "../parser";
-import { INTRINSICS, Instr, Instruction, Location, Size, formatLoc } from "../shared";
+import { INTRINSICS, Instr, Instruction, Location, formatLoc } from "../shared";
 import { IRContext, IRProc, IRProgram, createContext } from "./ir";
-import { i32_MAX, i32_MIN, assertNever } from "../misc";
 import { Err, StckError } from "../errors";
+import { assertNever } from "../misc";
 import chalk from "chalk";
 
 export class Compiler {
@@ -49,9 +49,8 @@ export class Compiler {
 
     // TODO: make this nicer
     for (const instr of instructions) {
-      if (instr.kind == Instr.Push || instr.kind == Instr.PushBigInt) {
-        stack.push(BigInt(instr.value));
-      } else if (instr.kind == Instr.Add) stack.push(stack.pop()! + stack.pop()!);
+      if (instr.kind == Instr.Push) stack.push(BigInt(instr.value));
+      else if (instr.kind == Instr.Add) stack.push(stack.pop()! + stack.pop()!);
       else if (instr.kind == Instr.Mul) stack.push(stack.pop()! * stack.pop()!);
       else if (instr.kind == Instr.Eq) stack.push(BigInt(stack.pop()! == stack.pop()!));
       else if (instr.kind == Instr.Neq) stack.push(BigInt(stack.pop()! != stack.pop()!));
@@ -148,16 +147,10 @@ export class Compiler {
             len: -1
           });
         } else if (expr.type == LiteralType.Int) {
-          out.push(
-            expr.value > i32_MAX || expr.value < i32_MIN ? {
-              kind: Instr.PushBigInt,
-              value: expr.value
-            } : {
-              kind: Instr.Push,
-              size: Size.Long,
-              value: expr.value
-            }
-          );
+          out.push({
+            kind: Instr.Push,
+            value: expr.value
+          });
         } else if (expr.type == LiteralType.Assembly) {
           out.push({
             kind: Instr.AsmBlock,
@@ -187,7 +180,9 @@ export class Compiler {
 
             out.push({
               kind: Instr.Call,
-              id: this.getProcId(expr.value)
+              id: this.getProcId(expr.value),
+              argc: proc.signature.ins.length,
+              retc: proc.signature.outs.length
             });
           }
         } else if (expr.type == WordType.Extern) {
@@ -203,17 +198,10 @@ export class Compiler {
             hasOutput: extern.signature.outs.length > 0
           });
         } else if (expr.type == WordType.Constant) {
-          const value = this.consts.get(expr.value)!;
-          out.push(
-            value > i32_MAX || value < i32_MIN ? {
-              kind: Instr.PushBigInt,
-              value
-            } : {
-              kind: Instr.Push,
-              size: Size.Long,
-              value,
-            }
-          );
+          out.push({
+            kind: Instr.Push,
+            value: this.consts.get(expr.value)!
+          });
         } else if (expr.type == WordType.Memory) {
           if (!this.memories.has(expr.value))
             this.compileMemory(this.program.memories.get(expr.value)!);
@@ -364,7 +352,6 @@ export class Compiler {
       // the integer on top of the stack is used as an exit code, so we need to push 0 if no exit code is provided
       instr.push({
         kind: Instr.Push,
-        size: Size.Long,
         value: 0n
       });
     }

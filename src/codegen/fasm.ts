@@ -1,15 +1,10 @@
 import { formatLoc, Instr, Instruction } from "../shared";
-import type { IRProc, IRProgram } from "../compiler/ir";
-import { ROOT_DIR } from "../index";
+import { i32_MAX, i32_MIN, ROOT_DIR } from "../index";
+import { IRProc, IRProgram } from "../compiler/ir";
 import plib from "path";
 
-const isPushInstr = (instr: Instr) => (
-  instr == Instr.Push
-  || instr == Instr.PushBigInt
-  || instr == Instr.PushAddr
-  || instr == Instr.PushStr
-  || instr == Instr.PushLocal
-);
+const isPushInstr = (instr: Instr) => instr >= Instr.Push && instr <= Instr.PushLocal;
+const isComparsion = (instr: Instr) => instr >= Instr.Eq && instr <= Instr.GtEq;
 
 // TODO: Another compilation step before codegen to optimize stuff
 
@@ -51,9 +46,11 @@ function codegenProc(id: number, proc: IRProc, out: string[]) {
     } else if (instr.kind == Instr.Nop) {
       out.push("nop");
     } else if (instr.kind == Instr.Push) {
-      out.push(`push ${instr.size} ${instr.value}`);
-    } else if (instr.kind == Instr.PushBigInt) {
-      out.push(`push64 ${instr.value}`);
+      if (instr.value > i32_MAX || instr.value < i32_MIN) {
+        out.push(`push64 ${instr.value}`);
+      } else {
+        out.push(`push qword ${instr.value}`);
+      }
     } else if (instr.kind == Instr.PushStr) {
       // C-strings have .len set to -1
       if (instr.len != -1) out.push(`push ${instr.len}`);
@@ -85,10 +82,7 @@ function codegenProc(id: number, proc: IRProc, out: string[]) {
     } else if (instr.kind == Instr.Jmp) {
       out.push(`jmp .L${instr.label}`);
     } else if (instr.kind == Instr.JmpIfNot) {
-      if (
-        lastInstr.kind >= Instr.Eq
-        && lastInstr.kind <= Instr.GtEq
-      ) {
+      if (isComparsion(instr.kind)) {
         out.pop();
         out.push("__i_cmp");
         out.push(`${

@@ -51,11 +51,6 @@ Importing files with an `.asm` extension would include them in the compiled `.as
 %include "./example.asm"
 ```
 
-## Special `_load_` procedure
-This procedure is not callable and cannot take any parameters or output anything.
-
-This procedure can be defined as many times, and will be called when the program starts before `main`.
-
 ## Special config constants
 
 For example

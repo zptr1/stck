@@ -34,6 +34,7 @@ addIntrinsic("mul",    Instr.Mul,    [DataType.Int, DataType.Int], [DataType.Int
 addIntrinsic("div",    Instr.Div,    [DataType.Int, DataType.Int], [DataType.Int]);
 addIntrinsic("mod",    Instr.Mod,    [DataType.Int, DataType.Int], [DataType.Int]);
 addIntrinsic("divmod", Instr.DivMod, [DataType.Int, DataType.Int], [DataType.Int, DataType.Int]);
+addIntrinsic("neg",    Instr.Neg,    [DataType.Int],               [DataType.Int]);
 
 addIntrinsic("imul",    Instr.IMul,    [DataType.Int, DataType.Int], [DataType.Int]);
 addIntrinsic("idiv",    Instr.IDiv,    [DataType.Int, DataType.Int], [DataType.Int]);

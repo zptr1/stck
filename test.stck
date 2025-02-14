@@ -1,13 +1,6 @@
 %include "std"
 %include "libc"
 
-proc <load> do
-  "hello\n" puts
-end
-
 proc main do
-  "world\n" puts
-  
-  get-argv read64 cast(ptr) cputs
-  1 nth-argv cputs
+  1000 5 reset-bit print
 end
